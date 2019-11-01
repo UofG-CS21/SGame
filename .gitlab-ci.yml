@@ -1,0 +1,22 @@
+stages:
+    - build
+    - test
+
+before_script:
+    - "dotnet restore SGame"
+
+build:
+    stage: build
+    only:
+        - master
+        - devel
+    script:
+        - "dotnet build SGame"
+
+test:
+    stage: test
+    only:
+        - master
+        - devel
+    script:
+        - "dotnet run --project SGame"
