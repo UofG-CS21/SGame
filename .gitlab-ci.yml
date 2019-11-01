@@ -13,4 +13,4 @@ build:
 test:
     stage: test
     script:
-        - "dotnet run SGame"
+        - "dotnet run --project SGame"
