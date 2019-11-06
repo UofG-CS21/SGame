@@ -14,4 +14,4 @@ test:
     stage: test
     script:
         - "cd ${CI_PROJECT_DIR}/tests"
-        - "pytest"
+        - "pytest *.py"
