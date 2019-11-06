@@ -13,4 +13,5 @@ build:
 test:
     stage: test
     script:
-        - "dotnet run --project SGame"
+        - "cd ${CI_PROJECT_DIR}/tests"
+        - "pytest"
