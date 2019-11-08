@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Net;
 using System.Collections.Generic;
+using System.IO;
+using Newtonsoft.Json; 
+using Newtonsoft.Json.Linq;
 
 namespace SGame
 {
@@ -16,7 +19,8 @@ namespace SGame
         freeID++;
         string playerToken = Guid.NewGuid().ToString();
         players[playerToken] = playerID;
-        string responseString = "<HTML><BODY>Connected player, token = " + playerToken + "</BODY></HTML>";
+        Console.WriteLine("Connected player " + playerID.ToString() + " with session token " + playerToken);
+        string responseString = "{ \"token\" : \"" + playerToken + "\" }";
         byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
         // Get a response stream and write the response to it.
         response.ContentLength64 = buffer.Length;
@@ -25,20 +29,23 @@ namespace SGame
         output.Close();
     }
 
-    public void DisconnectPlayer(HttpListenerResponse response, string token)
+    public void DisconnectPlayer(HttpListenerResponse response, JObject data)
     {
-        string responseString = "<HTML><BODY>";
-        responseString += "Request to disconnect player with token " + token + "<br>";
+        string token = (string)data["token"];
+        Console.WriteLine("Disconnecting player with session token " + token);
+        string responseString;
         if(players.ContainsKey(token))
         {
             players.Remove(token);
-            responseString += "Disconnected.<br>";
+            responseString = "ACK";
+            Console.WriteLine("Success");
         }
         else
         {
-            responseString += "Player with such token is not connected.<br>";
+            responseString = "DNE";
+            Console.WriteLine("DNE");
         }
-        responseString += "</BODY></HTML>";
+
         byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
         // Get a response stream and write the response to it.
         response.ContentLength64 = buffer.Length;
@@ -70,8 +77,6 @@ namespace SGame
             listener.Start();
             while(true)
             {
-
-            
                 Console.WriteLine("Listening...");
                 // Note: The GetContext method blocks while waiting for a request. 
                 HttpListenerContext context = listener.GetContext();
@@ -79,13 +84,23 @@ namespace SGame
                 // Obtain a response object.
                 HttpListenerResponse response = context.Response;
                 // Construct a response.
+
+                
                 string requestUrl = request.RawUrl.Substring(1);
                 if(requestUrl == "exit")
                     break;
                 else if (requestUrl == "connect")
                     ConnectPlayer(response);
                 else if (requestUrl.StartsWith("disconnect"))
-                    DisconnectPlayer(response, new string(requestUrl.Split("/")[1]));
+                {
+                    string text;
+                    JObject JSONdata;
+                    var body = new StreamReader(context.Request.InputStream).ReadToEnd();
+                    //Console.WriteLine(body);
+                    JSONdata = JObject.Parse(body);
+                    //Console.Write(JSONdata);
+                    DisconnectPlayer(response, JSONdata);
+                }
             }
             listener.Stop();
         }
