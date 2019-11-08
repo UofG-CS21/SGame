@@ -8,24 +8,25 @@ stages:
     - build
     - test
 
-# Before all pipeline stages: restore C# dependencies for SGame
-before_script:
-    - "dotnet restore SGame"
-
 # Build stage: build the C# SGame executable
 build:
     stage: build
+    before_script:
+        # Before building: restore C# dependencies for SGame
+        - "dotnet restore SGame"
     script:
         - "dotnet build SGame"
 
 # Test stage
 test:
     stage: test
-    script:
+    before_script:
         # 1) Start an instance of SGame in the background
         - "dotnet run --project SGame -- --host ${SGAME_HOST} --port ${SGAME_PORT} &"
+    script:
         # 2) Run automated tests via Pytest
         - "cd ${CI_PROJECT_DIR}/tests"
         - "pytest *.py --host ${SGAME_HOST} --port ${SGAME_PORT}"
+    after_script:
         # 3) Kill the background instance of SGame
         - "pkill -KILL $(jobs -p) || echo 'Server already terminated'"
