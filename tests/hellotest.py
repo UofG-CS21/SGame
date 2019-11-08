@@ -1,10 +1,10 @@
 import pytest
+import requests
 
 
-def test_function(host, port):
-    """A simple test case that always passes."""
-    assert 1 > 0
-    assert port == 5000
-    assert host == "localhost"
-    with pytest.raises(ZeroDivisionError):
-        1/0
+def test_disconnect(client):
+    """
+    Tests that a connected ship can disconnect via REST.
+    """
+    resp = requests.post(client.url + 'disconnect', {'token': client.token})
+    assert resp
