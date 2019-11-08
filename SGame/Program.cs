@@ -8,14 +8,14 @@ namespace SGame
     {
 
         int freeID = 0;
-        HashSet<string> players = new HashSet<string>();
+        Dictionary<string,int> players = new Dictionary<string,int>();
 
     public void ConnectPlayer(HttpListenerResponse response)
     {
         int playerID = freeID;
         freeID++;
-        string playerToken = playerID.ToString();
-        players.Add(playerToken);
+        string playerToken = Guid.NewGuid().ToString();
+        players[playerToken] = playerID;
         string responseString = "<HTML><BODY>Connected player, token = " + playerToken + "</BODY></HTML>";
         byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
         // Get a response stream and write the response to it.
@@ -29,7 +29,7 @@ namespace SGame
     {
         string responseString = "<HTML><BODY>";
         responseString += "Request to disconnect player with token " + token + "<br>";
-        if(players.Contains(token))
+        if(players.ContainsKey(token))
         {
             players.Remove(token);
             responseString += "Disconnected.<br>";
