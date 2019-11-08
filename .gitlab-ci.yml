@@ -28,4 +28,4 @@ test:
         - "cd ${CI_PROJECT_DIR}/tests"
         - "pytest *.py --host ${SGAME_HOST} --port ${SGAME_PORT}"
         # 3) Kill the background instance of SGame
-        - "pkill -KILL $(jobs -p)"
+        - "pkill -KILL $(jobs -p) || echo 'Server already terminated'"
