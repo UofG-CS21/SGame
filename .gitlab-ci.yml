@@ -20,13 +20,13 @@ build:
 # Test stage
 test:
     stage: test
-    before_script:
+    script:
+        # 0) Tell the GitLab runner to kill any background process when the script runner shell exits.
+        #    See: https://gitlab.com/gitlab-org/gitlab-runner/issues/2880
+        #    This way the SGame instance will be stopped after the tests are run.
+        - "trap 'kill $(jobs -p)' EXIT"
         # 1) Start an instance of SGame in the background
         - "dotnet run --project SGame -- --host ${SGAME_HOST} --port ${SGAME_PORT} &"
-    script:
         # 2) Run automated tests via Pytest
         - "cd ${CI_PROJECT_DIR}/tests"
         - "pytest *.py --host ${SGAME_HOST} --port ${SGAME_PORT}"
-    after_script:
-        # 3) Kill the background instance of SGame
-        - "pkill -KILL $(jobs -p) || echo 'Server already terminated'"
