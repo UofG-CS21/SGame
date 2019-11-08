@@ -26,4 +26,4 @@ test:
         # what it needs to test (and killing it when it's done).
         # See issue #33 for why this is not done through GitLab CI scripts.
         - "cd ${CI_PROJECT_DIR}/tests"
-        - "pytest *.py --sgame ${CI_PROJECT_DIR}/SGame" --host ${SGAME_HOST} --port ${SGAME_PORT}
+        - "pytest *.py --sgame ${CI_PROJECT_DIR}/SGame --host ${SGAME_HOST} --port ${SGAME_PORT}"
