@@ -20,10 +20,17 @@ build:
 # Test stage
 test:
     stage: test
+    before_script:
+        # Start an instance of the SGame server in the background (redirect stdout->stderr)
+        # (See issue #33 for why this is sometimes problematic)
+        - "cd ${CI_PROJECT_DIR}"
+        - "dotnet run --project SGame -- --host ${SGAME_HOST} --port ${SGAME_PORT} 1>&2 &"
+        # Wait for a bit for it to init
+        - "sleep 5"
     script:
         # Run automated tests via pytest.
-        # pytest is responsible for launching a test compute node (SGame) to test
-        # what it needs to test (and killing it when it's done).
-        # See issue #33 for why this is not done through GitLab CI scripts.
         - "cd ${CI_PROJECT_DIR}/tests"
         - "pytest *.py --sgame ${CI_PROJECT_DIR}/SGame --host ${SGAME_HOST} --port ${SGAME_PORT}"
+    after_script:
+        # Kill the background SGame process after testing
+        - "curl -X POST -d 'exit' 'http://${SGAME_HOST}:${SGAME_PORT}/exit'"
