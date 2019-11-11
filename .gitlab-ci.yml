@@ -13,17 +13,16 @@ build:
     stage: build
     before_script:
         # Before building: restore C# dependencies for SGame
-        - "dotnet restore SGame"
+        - dotnet restore SGame
     script:
-        - "dotnet build SGame"
+        - dotnet build SGame
 
 # Test stage
 test:
     stage: test
     script:
-        # Run automated tests via pytest.
-        # pytest is responsible for launching a test compute node (SGame) to test
-        # what it needs to test (and killing it when it's done).
-        # See issue #33 for why this is not done through GitLab CI scripts.
-        - "cd ${CI_PROJECT_DIR}/tests"
-        - "pytest *.py --sgame ${CI_PROJECT_DIR}/SGame --host ${SGAME_HOST} --port ${SGAME_PORT}"
+        # Run automated tests via pytest
+        # (See issue #33 for why this in its own script; otherwise, GitLab will
+        #  stall until timeout because the SGame process in the background won't terminate!)
+        - cd ${CI_PROJECT_DIR}
+        - bash ci/runtests.sh ${SGAME_HOST} ${SGAME_PORT}

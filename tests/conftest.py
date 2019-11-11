@@ -6,6 +6,7 @@ import os, sys
 import pytest
 import requests
 import subprocess as sp
+from time import sleep
 
 
 def pytest_addoption(parser):
@@ -38,22 +39,12 @@ class ServerFixture:
 @pytest.fixture(scope='session')
 def server(request) -> ServerFixture:
     """
-    A session-wide fixture that starts an instance of the SGame server in the background
-    (and kills it when the testing session is done).
+    A session-wide fixture passed to know the host/port of the SGame server started by GitLab.
     """
     sgame_root, host, port = map(request.config.getoption, ["--sgame", "--host", "--port"])
     sgame_dir, sgame_name = os.path.split(os.path.realpath(sgame_root))
 
-    # Start the SGame compute node in the background
-    cmd = ['dotnet', 'run', '--project', sgame_name, '--host', host, '--port', str(port)]
-    print(f'-- Starting SGame instance: `{" ".join(cmd)}`', file=sys.stderr)
-    server_proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.STDOUT)
-
     yield ServerFixture(host, port)
-
-    # Kill the background process when testing is done
-    print('-- Killing server', file=sys.stderr)
-    server_proc.kill()
 
 
 class ClientFixture:
