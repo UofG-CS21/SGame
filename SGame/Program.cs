@@ -4,9 +4,19 @@ using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json; 
 using Newtonsoft.Json.Linq;
+using CommandLine;
 
 namespace SGame
 {
+    class CmdLineOptions
+    {
+        [Option('h', "host", Default = "localhost", Required = false, HelpText = "The hostname to bind the compute node to.")]
+        public string Host { get; set; }
+
+        [Option('p', "port", Default = 8000u, Required = false, HelpText = "The port to bind the compute node to.")]
+        public uint Port { get; set; }
+    }
+
     class Program
     {
 
@@ -107,9 +117,15 @@ namespace SGame
 
         static void Main(string[] args)
         {
-            string[] endpoints = new string[]{"http://localhost:8000/"}; 
-            Program P = new Program();
-            P.SimpleListenerExample(endpoints);
+            Parser.Default.ParseArguments<CmdLineOptions>(args)
+                .WithParsed<CmdLineOptions>(opts =>
+                {
+                    string[] endpoints = new string[]{"http://" + opts.Host + ":" + opts.Port + "/"}; 
+                    Console.WriteLine("Endpoint: {0}", endpoints[0]);
+
+                    Program P = new Program();
+                    P.SimpleListenerExample(endpoints);
+                });
         }
     }
 }
