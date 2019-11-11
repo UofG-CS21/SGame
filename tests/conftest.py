@@ -6,6 +6,7 @@ import os, sys
 import pytest
 import requests
 import subprocess as sp
+from time import sleep
 
 
 def pytest_addoption(parser):
@@ -48,6 +49,9 @@ def server(request) -> ServerFixture:
     cmd = ['dotnet', 'run', '--project', sgame_name, '--', '--host', host, '--port', str(port)]
     print(f'-- Starting SGame instance: `{" ".join(cmd)}`', file=sys.stderr)
     server_proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.STDOUT)
+
+    # Wait for a bit for the server to startup
+    sleep(5)
 
     yield ServerFixture(host, port)
 
