@@ -2,92 +2,130 @@
 using System.Net;
 using System.Collections.Generic;
 using System.IO;
-using Newtonsoft.Json; 
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using CommandLine;
 
 namespace SGame
 {
+    /// <summary>
+    /// Command-line arguments passed to the compute node instance.
+    /// </summary>
     class CmdLineOptions
     {
-        [Option('h', "host", Default = "localhost", Required = false, HelpText = "The hostname to bind the compute node to.")]
+        /// <summary>
+        /// The HTTP hostname to bind to.
+        /// </summary>
+        [Option('H', "host", Default = "localhost", Required = false, HelpText = "The hostname to bind the compute node to.")]
         public string Host { get; set; }
 
-        [Option('p', "port", Default = 8000u, Required = false, HelpText = "The port to bind the compute node to.")]
+        /// <summary>
+        /// The HTTP TCP port to bind to.
+        /// </summary>
+        [Option('P', "port", Default = 8000u, Required = false, HelpText = "The port to bind the compute node to.")]
         public uint Port { get; set; }
     }
 
+    /// <summary>
+    /// An instance of the server.
+    /// </summary>
     class Program
     {
 
+        /// <summary>
+        /// The next free spaceship ID to use.
+        /// </summary>
         int freeID = 0;
-        Dictionary<string,int> players = new Dictionary<string,int>();
 
-    public void ConnectPlayer(HttpListenerResponse response)
-    {
-        int playerID = freeID;
-        freeID++;
-        string playerToken = Guid.NewGuid().ToString();
-        players[playerToken] = playerID;
-        Console.WriteLine("Connected player " + playerID.ToString() + " with session token " + playerToken);
-        string responseString = "{ \"token\" : \"" + playerToken + "\" }";
-        byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
-        // Get a response stream and write the response to it.
-        response.ContentLength64 = buffer.Length;
-        System.IO.Stream output = response.OutputStream;
-        output.Write(buffer,0,buffer.Length);
-        output.Close();
-    }
+        /// <summary>
+        /// The internal table of [spaceship token -> spaceship ID] for the compute node.
+        /// </summary>
+        Dictionary<string, int> players = new Dictionary<string, int>();
 
-    public void DisconnectPlayer(HttpListenerResponse response, JObject data)
-    {
-        string token = (string)data["token"];
-        Console.WriteLine("Disconnecting player with session token " + token);
-        string responseString;
-        if(players.ContainsKey(token))
+
+        /// <summary>
+        /// Handles a "connect" REST request, connecting a player to the server.
+        /// Responds with a fresh spaceship ID and player token for that spaceship.
+        /// </summary>
+        /// <param name="response">The HTTP response to the client.</param>
+        public void ConnectPlayer(HttpListenerResponse response)
         {
-            players.Remove(token);
-            responseString = "ACK";
-            Console.WriteLine("Success");
-        }
-        else
-        {
-            responseString = "DNE";
-            Console.WriteLine("DNE");
+            int playerID = freeID;
+            freeID++;
+            string playerToken = Guid.NewGuid().ToString();
+            players[playerToken] = playerID;
+
+            Console.WriteLine("Connected player " + playerID.ToString() + " with session token " + playerToken);
+
+            string responseString = "{ \"token\" : \"" + playerToken + "\" }";
+            byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
+            response.ContentLength64 = buffer.Length;
+            System.IO.Stream output = response.OutputStream;
+            output.Write(buffer, 0, buffer.Length);
+            output.Close();
         }
 
-        byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
-        // Get a response stream and write the response to it.
-        response.ContentLength64 = buffer.Length;
-        System.IO.Stream output = response.OutputStream;
-        output.Write(buffer,0,buffer.Length);
-        output.Close();
-    }
+        /// <summary>
+        /// Handles a "disconnect" REST request, disconnecting a player from the server.
+        /// </summary>
+        /// <param name="data">The JSON payload of the request, containing the token of the ship to disconnect.</param>
+        /// <param name="response">The HTTP response to the client.</param>
+        public void DisconnectPlayer(HttpListenerResponse response, JObject data)
+        {
+            string responseString = null, error = null;
+            if (!data.ContainsKey("token"))
+            {
+                error = "Missing token in disconnect request";
+            }
+            else
+            {
+                string token = (string)data["token"];
+                if (players.ContainsKey(token))
+                {
+                    Console.WriteLine("Disconnecting player with session token " + token);
+                    players.Remove(token);
+                    responseString = "ACK";
+                }
+                else
+                {
+                    error = "Invalid spaceship token";
+                }
+            }
 
-    // This example requires the System and System.Net namespaces.
-    public void SimpleListenerExample(string[] prefixes)
-    {
+            if(error != null)
+            {
+                responseString = "{ \"error\": \"" + error + "\" }";
+            }
+
+            // Respond to the request
+            byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
+            response.ContentLength64 = buffer.Length;
+            System.IO.Stream output = response.OutputStream;
+            output.Write(buffer, 0, buffer.Length);
+            output.Close();
+        }
+
+        // This example requires the System and System.Net namespaces.
+        public void SimpleListenerExample(string[] prefixes)
+        {
             if (!HttpListener.IsSupported)
             {
-                Console.WriteLine ("Windows XP SP2 or Server 2003 is required to use the HttpListener class.");
-                return;
+                Console.WriteLine("HttpListener is not supported on this platform!");
+                Environment.Exit(1);
             }
-            // URI prefixes are required,
-            // for example "http://contoso.com:8080/index/".
-            if (prefixes == null || prefixes.Length == 0)
-            throw new ArgumentException("prefixes");
-            
+
             // Create a listener.
             HttpListener listener = new HttpListener();
-            // Add the prefixes.
             foreach (string s in prefixes)
             {
                 listener.Prefixes.Add(s);
             }
+
+            // Main server loop
             listener.Start();
-            while(true)
+            Console.WriteLine("Listening...");
+            while (true)
             {
-                Console.WriteLine("Listening...");
                 // Note: The GetContext method blocks while waiting for a request. 
                 HttpListenerContext context = listener.GetContext();
                 HttpListenerRequest request = context.Request;
@@ -95,13 +133,16 @@ namespace SGame
                 HttpListenerResponse response = context.Response;
                 // Construct a response.
 
-                
                 string requestUrl = request.RawUrl.Substring(1);
-                if(requestUrl == "exit")
+                if (requestUrl == "exit")
+                {
                     break;
+                }
                 else if (requestUrl == "connect")
+                {
                     ConnectPlayer(response);
-                else if (requestUrl.StartsWith("disconnect"))
+                }
+                else if (requestUrl == "disconnect")
                 {
                     string text;
                     JObject JSONdata;
@@ -111,6 +152,7 @@ namespace SGame
                     //Console.Write(JSONdata);
                     DisconnectPlayer(response, JSONdata);
                 }
+                // TODO: Respond to invalid commands!
             }
             listener.Stop();
         }
@@ -120,7 +162,7 @@ namespace SGame
             Parser.Default.ParseArguments<CmdLineOptions>(args)
                 .WithParsed<CmdLineOptions>(opts =>
                 {
-                    string[] endpoints = new string[]{"http://" + opts.Host + ":" + opts.Port + "/"}; 
+                    string[] endpoints = new string[] { "http://" + opts.Host + ":" + opts.Port + "/" };
                     Console.WriteLine("Endpoint: {0}", endpoints[0]);
 
                     Program P = new Program();
