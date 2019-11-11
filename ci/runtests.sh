@@ -4,7 +4,7 @@
 # Usage: runtests.sh <host> <port>
 
 # Verbose output
-set -x
+set -v
 
 # Start an instance of the SGame server in the background (redirect stdout->stderr; sleep a bit for it to init)
 # Store the PID of the background process in a file (SGame.pid) to know what process to kill after.
