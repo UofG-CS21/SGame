@@ -57,7 +57,7 @@ namespace SGame
 
             Console.WriteLine("Connected player " + playerID.ToString() + " with session token " + playerToken);
 
-            string responseString = "{ \"token\" : \"" + playerToken + "\" }";
+            string responseString = "{ \"id\": " + playerID + ", \"token\" : \"" + playerToken + "\" }";
             byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
             response.ContentLength64 = buffer.Length;
             System.IO.Stream output = response.OutputStream;
