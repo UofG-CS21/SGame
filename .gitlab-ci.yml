@@ -22,22 +22,20 @@ test:
     stage: test
     script:
         # Start an instance of the SGame server in the background (redirect stdout->stderr; sleep a bit for it to init)
+        # Store the PID of the background process in a file (SGame.pid) to know what process to kill after.
+        # (See issue #33 on why this is needed)
         - cd ${CI_PROJECT_DIR}
+        - rm -f SGame.pid
         - dotnet run --project SGame -- --host ${SGAME_HOST} --port ${SGAME_PORT} 1>&2 &
+        - echo $! > SGame.pid
         - sleep 5
-        # Run automated tests via pytest - BUT intercept the exit code and kill the server manually after
-        # so that GitLab CI does not hang forever!
+        # Run automated tests via pytest
+        - pytest *.py --sgame ${CI_PROJECT_DIR}/SGame --host ${SGAME_HOST} --port ${SGAME_PORT}
+    after_script:
+        # Kill the background process in any case (tests succeeded or failure)
         # (See issue #33; otherwise GitLab will stall until timeout because the SGame process in the background won't terminate!)
-        - cd ${CI_PROJECT_DIR}/tests
-        - |
-          function runtests() {
-            pytest *.py --sgame ${CI_PROJECT_DIR}/SGame --host ${SGAME_HOST} --port ${SGAME_PORT}
-            TESTS_EXIT_CODE=$?
-
-            curl -X POST -d "exit" "http://${SGAME_HOST}:${SGAME_PORT}/exit"
-            sleep 2
-            pkill -KILL $(jobs -p) || "Server already stopped"
-
-            return $TESTS_EXIT_CODE
-          }
-          runtests
+        # First try to exit gracefully...
+        - curl -X POST -d "exit" "http://${SGAME_HOST}:${SGAME_PORT}/exit" || echo "curl failed to POST exit command"
+        - sleep 2
+        # ...then use brute force if the server still hasn't terminated
+        - pkill -KILL $(cat SGame.pid) || echo "Server already stopped"
