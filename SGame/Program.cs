@@ -123,7 +123,7 @@ namespace SGame
 
             // Main server loop
             listener.Start();
-            Console.WriteLine("Listening...");
+            Console.Error.WriteLine("Listening...");
             while (true)
             {
                 // Note: The GetContext method blocks while waiting for a request. 
@@ -134,6 +134,7 @@ namespace SGame
                 // Construct a response.
 
                 string requestUrl = request.RawUrl.Substring(1);
+                Console.Error.WriteLine("Got a request: {0}", requestUrl);
                 if (requestUrl == "exit")
                 {
                     break;
@@ -144,7 +145,6 @@ namespace SGame
                 }
                 else if (requestUrl == "disconnect")
                 {
-                    string text;
                     JObject JSONdata;
                     var body = new StreamReader(context.Request.InputStream).ReadToEnd();
                     //Console.WriteLine(body);
@@ -154,7 +154,9 @@ namespace SGame
                 }
                 // TODO: Respond to invalid commands!
             }
+
             listener.Stop();
+            Console.Error.WriteLine("Stopped");
         }
 
         static void Main(string[] args)
