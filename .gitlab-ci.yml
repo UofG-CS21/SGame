@@ -13,24 +13,31 @@ build:
     stage: build
     before_script:
         # Before building: restore C# dependencies for SGame
-        - "dotnet restore SGame"
+        - dotnet restore SGame
     script:
-        - "dotnet build SGame"
+        - dotnet build SGame
 
 # Test stage
 test:
     stage: test
-    before_script:
-        # Start an instance of the SGame server in the background (redirect stdout->stderr)
-        # (See issue #33 for why this is sometimes problematic)
-        - "cd ${CI_PROJECT_DIR}"
-        - "dotnet run --project SGame -- --host ${SGAME_HOST} --port ${SGAME_PORT} 1>&2 &"
-        # Wait for a bit for it to init
-        - "sleep 5"
     script:
-        # Run automated tests via pytest.
-        - "cd ${CI_PROJECT_DIR}/tests"
-        - "pytest *.py --sgame ${CI_PROJECT_DIR}/SGame --host ${SGAME_HOST} --port ${SGAME_PORT}"
-    after_script:
-        # Kill the background SGame process after testing
-        - "curl -X POST -d 'exit' 'http://${SGAME_HOST}:${SGAME_PORT}/exit'"
+        # Start an instance of the SGame server in the background (redirect stdout->stderr; sleep a bit for it to init)
+        - cd ${CI_PROJECT_DIR}
+        - dotnet run --project SGame -- --host ${SGAME_HOST} --port ${SGAME_PORT} 1>&2 &
+        - sleep 5
+        # Run automated tests via pytest - BUT intercept the exit code and kill the server manually after
+        # so that GitLab CI does not hang forever!
+        # (See issue #33; otherwise GitLab will stall until timeout because the SGame process in the background won't terminate!)
+        - cd ${CI_PROJECT_DIR}/tests
+        - |
+          function runtests() {
+            pytest *.py --sgame ${CI_PROJECT_DIR}/SGame --host ${SGAME_HOST} --port ${SGAME_PORT}
+            TESTS_EXIT_CODE=$?
+
+            curl -X POST -d "exit" "http://${SGAME_HOST}:${SGAME_PORT}/exit"
+            sleep 2
+            pkill -KILL $(jobs -p) || "Server already stopped"
+
+            return $TESTS_EXIT_CODE
+          }
+          runtests
