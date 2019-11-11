@@ -25,4 +25,4 @@ test:
         # (See issue #33 for why this in its own script; otherwise, GitLab will
         #  stall until timeout because the SGame process in the background won't terminate!)
         - cd ${CI_PROJECT_DIR}
-        - bash ci/runtests.sh
+        - bash ci/runtests.sh ${SGAME_HOST} ${SGAME_PORT}

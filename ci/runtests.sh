@@ -2,15 +2,18 @@
 # Launch SGame, run pytest tests, then kill SGame.
 # Must be launched from ${CI_PROJECT_DIR}
 # Usage: runtests.sh <host> <port>
+SGAME_HOST=$1
+SGAME_PORT=$2
 
 # Verbose output
-set -v
+set -x
 
 # Start an instance of the SGame server in the background (redirect stdout->stderr; sleep a bit for it to init)
 # Store the PID of the background process in a file (SGame.pid) to know what process to kill after.
 # (See issue #33 on why this is needed)
+# Use sed to prefix "[SGame] " to the background process' output, for clarity
 rm -f SGame.pid
-dotnet run --project SGame -- --host $1 --port $2 1>&2 &
+dotnet run --project SGame -- --host ${SGAME_HOST} --port ${SGAME_PORT} 2>&1 | sed 's/^/[SGame] /' 1>&2 &
 echo $! > SGame.pid
 sleep 5
 
