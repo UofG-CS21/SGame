@@ -30,4 +30,4 @@ SGAME_PID=$(cat SGame.pid)
 echo "Kill ${SGAME_PID}"
 pkill -KILL ${SGAME_PID} || echo "Server already stopped"
 
-return $TESTS_EXIT_CODE
+exit $TESTS_EXIT_CODE
