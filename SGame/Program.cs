@@ -105,8 +105,11 @@ namespace SGame
             output.Close();
         }
 
-        // This example requires the System and System.Net namespaces.
-        public void SimpleListenerExample(string[] prefixes)
+        /// <summary>
+        /// Runs the main loop run for the HTTP/REST server.
+        /// </summary>
+        /// <param name="prefixes">A list of endpoint URLs to bind the HTTP server to.</param>
+        public void ServerLoop(string[] prefixes)
         {
             if (!HttpListener.IsSupported)
             {
@@ -159,6 +162,9 @@ namespace SGame
             Console.Error.WriteLine("Stopped");
         }
 
+        /// <summary>
+        /// The entry point of the program.
+        /// </summary>
         static void Main(string[] args)
         {
             Parser.Default.ParseArguments<CmdLineOptions>(args)
@@ -168,7 +174,7 @@ namespace SGame
                     Console.WriteLine("Endpoint: {0}", endpoints[0]);
 
                     Program P = new Program();
-                    P.SimpleListenerExample(endpoints);
+                    P.ServerLoop(endpoints);
                 });
         }
     }
