@@ -48,7 +48,7 @@ def server(request) -> ServerFixture:
     # Start the SGame compute node in the background
     cmd = ['dotnet', 'run', '--project', sgame_name, '--', '--host', host, '--port', str(port)]
     print(f'-- Starting SGame instance: `{" ".join(cmd)}`', file=sys.stderr)
-    server_proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.STDOUT)
+    server_proc = sp.Popen(cmd, stdout=sp.STDERR, stderr=sp.STDERR)
 
     # Wait for a bit for the server to startup
     sleep(5)
