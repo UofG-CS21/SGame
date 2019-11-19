@@ -10,7 +10,7 @@ namespace SGame
     /// <summary>
     /// The implementation of the externally-visible REST API.
     /// </summary>
-    class Api
+    class Server
     {
         /// <summary>
         /// The next free spaceship ID to use.
@@ -28,7 +28,7 @@ namespace SGame
         /// Responds with a fresh spaceship ID and player token for that spaceship.
         /// </summary>
         /// <param name="response">The HTTP response to the client.</param>
-        [RestApi("connect")]
+        [ApiRoute("connect")]
         public void ConnectPlayer(HttpListenerResponse response, JObject data)
         {
             int playerID = freeID;
@@ -51,7 +51,7 @@ namespace SGame
         /// </summary>
         /// <param name="data">The JSON payload of the request, containing the token of the ship to disconnect.</param>
         /// <param name="response">The HTTP response to the client.</param>
-        [RestApi("disconnect")]
+        [ApiRoute("disconnect")]
         public void DisconnectPlayer(HttpListenerResponse response, JObject data)
         {
             string responseString = null, error = null;

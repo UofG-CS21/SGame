@@ -35,14 +35,14 @@ namespace SGame
         /// <summary>
         /// The external REST API and its state.
         /// </summary>
-        Api api;
+        Server api;
 
         /// <summary>
         /// Initializes an instance of the program.
         /// </summary>
         Program()
         {
-            api = new Api();
+            api = new Server();
         }
 
         /// <summary>
