@@ -48,7 +48,7 @@ namespace SGame
         /// Responds with a fresh spaceship ID and player token for that spaceship.
         /// </summary>
         /// <param name="response">The HTTP response to the client.</param>
-        [RestApi]
+        [RestApi("connect")]
         public void ConnectPlayer(HttpListenerResponse response)
         {
             int playerID = freeID;
@@ -71,7 +71,7 @@ namespace SGame
         /// </summary>
         /// <param name="data">The JSON payload of the request, containing the token of the ship to disconnect.</param>
         /// <param name="response">The HTTP response to the client.</param>
-        [RestApi]
+        [RestApi("disconnect")]
         public void DisconnectPlayer(HttpListenerResponse response, JObject data)
         {
             string responseString = null, error = null;
