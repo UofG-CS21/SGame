@@ -1,11 +1,12 @@
 ﻿using System;
-using System.Net;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
+using CommandLine;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using CommandLine;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
 namespace SGame
 {
     /// <summary>
@@ -41,7 +42,6 @@ namespace SGame
         /// The internal table of [spaceship token -> spaceship ID] for the compute node.
         /// </summary>
         Dictionary<string, int> players = new Dictionary<string, int>();
-
 
         /// <summary>
         /// Handles a "connect" REST request, connecting a player to the server.
@@ -92,7 +92,7 @@ namespace SGame
                 }
             }
 
-            if(error != null)
+            if (error != null)
             {
                 responseString = "{ \"error\": \"" + error + "\" }";
             }
