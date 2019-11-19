@@ -10,7 +10,7 @@ namespace SGame
     /// <summary>
     /// The implementation of the externally-visible REST API.
     /// </summary>
-    class Server
+    class Api
     {
         /// <summary>
         /// The next free spaceship ID to use.

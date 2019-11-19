@@ -35,14 +35,20 @@ namespace SGame
         /// <summary>
         /// The external REST API and its state.
         /// </summary>
-        Server api;
+        Api api;
+
+        /// <summary>
+        /// Routes REST API calls to Server.
+        /// </summary>
+        Router<Api> router;
 
         /// <summary>
         /// Initializes an instance of the program.
         /// </summary>
         Program()
         {
-            api = new Server();
+            api = new Api();
+            router = new Router<Api>(api);
         }
 
         /// <summary>
@@ -90,19 +96,15 @@ namespace SGame
                     data = new JObject();
                 }
 
-                if (requestUrl == "exit")
+#if DEBUG
+                // Handle "exit" in debug mode
+                if(requestUrl == "exit")
                 {
                     break;
                 }
-                else if (requestUrl == "connect")
-                {
-                    api.ConnectPlayer(response, data);
-                }
-                else if (requestUrl == "disconnect")
-                {
-                    api.DisconnectPlayer(response, data);
-                }
-                // TODO: Respond to invalid commands!
+#endif
+
+                router.Dispatch(requestUrl, response, data);
             }
 
             listener.Stop();
