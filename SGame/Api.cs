@@ -7,6 +7,13 @@ using Newtonsoft.Json.Linq;
 
 namespace SGame
 {
+    /// The JSON and/or URL data passed to an API call.
+    using ApiData = JObject;
+
+    /// The HTTP response to an API call.
+    using ApiResponse = HttpListenerResponse;
+
+
     /// <summary>
     /// The implementation of the externally-visible REST API.
     /// </summary>
@@ -29,7 +36,7 @@ namespace SGame
         /// </summary>
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("connect")]
-        public void ConnectPlayer(HttpListenerResponse response, JObject data)
+        public void ConnectPlayer(ApiResponse response, ApiData data)
         {
             int playerID = freeID;
             freeID++;
@@ -52,7 +59,8 @@ namespace SGame
         /// <param name="data">The JSON payload of the request, containing the token of the ship to disconnect.</param>
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("disconnect")]
-        public void DisconnectPlayer(HttpListenerResponse response, JObject data)
+        [ApiParam("token", typeof(string))]
+        public void DisconnectPlayer(ApiResponse response, ApiData data)
         {
             string responseString = null, error = null;
             if (!data.ContainsKey("token"))
