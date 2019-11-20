@@ -32,77 +32,23 @@ namespace SGame
     /// </summary>
     class Program
     {
+        /// <summary>
+        /// The external REST API and its state.
+        /// </summary>
+        Api api;
 
         /// <summary>
-        /// The next free spaceship ID to use.
+        /// Routes REST API calls to Server.
         /// </summary>
-        int freeID = 0;
+        Router<Api> router;
 
         /// <summary>
-        /// The internal table of [spaceship token -> spaceship ID] for the compute node.
+        /// Initializes an instance of the program.
         /// </summary>
-        Dictionary<string, int> players = new Dictionary<string, int>();
-
-        /// <summary>
-        /// Handles a "connect" REST request, connecting a player to the server.
-        /// Responds with a fresh spaceship ID and player token for that spaceship.
-        /// </summary>
-        /// <param name="response">The HTTP response to the client.</param>
-        public void ConnectPlayer(HttpListenerResponse response)
+        Program()
         {
-            int playerID = freeID;
-            freeID++;
-            string playerToken = Guid.NewGuid().ToString();
-            players[playerToken] = playerID;
-
-            Console.WriteLine("Connected player " + playerID.ToString() + " with session token " + playerToken);
-
-            string responseString = "{ \"id\": " + playerID + ", \"token\" : \"" + playerToken + "\" }";
-            byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
-            response.ContentLength64 = buffer.Length;
-            System.IO.Stream output = response.OutputStream;
-            output.Write(buffer, 0, buffer.Length);
-            output.Close();
-        }
-
-        /// <summary>
-        /// Handles a "disconnect" REST request, disconnecting a player from the server.
-        /// </summary>
-        /// <param name="data">The JSON payload of the request, containing the token of the ship to disconnect.</param>
-        /// <param name="response">The HTTP response to the client.</param>
-        public void DisconnectPlayer(HttpListenerResponse response, JObject data)
-        {
-            string responseString = null, error = null;
-            if (!data.ContainsKey("token"))
-            {
-                error = "Missing token in disconnect request";
-            }
-            else
-            {
-                string token = (string)data["token"];
-                if (players.ContainsKey(token))
-                {
-                    Console.WriteLine("Disconnecting player with session token " + token);
-                    players.Remove(token);
-                    responseString = "ACK";
-                }
-                else
-                {
-                    error = "Invalid spaceship token";
-                }
-            }
-
-            if (error != null)
-            {
-                responseString = "{ \"error\": \"" + error + "\" }";
-            }
-
-            // Respond to the request
-            byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
-            response.ContentLength64 = buffer.Length;
-            System.IO.Stream output = response.OutputStream;
-            output.Write(buffer, 0, buffer.Length);
-            output.Close();
+            api = new Api();
+            router = new Router<Api>(api);
         }
 
         /// <summary>
@@ -131,31 +77,35 @@ namespace SGame
             {
                 // Note: The GetContext method blocks while waiting for a request. 
                 HttpListenerContext context = listener.GetContext();
-                HttpListenerRequest request = context.Request;
-                // Obtain a response object.
-                HttpListenerResponse response = context.Response;
-                // Construct a response.
 
-                string requestUrl = request.RawUrl.Substring(1);
+                string requestUrl = context.Request.RawUrl.Substring(1);
                 Console.Error.WriteLine("Got a request: {0}", requestUrl);
-                if (requestUrl == "exit")
+
+                var body = new StreamReader(context.Request.InputStream).ReadToEnd();
+                JObject json = new JObject();
+                if(body.Length > 0)
+                {
+                    try
+                    {
+                        json = JObject.Parse(body);
+                    }
+                    catch(JsonReaderException exc)
+                    {
+                        // TODO: Log this and (likely) send a HTTP 500
+                    }
+                }
+
+#if DEBUG
+                // Handle "exit" in debug mode
+                if(requestUrl == "exit")
                 {
                     break;
                 }
-                else if (requestUrl == "connect")
-                {
-                    ConnectPlayer(response);
-                }
-                else if (requestUrl == "disconnect")
-                {
-                    JObject JSONdata;
-                    var body = new StreamReader(context.Request.InputStream).ReadToEnd();
-                    //Console.WriteLine(body);
-                    JSONdata = JObject.Parse(body);
-                    //Console.Write(JSONdata);
-                    DisconnectPlayer(response, JSONdata);
-                }
-                // TODO: Respond to invalid commands!
+#endif
+
+                var response = new ApiResponse(context.Response);
+                var data = new ApiData(json);
+                router.Dispatch(requestUrl, response, data);
             }
 
             listener.Stop();
