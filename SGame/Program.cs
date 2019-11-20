@@ -85,15 +85,18 @@ namespace SGame
                 string requestUrl = request.RawUrl.Substring(1);
                 Console.Error.WriteLine("Got a request: {0}", requestUrl);
 
-                JObject data;
                 var body = new StreamReader(context.Request.InputStream).ReadToEnd();
+                JObject data = new JObject();
                 if(body.Length > 0)
                 {
-                    data = JObject.Parse(body);
-                }
-                else
-                {
-                    data = new JObject();
+                    try
+                    {
+                        data = JObject.Parse(body);
+                    }
+                    catch(JsonReaderException exc)
+                    {
+                        // TODO: Log this and (likely) send a HTTP 500
+                    }
                 }
 
 #if DEBUG
