@@ -35,7 +35,7 @@ pkill -KILL ${SGAME_PID} || echo "Server already stopped"
 # Adding in check to ensure that if the server crashes catch the error
 wait %1
 # Check if the error code is equal to 0 (Meaning that it has)
-if [ $? -eq 0 ]
+if [ $? -neq 0 ]
  then
     echo "Server has crashed"
     # Exit with this code 
