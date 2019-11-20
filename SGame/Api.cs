@@ -52,14 +52,7 @@ namespace SGame
         [ApiParam("token", typeof(string))]
         public void DisconnectPlayer(ApiResponse response, ApiData data)
         {
-            if (!data.Json.ContainsKey("token"))
-            {
-                response.Data["error"] = "Missing token in disconnect request";
-                response.Send(500);
-                return;
-            }
-
-            string token = (string)data.Json["token"];
+            string token = data.Json.Value<string>("token");
             if (players.ContainsKey(token))
             {
                 Console.WriteLine("Disconnecting player with session token " + token);
