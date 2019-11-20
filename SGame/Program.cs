@@ -77,21 +77,17 @@ namespace SGame
             {
                 // Note: The GetContext method blocks while waiting for a request. 
                 HttpListenerContext context = listener.GetContext();
-                HttpListenerRequest request = context.Request;
-                // Obtain a response object.
-                HttpListenerResponse response = context.Response;
-                // Construct a response.
 
-                string requestUrl = request.RawUrl.Substring(1);
+                string requestUrl = context.Request.RawUrl.Substring(1);
                 Console.Error.WriteLine("Got a request: {0}", requestUrl);
 
                 var body = new StreamReader(context.Request.InputStream).ReadToEnd();
-                JObject data = new JObject();
+                JObject json = new JObject();
                 if(body.Length > 0)
                 {
                     try
                     {
-                        data = JObject.Parse(body);
+                        json = JObject.Parse(body);
                     }
                     catch(JsonReaderException exc)
                     {
@@ -107,6 +103,8 @@ namespace SGame
                 }
 #endif
 
+                var response = new ApiResponse(context.Response);
+                var data = new ApiData(json);
                 router.Dispatch(requestUrl, response, data);
             }
 

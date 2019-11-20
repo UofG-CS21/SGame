@@ -90,30 +90,34 @@ namespace SGame
         /// <summary>
         /// The underlying HTTP response.
         /// </summary>
-        HttpWebResponse response;
+        HttpListenerResponse response;
 
         /// <summary>
         /// Inits an API response.
         /// </summary>
         /// <param name="response">The underlying HTTP response.</param>
-        internal ApiResponse(HttpWebResponse response)
+        internal ApiResponse(HttpListenerResponse response)
         {
             this.response = response;
+            this.Data = new JObject();
         }
 
         /// <summary>
-        /// Sends a response to the API request, closing it off.
+        /// The data to send with the response.
         /// </summary>
-        /// <param name="json">The JSON payload to attach to the response.</param>
-        /// <param name="status">The HTTP status code of the response.</param>
-        public void Send(JObject json, HttpStatusCode status=HttpStatusCode.Accepted)
-        {
-            string jsonStr = response.ToString(Formatting.None);
+        public JObject Data { get; private set; }
 
+        /// <summary>
+        /// Sends `Data` as a response to the API request, closing it off.
+        /// </summary>
+        /// <param name="status">The HTTP status code of the response.</param>
+        public void Send(int status=200)
+        {
             response.ContentType = "application/json";
             response.StatusCode = status;
 
-            byte[] buffer = Encoding.UTF8.GetBytes(responseString);
+            string jsonStr = this.Data.ToString(Newtonsoft.Json.Formatting.None);
+            byte[] buffer = Encoding.UTF8.GetBytes(jsonStr);
             response.ContentLength64 = buffer.Length;
             System.IO.Stream output = response.OutputStream;
             output.Write(buffer, 0, buffer.Length);

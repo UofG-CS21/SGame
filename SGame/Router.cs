@@ -8,13 +8,6 @@ using Newtonsoft.Json.Linq;
 
 namespace SGame
 {
-    /// The JSON and/or URL data passed to an API call.
-    using ApiData = JObject;
-
-    /// The HTTP response to an API call.
-    using ApiResponse = HttpListenerResponse;
-
-
     /// <summary>
     /// Handles an API call at a given route.
     /// </summary>

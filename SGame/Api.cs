@@ -7,13 +7,6 @@ using Newtonsoft.Json.Linq;
 
 namespace SGame
 {
-    /// The JSON and/or URL data passed to an API call.
-    using ApiData = JObject;
-
-    /// The HTTP response to an API call.
-    using ApiResponse = HttpListenerResponse;
-
-
     /// <summary>
     /// The implementation of the externally-visible REST API.
     /// </summary>
@@ -45,12 +38,9 @@ namespace SGame
 
             Console.WriteLine("Connected player " + playerID.ToString() + " with session token " + playerToken);
 
-            string responseString = "{ \"id\": " + playerID + ", \"token\" : \"" + playerToken + "\" }";
-            byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
-            response.ContentLength64 = buffer.Length;
-            System.IO.Stream output = response.OutputStream;
-            output.Write(buffer, 0, buffer.Length);
-            output.Close();
+            response.Data["id"] = playerID;
+            response.Data["token"] = playerToken;
+            response.Send();
         }
 
         /// <summary>
@@ -62,37 +52,26 @@ namespace SGame
         [ApiParam("token", typeof(string))]
         public void DisconnectPlayer(ApiResponse response, ApiData data)
         {
-            string responseString = null, error = null;
-            if (!data.ContainsKey("token"))
+            if (!data.Json.ContainsKey("token"))
             {
-                error = "Missing token in disconnect request";
+                response.Data["error"] = "Missing token in disconnect request";
+                response.Send(500);
+                return;
+            }
+
+            string token = (string)data.Json["token"];
+            if (players.ContainsKey(token))
+            {
+                Console.WriteLine("Disconnecting player with session token " + token);
+                players.Remove(token);
+                response.Send(200);
             }
             else
             {
-                string token = (string)data["token"];
-                if (players.ContainsKey(token))
-                {
-                    Console.WriteLine("Disconnecting player with session token " + token);
-                    players.Remove(token);
-                    responseString = "ACK";
-                }
-                else
-                {
-                    error = "Invalid spaceship token";
-                }
+                response.Data["error"] = "Invalid spaceship token";
+                response.Send(500);
             }
 
-            if (error != null)
-            {
-                responseString = "{ \"error\": \"" + error + "\" }";
-            }
-
-            // Respond to the request
-            byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
-            response.ContentLength64 = buffer.Length;
-            System.IO.Stream output = response.OutputStream;
-            output.Write(buffer, 0, buffer.Length);
-            output.Close();
         }
 
     }
