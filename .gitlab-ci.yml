@@ -6,7 +6,8 @@ variables:
 
 stages:
     - build
-    - test
+    - pytest
+    - unitTest
 
 # Build stage: build the C# SGame executable
 build:
@@ -17,9 +18,18 @@ build:
     script:
         - dotnet build SGame
 
-# Test stage
-test:
-    stage: test
+
+# unitTest stage: test the C# SGame 
+unitTest:
+    stage: unitTest
+    script:
+        - cd ${CI_PROJECT_DIR}/SGame.Tests
+        - dotnet test
+        
+
+# pytest stage: tests that the client can connect, run through all rest api commands and disconnect successfully
+pytest:
+    stage: pytest
     script:
         # Run automated tests via pytest
         # (See issue #33 for why this in its own script; otherwise, GitLab will
