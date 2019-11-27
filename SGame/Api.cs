@@ -28,6 +28,10 @@ namespace SGame
         /// </summary>
         Dictionary<int, Spaceship> ships = new Dictionary<int, Spaceship>();
 
+        /// <summary>
+        /// Takes data["token"] as spaceship token and looks up the spaceship ID in `players`, returning it.
+        /// Returns null if the token is not present or is not present in `players`.
+        /// <summary>
         Nullable<int> GetSpaceshipId(JObject data)
         {
             if (!data.ContainsKey("token"))
