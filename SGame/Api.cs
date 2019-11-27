@@ -23,7 +23,7 @@ namespace SGame
         Dictionary<string, int> players = new Dictionary<string, int>();
 
         /// <summary>
-        /// Internal game state of [spaceship ID -> Spaceship ] for the server
+        /// Internal game state of [spaceship ID -> Spaceship ] for the server.
         /// </summary>
         Dictionary<int, Spaceship> ships = new Dictionary<int,Spaceship>();
 
