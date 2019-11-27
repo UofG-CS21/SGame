@@ -44,10 +44,10 @@ namespace SGame
             // and register them into the internal (route -> delegate) map
             this.apiRoutes = new Dictionary<string, ApiRouteDelegate>();
             var apiType = api.GetType();
-            foreach(MethodInfo method in apiType.GetMethods())
+            foreach (MethodInfo method in apiType.GetMethods())
             {
                 var apiRouteAttr = method.GetCustomAttributes<ApiRoute>().FirstOrDefault();
-                if(apiRouteAttr == null)
+                if (apiRouteAttr == null)
                 {
                     // This method is not bound to an API route
                     continue;
@@ -61,9 +61,10 @@ namespace SGame
         public void Dispatch(string route, ApiResponse response, ApiData data)
         {
             var handler = apiRoutes.GetValueOrDefault(route, null);
-            if(handler == null)
+            if (handler == null)
             {
                 // FIXME: log error?
+                response.Send(404);
                 return;
             }
 
