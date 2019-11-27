@@ -19,19 +19,19 @@ namespace SGame{
         /// <summary>
         /// Position of the spaceship.
         /// </summary>
-        public Vector2 pos { get; set; }
+        public Vector2 Pos { get; set; }
 
         /// <summary>
         /// ID of the spaceship (only assigned at creation).
         /// </summary>
-        public int id { get; }
+        public int Id { get; }
         
-        public Spaceship(int id)
+        public Spaceship(int Id)
         {
-            this.id = id;
-            this.area = 1;
-            this.energy = 10;
-            this.pos = new Vector2(0,0);
+            this.Id = Id;
+            this.Area = 1;
+            this.Energy = 10;
+            this.Pos = new Vector2(0,0);
         }
     }
 
