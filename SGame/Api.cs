@@ -34,6 +34,22 @@ namespace SGame
         /// </summary>
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("connect")]
+
+        Nullable<int> GetSpaceshipId(JObject data)
+        {
+            if (!data.ContainsKey("token"))
+            {
+                return null;
+            }
+            var token = (string)data["token"];
+
+            if (players.ContainsKey(token))
+            {
+                return players[token];
+            }
+            return null;
+        }
+
         public void ConnectPlayer(ApiResponse response, ApiData data)
         {
             int playerID = freeID;
@@ -114,8 +130,42 @@ namespace SGame
                 response.Data["error"] = "Invalid spaceship token";
                 response.Send(500);
             }
-
         }
+
+
+        /// <summary>
+        /// Handles a "ShipInfo" REST request, returning the player's spaceship info from the server.
+        /// </summary>
+        /// <param name="data">The JSON payload of the request, containing the token of the ship to disconnect.</param>
+        /// <param name="response">The HTTP response to the client.</param>
+        [ApiRoute("ShipInfo")]
+        [ApiParam("token", typeof(string))]
+
+        public void ShipInfo(ApiResponse response, ApiData data)
+        {
+            var id = GetSpaceshipId(data.Json);
+            if (id == null)
+            {
+                response.Data["error"] = "Missing token in disconnect request";
+                response.Send(500);
+                return;
+            }
+
+            Spaceship ship = ships[id.Value];
+            response.Data["area"] = ship.Area;
+            response.Data["id"] = ship.Id;
+            response.Data["energy"] = ship.Energy;
+            response.Data["posX"] = ship.Pos.X;
+            response.Data["posY"] = ship.Pos.Y;
+            response.Data["velX"] = ship.Velocity.X;
+            response.Data["velY"] = ship.Velocity.Y;
+
+            response.Send();
+        }
+    }
+
+
+}
 
     }
 }
