@@ -78,25 +78,24 @@ namespace SGame
         [ApiParam("token", typeof(string))]
         public void DisconnectPlayer(ApiResponse response, ApiData data)
         {
-
-            string token = (string)data.Json["token"];
-            if (players.ContainsKey(token))
+            var maybeId = GetSpaceshipId(data.Json);
+            if (maybeId == null)
             {
-                Console.WriteLine("Disconnecting player with session token " + token);
-                ships.Remove(players[token]);
-                players.Remove(token);
-                response.Send(200);
-            }
-            else
-            {
-                response.Data["error"] = "Invalid spaceship token";
+                response.Data["error"] = "Ship not found for given token";
                 response.Send(500);
+                return;
             }
+            int id = maybeId.Value;
+            var token = (string)data.Json["token"];
 
+            Console.WriteLine("Disconnecting player with id " + id);
+            ships.Remove(id);
+            players.Remove(token);
+            response.Send(200);
         }
 
         /// <summary>
-        /// Handles a "accelerate" REST request.
+        /// Handles an "accelerate" REST request.
         /// </summary>
         /// <param name="data">The JSON payload of the request, containing the token of the ship to accelerate, and the vector of acceleration </param>
         /// <param name="response">The HTTP response to the client.</param>
