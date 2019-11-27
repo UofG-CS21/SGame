@@ -78,12 +78,6 @@ namespace SGame
         [ApiParam("token", typeof(string))]
         public void DisconnectPlayer(ApiResponse response, ApiData data)
         {
-            if (!data.Json.ContainsKey("token"))
-            {
-                response.Data["error"] = "Missing token in disconnect request";
-                response.Send(500);
-                return;
-            }
 
             string token = (string)data.Json["token"];
             if (players.ContainsKey(token))
@@ -112,22 +106,20 @@ namespace SGame
         [ApiParam("y", typeof(float))]
         public void AcceleratePlayer(ApiResponse response, ApiData data)
         {
-
-            string token = (string)data.Json["token"];
-            if (players.ContainsKey(token))
+            var maybeId = GetSpaceshipId(data.Json);
+            if (maybeId == null)
             {
-                Console.WriteLine("Accelerating player with session token " + token);
-                int id = players[token];
-                float x = (float)data.Json["x"];
-                float y = (float)data.Json["y"];
-                ships[id].Velocity = new Vector2(x, y);
-                response.Send(200);
-            }
-            else
-            {
-                response.Data["error"] = "Invalid spaceship token";
+                response.Data["error"] = "Ship not found for given token";
                 response.Send(500);
+                return;
             }
+            int id = maybeId.Value;
+
+            Console.WriteLine("Accelerating player with id: " + id);
+            float x = (float)data.Json["x"];
+            float y = (float)data.Json["y"];
+            ships[id].Velocity = new Vector2(x, y);
+            response.Send(200);
         }
 
 
@@ -144,7 +136,7 @@ namespace SGame
             var id = GetSpaceshipId(data.Json);
             if (id == null)
             {
-                response.Data["error"] = "Missing token in disconnect request";
+                response.Data["error"] = "Could not find spaceship for given token";
                 response.Send(500);
                 return;
             }
