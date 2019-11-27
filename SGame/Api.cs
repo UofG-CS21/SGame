@@ -112,12 +112,6 @@ namespace SGame
         [ApiParam("y", typeof(float))]
         public void AcceleratePlayer(ApiResponse response, ApiData data)
         {
-            if (!data.Json.ContainsKey("token"))
-            {
-                response.Data["error"] = "Missing token in disconnect request";
-                response.Send(500);
-                return;
-            }
 
             string token = (string)data.Json["token"];
             if (players.ContainsKey(token))
