@@ -28,9 +28,9 @@ namespace SGame
         /// </summary>
         public int Id { get; }
 
-        public Spaceship(int Id)
+        public Spaceship(int id)
         {
-            this.Id = Id;
+            this.Id = id;
             this.Area = 1;
             this.Energy = 10;
             this.Pos = new Vector2(0, 0);
