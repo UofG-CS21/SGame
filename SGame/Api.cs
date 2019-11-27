@@ -39,6 +39,7 @@ namespace SGame
             freeID++;
             string playerToken = Guid.NewGuid().ToString();
             players[playerToken] = playerID;
+            ships[playerID] = new Spaceship();
 
             Console.WriteLine("Connected player " + playerID.ToString() + " with session token " + playerToken);
 
@@ -67,6 +68,7 @@ namespace SGame
             if (players.ContainsKey(token))
             {
                 Console.WriteLine("Disconnecting player with session token " + token);
+                ships.Remove(players[token]);
                 players.Remove(token);
                 response.Send(200);
             }
