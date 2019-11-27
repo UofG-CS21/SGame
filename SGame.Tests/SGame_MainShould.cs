@@ -15,7 +15,7 @@ namespace SGame.Tests
         [InlineData("Json dict placeholder", "Request Url Placeholder")]
         public void ResponseDataTest(string body, string requestUrl)
         {
-            JObject json = JObject.Parse(body);
+            //JObject json = JObject.Parse(body);
 
         }
     }
