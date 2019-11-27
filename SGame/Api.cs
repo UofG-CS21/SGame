@@ -28,13 +28,6 @@ namespace SGame
         /// </summary>
         Dictionary<int, Spaceship> ships = new Dictionary<int, Spaceship>();
 
-        /// <summary>
-        /// Handles a "connect" REST request, connecting a player to the server.
-        /// Responds with a fresh spaceship ID and player token for that spaceship.
-        /// </summary>
-        /// <param name="response">The HTTP response to the client.</param>
-        [ApiRoute("connect")]
-
         Nullable<int> GetSpaceshipId(JObject data)
         {
             if (!data.ContainsKey("token"))
@@ -49,6 +42,13 @@ namespace SGame
             }
             return null;
         }
+
+        /// <summary>
+        /// Handles a "connect" REST request, connecting a player to the server.
+        /// Responds with a fresh spaceship ID and player token for that spaceship.
+        /// </summary>
+        /// <param name="response">The HTTP response to the client.</param>
+        [ApiRoute("connect")]
 
         public void ConnectPlayer(ApiResponse response, ApiData data)
         {
