@@ -25,7 +25,7 @@ namespace SGame
         /// <summary>
         /// Internal game state of [spaceship ID -> Spaceship ] for the server.
         /// </summary>
-        Dictionary<int, Spaceship> ships = new Dictionary<int,Spaceship>();
+        Dictionary<int, Spaceship> ships = new Dictionary<int, Spaceship>();
 
         /// <summary>
         /// Handles a "connect" REST request, connecting a player to the server.

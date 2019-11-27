@@ -1,11 +1,13 @@
 using System.Numerics;
 
-namespace SGame{
+namespace SGame
+{
 
     /// <summary>
     /// Class representing a single spaceship on the server side.
     /// </summary>
-    class Spaceship{
+    class Spaceship
+    {
         /// <summary>
         /// Energy of the spaceship.
         /// </summary>
@@ -25,13 +27,13 @@ namespace SGame{
         /// ID of the spaceship (only assigned at creation).
         /// </summary>
         public int Id { get; }
-        
+
         public Spaceship(int Id)
         {
             this.Id = Id;
             this.Area = 1;
             this.Energy = 10;
-            this.Pos = new Vector2(0,0);
+            this.Pos = new Vector2(0, 0);
         }
     }
 
