@@ -31,8 +31,8 @@ def test_movement(client):
     assert resp
 
     resp_data = resp.json()
-    assert resp_data['x'] == x
-    assert resp_data['y'] == y
+    assert resp_data['velX'] == x
+    assert resp_data['velY'] == y
 
     # Disconnect
     resp = requests.post(client.url + 'disconnect',
