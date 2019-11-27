@@ -24,6 +24,11 @@ namespace SGame
         public Vector2 Pos { get; set; }
 
         /// <summary>
+        /// Velocity of the spaceship.
+        /// </summary>
+        public Vector2 Velocity { get; set; }
+
+        /// <summary>
         /// ID of the spaceship (only assigned at creation).
         /// </summary>
         public int Id { get; }
@@ -34,6 +39,7 @@ namespace SGame
             this.Area = 1;
             this.Energy = 10;
             this.Pos = new Vector2(0, 0);
+            this.Velocity = new Vector2(0, 0);
         }
     }
 
