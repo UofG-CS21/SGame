@@ -98,9 +98,9 @@ namespace SGame
         }
 
         /// <summary>
-        /// Handles a "accelerate" REST request, .
+        /// Handles a "accelerate" REST request.
         /// </summary>
-        /// <param name="data">The JSON payload of the request, containing the token of the ship to accelerate.</param>
+        /// <param name="data">The JSON payload of the request, containing the token of the ship to accelerate, and the vector of acceleration </param>
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("accelerate")]
         [ApiParam("token", typeof(string))]

@@ -24,7 +24,7 @@ namespace SGame
         public Vector2 Pos { get; set; }
 
         /// <summary>
-        /// Acceleration of the spaceship.
+        /// Velocity of the spaceship.
         /// </summary>
         public Vector2 Velocity { get; set; }
 
