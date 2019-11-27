@@ -136,12 +136,12 @@ namespace SGame
         /// <summary>
         /// Handles a "ShipInfo" REST request, returning the player's spaceship info from the server.
         /// </summary>
-        /// <param name="data">The JSON payload of the request, containing the token of the ship to disconnect.</param>
+        /// <param name="data">The JSON payload of the request, containing the token of the ship.</param>
         /// <param name="response">The HTTP response to the client.</param>
-        [ApiRoute("ShipInfo")]
+        [ApiRoute("getShipInfo")]
         [ApiParam("token", typeof(string))]
 
-        public void ShipInfo(ApiResponse response, ApiData data)
+        public void GetShipInfo(ApiResponse response, ApiData data)
         {
             var id = GetSpaceshipId(data.Json);
             if (id == null)
