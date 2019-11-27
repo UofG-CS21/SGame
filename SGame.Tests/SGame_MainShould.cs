@@ -12,7 +12,10 @@ namespace SGame.Tests
     public class RequestResponseTest
     {
         [Theory]
-        public void ResponseDataTest(JObject json, string requestUrl){
+        [InlineData("Json dict placeholder", "Request Url Placeholder")]
+        public void ResponseDataTest(string body, string requestUrl)
+        {
+            JObject json = JObject.Parse(body);
 
         }
     }
