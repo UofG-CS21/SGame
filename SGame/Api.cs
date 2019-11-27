@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net;
 using System.Collections.Generic;
+using System.Numerics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -39,7 +40,7 @@ namespace SGame
             freeID++;
             string playerToken = Guid.NewGuid().ToString();
             players[playerToken] = playerID;
-            ships[playerID] = new Spaceship();
+            ships[playerID] = new Spaceship(playerID);
 
             Console.WriteLine("Connected player " + playerID.ToString() + " with session token " + playerToken);
 
@@ -70,6 +71,42 @@ namespace SGame
                 Console.WriteLine("Disconnecting player with session token " + token);
                 ships.Remove(players[token]);
                 players.Remove(token);
+                response.Send(200);
+            }
+            else
+            {
+                response.Data["error"] = "Invalid spaceship token";
+                response.Send(500);
+            }
+
+        }
+
+        /// <summary>
+        /// Handles a "accelerate" REST request, .
+        /// </summary>
+        /// <param name="data">The JSON payload of the request, containing the token of the ship to accelerate.</param>
+        /// <param name="response">The HTTP response to the client.</param>
+        [ApiRoute("accelerate")]
+        [ApiParam("token", typeof(string))]
+        [ApiParam("x", typeof(float))]
+        [ApiParam("y", typeof(float))]
+        public void AcceleratePlayer(ApiResponse response, ApiData data)
+        {
+            if (!data.Json.ContainsKey("token"))
+            {
+                response.Data["error"] = "Missing token in disconnect request";
+                response.Send(500);
+                return;
+            }
+
+            string token = (string)data.Json["token"];
+            if (players.ContainsKey(token))
+            {
+                Console.WriteLine("Accelerating player with session token " + token);
+                int id = players[token];
+                float x = (float)data.Json["x"];
+                float y = (float)data.Json["y"];
+                ships[id].Velocity = new Vector2(x, y);
                 response.Send(200);
             }
             else
