@@ -11,6 +11,9 @@ def test_disconnect(client):
 
 
 def test_movement(client):
+    """
+    Tests that accelerate/ movement such that a ship can accelerate using an x and y.
+    """
     # Test values for the coordinates
     x = 23.6
     y = 45.5
