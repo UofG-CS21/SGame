@@ -117,7 +117,7 @@ namespace SGame
             Console.WriteLine("Accelerating player with id: " + id);
             float x = (float)data.Json["x"];
             float y = (float)data.Json["y"];
-            ships[id].Velocity = new Vector2(x, y);
+            ships[id].Velocity += new Vector2(x, y);
             response.Send(200);
         }
 
