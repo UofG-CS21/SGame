@@ -142,8 +142,8 @@ def test_movement(client):
     assert resp
 
     resp_data = resp.json()
-    assert isClose(resp_data['posX'], old_x + 9.0 * 4.5, 0.1)
-    assert isClose(resp_data['posY'], old_y + (-1.0) * 4.5, 0.1)
+    assert isClose(resp_data['posX'], old_x + 9.0 * 4.5, 0.5)
+    assert isClose(resp_data['posY'], old_y + (-1.0) * 4.5, 0.5)
 
     # Disconnect
     resp = requests.post(client.url + 'disconnect',
