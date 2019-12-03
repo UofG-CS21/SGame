@@ -1,5 +1,5 @@
 import requests
-
+import time
 
 def test_disconnect(client):
     """
@@ -9,6 +9,10 @@ def test_disconnect(client):
                          json={'token': client.token})
     assert resp
 
+allowed_fpe = 1e-6
+
+def isClose(a, b, err = allowed_fpe):
+    return abs(a-b) <= err
 
 def test_movement(client):
     """
@@ -25,12 +29,15 @@ def test_movement(client):
     resp_data = resp.json()
     assert resp_data['velX'] == 0
     assert resp_data['velY'] == 0
+    assert resp_data['posX'] == 0
+    assert resp_data['posY'] == 0
+    assert resp_data['energy'] == 10
 
     # Test values
-    x1 = 23.6
-    y1 = 45.5
-    x2 = 55.5
-    y2 = 12.3
+    x1 = 2.6
+    y1 = 2.5
+    x2 = 1.5
+    y2 = 2.3
     sumX = x1 + x2
     sumY = y1 + y2
 
@@ -58,8 +65,85 @@ def test_movement(client):
 
     # Checking the values are correct
     resp_data = resp.json()
-    assert resp_data['velX'] == sumX
-    assert resp_data['velY'] == sumY
+    assert isClose(resp_data['velX'],sumX)
+    assert isClose(resp_data['velY'],sumY)
+
+    # Wait for energy to recharge
+    time.sleep(10)
+    resp = requests.post(client.url + 'getShipInfo', json={
+        'token': client.token,
+    })
+    assert isClose(resp.json()['energy'],10)
+
+    # Accelerate in the opposite direction
+    resp = requests.post(client.url + 'accelerate', json={
+        'token': client.token,
+        'x': -x1,
+        'y': -y1,
+    })
+    assert resp
+
+    resp = requests.post(client.url + 'accelerate', json={
+        'token': client.token,
+        'x': -x2,
+        'y': -y2,
+    })
+    assert resp
+
+    # Using getShipInfo to check if the values match the expected result
+    resp = requests.post(client.url + 'getShipInfo', json={
+        'token': client.token,
+    })
+    assert resp
+
+    resp_data = resp.json()
+    assert isClose(resp_data['velX'],0)
+    assert isClose(resp_data['velY'],0)
+
+    # Wait for energy to recover
+    time.sleep(10)
+    resp = requests.post(client.url + 'getShipInfo', json={
+        'token': client.token,
+    })
+    assert isClose(resp.json()['energy'],10)
+
+    # Accelerate requiring too much energy
+    X = 90.0
+    Y = -10.0
+
+    resp = requests.post(client.url + 'accelerate', json={
+        'token': client.token,
+        'x': X,
+        'y': Y,
+    })
+    assert resp
+
+    # Check that we used up all energy and accelerated a proportion of what we asked for
+    resp = requests.post(client.url + 'getShipInfo', json={
+        'token': client.token,
+    })
+    assert resp
+
+    resp_data = resp.json()
+    assert isClose(resp_data['energy'],0,0.01)
+    assert isClose(resp_data['velX'],9.0)
+    assert isClose(resp_data['velY'],-1.0)
+
+    old_x = resp_data['posX']
+    old_y = resp_data['posY']
+
+    # give the ship time to move
+    time.sleep(4.5)
+
+    # check that it moved the correct amount
+    resp = requests.post(client.url + 'getShipInfo', json={
+        'token': client.token,
+    })
+    assert resp
+
+    resp_data = resp.json()
+    assert isClose(resp_data['posX'], old_x + 9.0 * 4.5, 0.1)
+    assert isClose(resp_data['posY'], old_y + (-1.0) * 4.5, 0.1)
 
     # Disconnect
     resp = requests.post(client.url + 'disconnect',
