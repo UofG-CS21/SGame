@@ -3,6 +3,7 @@ using System.IO;
 using System.Net;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -13,6 +14,14 @@ namespace SGame
     /// </summary>
     class Api
     {
+        /// <summary>
+        /// Stopwatch measuring elapsed in-game time
+        /// </summary>
+        Stopwatch gameTime = new Stopwatch();
+
+        // start the gameTime stopwatch on API creation
+        public Api() => gameTime.Start();
+
         /// <summary>
         /// The next free spaceship ID to use.
         /// </summary>
@@ -48,6 +57,17 @@ namespace SGame
         }
 
         /// <summary>
+        /// Updates each spaceship's state (energy, position, ...) based on time it was not updated
+        /// </summary>
+        public void UpdateGameState()
+        {
+            foreach (int id in ships.Keys)
+            {
+                ships[id].UpdateState();
+            }
+        }
+
+        /// <summary>
         /// Handles a "connect" REST request, connecting a player to the server.
         /// Responds with a fresh spaceship ID and player token for that spaceship.
         /// </summary>
@@ -60,7 +80,7 @@ namespace SGame
             freeID++;
             string playerToken = Guid.NewGuid().ToString();
             players[playerToken] = playerID;
-            ships[playerID] = new Spaceship(playerID);
+            ships[playerID] = new Spaceship(playerID, gameTime);
 
             Console.WriteLine("Connected player " + playerID.ToString() + " with session token " + playerToken);
 
@@ -105,6 +125,7 @@ namespace SGame
         [ApiParam("y", typeof(float))]
         public void AcceleratePlayer(ApiResponse response, ApiData data)
         {
+            UpdateGameState();
             var maybeId = GetSpaceshipId(data.Json);
             if (maybeId == null)
             {
@@ -113,11 +134,15 @@ namespace SGame
                 return;
             }
             int id = maybeId.Value;
-
-            Console.WriteLine("Accelerating player with id: " + id);
             float x = (float)data.Json["x"];
             float y = (float)data.Json["y"];
-            ships[id].Velocity += new Vector2(x, y);
+
+            int energyRequired = (int)Math.Ceiling(ships[id].Area * (Math.Abs(x) + Math.Abs(y)));
+            int energySpent = Math.Min(energyRequired, (int)Math.Floor(ships[id].Energy));
+            ships[id].Energy -= energySpent;
+            float accelerationApplied = (float)energySpent / (float)energyRequired;
+
+            ships[id].Velocity += Vector2.Multiply(new Vector2(x, y), accelerationApplied);
             response.Send(200);
         }
 
@@ -132,6 +157,7 @@ namespace SGame
 
         public void GetShipInfo(ApiResponse response, ApiData data)
         {
+            UpdateGameState();
             var id = GetSpaceshipId(data.Json);
             if (id == null)
             {
