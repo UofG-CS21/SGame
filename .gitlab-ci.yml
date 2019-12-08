@@ -1,0 +1,38 @@
+variables:
+    # The host for the test SGame instance
+    SGAME_HOST: "localhost"
+    # The port for the test SGame instance
+    SGAME_PORT: "5000"
+
+stages:
+    - build
+    - pytest
+    - unitTest
+
+# Build stage: build the C# SGame executable
+build:
+    stage: build
+    before_script:
+        # Before building: restore C# dependencies for SGame
+        - dotnet restore SGame
+    script:
+        - dotnet build SGame
+
+
+# unitTest stage: test the C# SGame 
+unitTest:
+    stage: unitTest
+    script:
+        - cd ${CI_PROJECT_DIR}/SGame.Tests
+        - dotnet test
+        
+
+# pytest stage: tests that the client can connect, run through all rest api commands and disconnect successfully
+pytest:
+    stage: pytest
+    script:
+        # Run automated tests via pytest
+        # (See issue #33 for why this in its own script; otherwise, GitLab will
+        #  stall until timeout because the SGame process in the background won't terminate!)
+        - cd ${CI_PROJECT_DIR}
+        - bash ci/runtests.sh ${SGAME_HOST} ${SGAME_PORT}
