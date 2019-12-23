@@ -270,6 +270,18 @@ namespace SGame
 
             int id = maybeid.Value;
 
+            String[] requiredParams = new String[3] { "direction", "width", "energy" };
+
+            for (int i = 0; i < requiredParams.Length; i++)
+            {
+                if (data.Json[requiredParams[i]] == null)
+                {
+                    response.Data["error"] = "Requires parameter: " + requiredParams[i];
+                    response.Send(500);
+                    return;
+                }
+            }
+
             float direction = (float)data.Json["direction"];
 
             float width = (float)data.Json["width"];
