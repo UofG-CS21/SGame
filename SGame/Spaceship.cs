@@ -62,6 +62,11 @@ namespace SGame
             Energy = Math.Min(Area * 10, Energy + elapsedSeconds * Area);
             LastUpdate = time;
         }
+
+        public double Radius()
+        {
+            return System.Math.Sqrt(Area / System.Math.PI);
+        }
     }
 
 }

@@ -67,6 +67,8 @@ namespace SGame
             }
         }
 
+
+
         /// <summary>
         /// Handles a "connect" REST request, connecting a player to the server.
         /// Responds with a fresh spaceship ID and player token for that spaceship.
@@ -176,6 +178,72 @@ namespace SGame
             response.Data["velY"] = ship.Velocity.Y;
 
             response.Send();
+        }
+
+        private bool CircleTriangleIntersection(Vector2 circleCenter, double radius, Vector2 A, Vector2 B, Vector2 C)
+        {
+            // TODO
+            return true;
+        }
+
+        // Normalizes a radian angle to [0,2PI) counterclockwise
+        private double NormalizeAngle(double angle)
+        {
+            if (Math.Abs(angle) >= 2 * Math.PI)
+                angle = angle - Math.Floor(angle / (2 * Math.PI)) * (2 * Math.PI);
+
+            if (angle < 0)
+                angle = 2 * Math.PI - angle;
+
+            return angle;
+        }
+
+        /// <summary>
+        /// Returns a list of ID's of ships that lie within a triangle with one vertex at pos, the center of its opposite side
+        /// is at an angle of worldDeg degrees from the vertex, its two other sides are an angle scanWidth from this point, and
+        /// its area will be equal to SCAN_ENERGY_SCALING_FACTOR times the energy spent
+        /// </summary>
+
+        private int SCAN_ENERGY_SCALING_FACTOR = 1000;
+        public List<int> ConicScan(Vector2 pos, double worldDeg, double scanWidth, int energySpent)
+        {
+            // The radius of the cone will be such that the area scanned is energySpent * SCAN_ENERGY_SCALING_FACTOR
+            double areaScanned = energySpent * SCAN_ENERGY_SCALING_FACTOR;
+
+            // Convert angles to radians
+            worldDeg = (Math.PI * worldDeg) / 180.0;
+            scanWidth = (Math.PI * scanWidth) / 180.0;
+
+            // We have the area of the triangle (areaScanned) and an angle at one of its vertices (2*scanWidth)
+            // We want its Height (in the direction of worldDeg), and Base (perpendicular to worldDeg)
+
+            // Its Height is given by formula Height = Sqrt( areaScanned * sin(PI/2 - scanWidth) / sin(scanWidth) )
+            // Its Base is then 2 * (areaScanned / Height)
+            float triangleHeight = (float)Math.Sqrt(areaScanned * Math.Sin(Math.PI / 2 - scanWidth) / Math.Sin(scanWidth));
+            float triangleBase = 2 * (float)areaScanned / triangleHeight;
+
+            // Find a point on the base of the triangle which is triangleHeight away - its components are the cosine and sine of worldDeg, scaled by triangleHeight
+            Vector2 triangleBaseCenter = new Vector2(triangleHeight * (float)Math.Cos(worldDeg), triangleHeight * (float)Math.Sin(worldDeg));
+
+            // Find the other two vertices of the triangle (the third is pos). They are triangleBaseCenter +- (half of triangleBase) * (vector perpendicular to [triangleBaseCenter-pos])  
+            Vector2 triangleCenterVector = Vector2.Subtract(triangleBaseCenter, pos);
+            Vector2 perpendicularVector = new Vector2(-triangleCenterVector.Y, triangleCenterVector.X);
+
+            Vector2 leftPoint = triangleBaseCenter + (triangleBase / 2) * perpendicularVector;
+            Vector2 rightPoint = triangleBaseCenter - (triangleBase / 2) * perpendicularVector;
+
+            List<int> result = new List<int>();
+
+            // Go through all spaceships and add those that intersect with our triangle
+            foreach (int id in ships.Keys)
+            {
+                if (CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint))
+                {
+                    result.Add(id);
+                }
+            }
+
+            return result;
         }
     }
 
