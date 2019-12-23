@@ -251,7 +251,7 @@ namespace SGame
         /// </summary>
         /// <param name="data">The JSON payload of the request, containing the token of the ship, the angle of scanning, the width of scan, and the energy spent on the scan.true </param>
         /// <param name="response">The HTTP response to the client.</param>
-        [ApiRoute("Scan")]
+        [ApiRoute("scan")]
         [ApiParam("token", typeof(string))]
         [ApiParam("direction", typeof(float))]
         [ApiParam("width", typeof(float))]
@@ -295,21 +295,22 @@ namespace SGame
             Console.WriteLine("Scan by " + id + ", pos = " + ships[id].Pos.ToString() + " , direction = " + direction + ", width = " + width + ", energy spent = " + energy);
 
             List<int> scanned = ConicScan(ship.Pos, direction, width, energy);
-            response.Data["scanned"] = new JArray();
+            JArray scannedShips = new JArray();
             foreach (int scannedId in scanned)
             {
                 // ignore our ship
                 if (scannedId == id)
                     continue;
 
-                scannedShipInfo = new JObject();
+                JToken scannedShipInfo = new JObject();
                 scannedShipInfo["id"] = scannedId;
                 scannedShipInfo["area"] = ships[scannedId].Area;
                 scannedShipInfo["posX"] = ships[scannedId].Pos.X;
                 scannedShipInfo["posY"] = ships[scannedId].Pos.Y;
-                response.Data["scanned"].Add(scannedShipInfo);
+                scannedShips.Add(scannedShipInfo);
             }
 
+            response.Data["scanned"] = scannedShips;
             response.Send();
         }
 
