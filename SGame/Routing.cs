@@ -43,7 +43,7 @@ namespace SGame
         {
             this.Name = name;
             this.Type = type;
-            this.Optional = true;
+            this.Optional = false;
         }
 
         /// <summary>
@@ -111,7 +111,7 @@ namespace SGame
         /// Sends `Data` as a response to the API request, closing it off.
         /// </summary>
         /// <param name="status">The HTTP status code of the response.</param>
-        public void Send(int status=200)
+        public void Send(int status = 200)
         {
             response.ContentType = "application/json";
             response.StatusCode = status;

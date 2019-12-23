@@ -245,6 +245,74 @@ namespace SGame
 
             return result;
         }
+
+        /// <summary>
+        /// Handles a "Scan" REST request, returning a set of spaceships that are within the scan
+        /// </summary>
+        /// <param name="data">The JSON payload of the request, containing the token of the ship, the angle of scanning, the width of scan, and the energy spent on the scan.true </param>
+        /// <param name="response">The HTTP response to the client.</param>
+        [ApiRoute("Scan")]
+        [ApiParam("token", typeof(string))]
+        [ApiParam("direction", typeof(float))]
+        [ApiParam("width", typeof(float))]
+        [ApiParam("energy", typeof(int))]
+
+        public void Scan(ApiResponse response, ApiData data)
+        {
+            UpdateGameState();
+            var maybeid = GetSpaceshipId(data.Json);
+            if (maybeid == null)
+            {
+                response.Data["error"] = "Could not find spaceship for given token";
+                response.Send(500);
+                return;
+            }
+
+            int id = maybeid.Value;
+
+            float direction = (float)data.Json["direction"];
+
+            float width = (float)data.Json["width"];
+            if (width <= 0 || width >= 90)
+            {
+                response.Data["error"] = "Width not in interval (0,90) degrees";
+                response.Send(500);
+                return;
+            }
+
+            int energy = (int)data.Json["energy"];
+            if (energy <= 0)
+            {
+                response.Data["error"] = "Energy spent must be positive";
+                response.Send(500);
+                return;
+            }
+
+            Spaceship ship = ships[id];
+            energy = (int)Math.Min(energy, Math.Floor(ship.Energy));
+            ships[id].Energy -= energy;
+
+            Console.WriteLine("Scan by " + id + ", pos = " + ships[id].Pos.ToString() + " , direction = " + direction + ", width = " + width + ", energy spent = " + energy);
+
+            List<int> scanned = ConicScan(ship.Pos, direction, width, energy);
+            response.Data["scanned"] = new JArray();
+            foreach (int scannedId in scanned)
+            {
+                // ignore our ship
+                if (scannedId == id)
+                    continue;
+
+                scannedShipInfo = new JObject();
+                scannedShipInfo["id"] = scannedId;
+                scannedShipInfo["area"] = ships[scannedId].Area;
+                scannedShipInfo["posX"] = ships[scannedId].Pos.X;
+                scannedShipInfo["posY"] = ships[scannedId].Pos.Y;
+                response.Data["scanned"].Add(scannedShipInfo);
+            }
+
+            response.Send();
+        }
+
     }
 
 
