@@ -226,11 +226,15 @@ namespace SGame
             Vector2 triangleBaseCenter = new Vector2(triangleHeight * (float)Math.Cos(worldDeg), triangleHeight * (float)Math.Sin(worldDeg));
 
             // Find the other two vertices of the triangle (the third is pos). They are triangleBaseCenter +- (half of triangleBase) * (vector perpendicular to [triangleBaseCenter-pos])  
-            Vector2 triangleCenterVector = Vector2.Subtract(triangleBaseCenter, pos);
+            Vector2 triangleCenterVector = Vector2.Normalize(Vector2.Subtract(triangleBaseCenter, pos));
             Vector2 perpendicularVector = new Vector2(-triangleCenterVector.Y, triangleCenterVector.X);
 
             Vector2 leftPoint = triangleBaseCenter + (triangleBase / 2) * perpendicularVector;
             Vector2 rightPoint = triangleBaseCenter - (triangleBase / 2) * perpendicularVector;
+
+            //Console.WriteLine("H: " + triangleHeight + ", B: " + triangleBase + ", BC: " + triangleBaseCenter.Tostring() + ", ")
+
+            Console.WriteLine("Scanning in triangle " + pos.ToString() + "," + leftPoint.ToString() + "," + rightPoint.ToString());
 
             List<int> result = new List<int>();
 

@@ -33,8 +33,8 @@ APICall(Atoken,'accelerate',{'x':-1,'y':0})
 print('Player A is now:')
 print(APICall(Atoken,'getShipInfo').text)
 
-print('Scanning for player B...')
-response = APICall(Atoken,'scan',{'direction':0,'width':30,'energy':5})
+print('Scanning for player A...')
+response = APICall(Btoken,'scan',{'direction':180,'width':30,'energy':5})
 print('Received response: ' + response.text)
 
 print('Sending disconnect request A...')
