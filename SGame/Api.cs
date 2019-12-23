@@ -180,12 +180,6 @@ namespace SGame
             response.Send();
         }
 
-        private bool CircleTriangleIntersection(Vector2 circleCenter, double radius, Vector2 A, Vector2 B, Vector2 C)
-        {
-            // TODO
-            return true;
-        }
-
         // Normalizes a radian angle to [0,2PI) counterclockwise
         private double NormalizeAngle(double angle)
         {
@@ -198,6 +192,12 @@ namespace SGame
             return angle;
         }
 
+        private bool CircleTriangleIntersection(Vector2 circleCenter, double radius, Vector2 A, Vector2 B, Vector2 C)
+        {
+            // TODO
+            return true;
+        }
+
         /// <summary>
         /// Returns a list of ID's of ships that lie within a triangle with one vertex at pos, the center of its opposite side
         /// is at an angle of worldDeg degrees from the vertex, its two other sides are an angle scanWidth from this point, and
@@ -205,7 +205,7 @@ namespace SGame
         /// </summary>
 
         private int SCAN_ENERGY_SCALING_FACTOR = 1000;
-        public List<int> ConicScan(Vector2 pos, double worldDeg, double scanWidth, int energySpent)
+        public List<int> TriangleScan(Vector2 pos, double worldDeg, double scanWidth, int energySpent)
         {
             // The radius of the cone will be such that the area scanned is energySpent * SCAN_ENERGY_SCALING_FACTOR
             double areaScanned = energySpent * SCAN_ENERGY_SCALING_FACTOR;
@@ -310,7 +310,7 @@ namespace SGame
 
             Console.WriteLine("Scan by " + id + ", pos = " + ships[id].Pos.ToString() + " , direction = " + direction + ", width = " + width + ", energy spent = " + energy);
 
-            List<int> scanned = ConicScan(ship.Pos, direction, width, energy);
+            List<int> scanned = TriangleScan(ship.Pos, direction, width, energy);
             JArray scannedShips = new JArray();
             foreach (int scannedId in scanned)
             {
