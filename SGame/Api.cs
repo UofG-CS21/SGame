@@ -265,6 +265,48 @@ namespace SGame
             return false;
         }
 
+        // Return true iff the circle cenered at circleCenter with radius circleRadius intersects 
+        // the segment of a circle centered at segmentRadius, with its midpoint in the direction segmentAngle, and its angular width 2*segmentWidth
+        private bool CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth)
+        {
+            // If the centers of the segment-circle and the ship circle are further appart than the sum of their radii, 
+            if (circleRadius + segmentRadius < Vector2.Subtract(segmentCenter, circleCenter).Length())
+                return false;
+
+            // We have already checked for intersection between the triangle part of the circular sector and the ship circle
+            // Therefore, we know there is no intersection between the edges of the circular sector and the ship
+            // Thus, either the ship is strictly within the segment,
+            // Or all its points of intersection are within the segment itself
+            // In both cases, the center of the circle must be inbetween the angles formed by the circular sector's edges from its center
+            // And if they are, and we know they are close enough to the circle to intersect, then they intersect
+
+            // So all we need to know is whether circleCenter lies between the angles of segmentAngle + segmentWidth and segmentAngle - segmentWidth
+            // The difference between the angle formed by the circleCenter, and both the circular sector's angles, must be smaller than the difference
+            // between the circular sector's angles (i.e. the angle of circleCenter is closer to both edges of the circular sector, than they are to each other)
+
+            float circularSectorEdgeAngleDistance = segmentWidth * 2;
+
+            Vector2 segmentCenterToCircleCenter = circleCenter - segmentCenter;
+
+            float circleCenterAngle = (float)Math.Atan2(segmentCenterToCircleCenter.Y, segmentCenterToCircleCenter.X);
+
+            float distance1 = Math.Abs((segmentAngle - segmentWidth) - circleCenterAngle);
+            if (distance1 > Math.PI)
+                distance1 = 2 * (float)Math.PI - distance1;
+
+            if (distance1 > circularSectorEdgeAngleDistance)
+                return false;
+
+            float distance2 = Math.Abs((segmentAngle + segmentWidth) - circleCenterAngle);
+            if (distance2 > Math.PI)
+                distance2 = 2 * (float)Math.PI - distance2;
+
+            if (distance2 > circularSectorEdgeAngleDistance)
+                return false;
+
+            return true;
+        }
+
         /// <summary>
         /// Returns a list of ID's of ships that lie within a triangle with one vertex at pos, the center of its opposite side
         /// is at an angle of worldDeg degrees from the vertex, its two other sides are an angle scanWidth from this point, and
@@ -272,7 +314,7 @@ namespace SGame
         /// </summary>
 
         private int SCAN_ENERGY_SCALING_FACTOR = 1000;
-        public List<int> TriangleScan(Vector2 pos, double worldDeg, double scanWidth, int energySpent)
+        public List<int> CircleSectorScan(Vector2 pos, double worldDeg, double scanWidth, int energySpent)
         {
             // The radius of the cone will be such that the area scanned is energySpent * SCAN_ENERGY_SCALING_FACTOR
             double areaScanned = energySpent * SCAN_ENERGY_SCALING_FACTOR;
@@ -281,34 +323,23 @@ namespace SGame
             worldDeg = (Math.PI * worldDeg) / 180.0;
             scanWidth = (Math.PI * scanWidth) / 180.0;
 
-            // We have the area of the triangle (areaScanned) and an angle at one of its vertices (2*scanWidth)
-            // We want its Height (in the direction of worldDeg), and Base (perpendicular to worldDeg)
+            // We want the radius of the circle, such that a sercular sector of angle 2*scanwidth has area areaScanned
+            float radius = (float)Math.Sqrt(areaScanned / scanWidth);
 
-            // Its Height is given by formula Height = Sqrt( areaScanned * sin(PI/2 - scanWidth) / sin(scanWidth) )
-            // Its Base is then 2 * (areaScanned / Height)
-            float triangleHeight = (float)Math.Sqrt(areaScanned * Math.Sin(Math.PI / 2 - scanWidth) / Math.Sin(scanWidth));
-            float triangleBase = 2 * (float)areaScanned / triangleHeight;
+            // The circular sector is a triangle whose vertices are pos, and the points at an angle (worldDeg +- scanWidth) and distance radius
+            // And a segment between those points on the circle centered at pos with that radius
 
-            // Find a point on the base of the triangle which is triangleHeight away - its components are the cosine and sine of worldDeg, scaled by triangleHeight
-            Vector2 triangleBaseCenter = new Vector2(triangleHeight * (float)Math.Cos(worldDeg), triangleHeight * (float)Math.Sin(worldDeg));
+            Vector2 leftPoint = new Vector2(radius * (float)Math.Cos(worldDeg + scanWidth), radius * (float)Math.Sin(worldDeg + scanWidth));
+            Vector2 rightPoint = new Vector2(radius * (float)Math.Cos(worldDeg - scanWidth), radius * (float)Math.Sin(worldDeg - scanWidth));
 
-            // Find the other two vertices of the triangle (the third is pos). They are triangleBaseCenter +- (half of triangleBase) * (vector perpendicular to [triangleBaseCenter-pos])  
-            Vector2 triangleCenterVector = Vector2.Normalize(Vector2.Subtract(triangleBaseCenter, pos));
-            Vector2 perpendicularVector = new Vector2(-triangleCenterVector.Y, triangleCenterVector.X);
-
-            Vector2 leftPoint = triangleBaseCenter + (triangleBase / 2) * perpendicularVector;
-            Vector2 rightPoint = triangleBaseCenter - (triangleBase / 2) * perpendicularVector;
-
-            //Console.WriteLine("H: " + triangleHeight + ", B: " + triangleBase + ", BC: " + triangleBaseCenter.Tostring() + ", ")
-
-            Console.WriteLine("Scanning in triangle " + pos.ToString() + "," + leftPoint.ToString() + "," + rightPoint.ToString());
+            Console.WriteLine("Scanning with radius " + radius + "; In triangle " + pos.ToString() + "," + leftPoint.ToString() + "," + rightPoint.ToString());
 
             List<int> result = new List<int>();
 
             // Go through all spaceships and add those that intersect with our triangle
             foreach (int id in ships.Keys)
             {
-                if (CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint))
+                if (CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint) || CircleSegmentIntersection(ships[id].Pos, (float)ships[id].Radius(), pos, radius, (float)worldDeg, (float)scanWidth))
                 {
                     //Console.WriteLine("Intersected");
                     result.Add(id);
@@ -378,7 +409,7 @@ namespace SGame
 
             Console.WriteLine("Scan by " + id + ", pos = " + ships[id].Pos.ToString() + " , direction = " + direction + ", width = " + width + ", energy spent = " + energy);
 
-            List<int> scanned = TriangleScan(ship.Pos, direction, width, energy);
+            List<int> scanned = CircleSectorScan(ship.Pos, direction, width, energy);
             JArray scannedShips = new JArray();
             foreach (int scannedId in scanned)
             {
