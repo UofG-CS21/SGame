@@ -25,16 +25,20 @@ response = requests.post(url='http://' + host + ':' + str(port) + '/connect')
 Btoken = response.json()['token']
 print('Received session token ' + Btoken)
 
-print('Moving player A to the left...')
-APICall(Atoken,'accelerate',{'x':1,'y':0,})
+print('Moving player A to the left by 1...')
+APICall(Atoken,'accelerate',{'x':-1,'y':0,})
 time.sleep(1)
-APICall(Atoken,'accelerate',{'x':-1,'y':0})
+APICall(Atoken,'accelerate',{'x':1,'y':0})
 
 print('Player A is now:')
 print(APICall(Atoken,'getShipInfo').text)
 
 print('Scanning for player A...')
 response = APICall(Btoken,'scan',{'direction':180,'width':30,'energy':5})
+print('Received response: ' + response.text)
+
+print('Scanning the other way...')
+response = APICall(Btoken,'scan',{'direction':0,'width':30,'energy':5})
 print('Received response: ' + response.text)
 
 print('Sending disconnect request A...')

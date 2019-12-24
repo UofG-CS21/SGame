@@ -180,18 +180,6 @@ namespace SGame
             response.Send();
         }
 
-        // Normalizes a radian angle to [0,2PI) counterclockwise
-        private double NormalizeAngle(double angle)
-        {
-            if (Math.Abs(angle) >= 2 * Math.PI)
-                angle = angle - Math.Floor(angle / (2 * Math.PI)) * (2 * Math.PI);
-
-            if (angle < 0)
-                angle = 2 * Math.PI - angle;
-
-            return angle;
-        }
-
         // Calculates the sign of a point relative to a line defined by two points
         int pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2)
         {
@@ -204,9 +192,9 @@ namespace SGame
         bool CircleTriangleSideIntersection(Vector2 circleCenter, double radius, Vector2 linePoint1, Vector2 linePoint2)
         {
             Vector2 lineVector = linePoint2 - linePoint1;
-            Vector2 circleToPoint1 = linePoint1 - circleCenter;
+            Vector2 point1ToCircle = circleCenter - linePoint1;
 
-            float lengthAlongTriangleSide = Vector2.Dot(circleToPoint1, lineVector);
+            float lengthAlongTriangleSide = Vector2.Dot(point1ToCircle, lineVector);
 
             // If the lenght is negative, the cosine of the angle is negative, so it lies more than 90 degrees around linePoint 1
             // For that to intersect the triangle side, linePoint1 would already lie within the circle
@@ -229,7 +217,7 @@ namespace SGame
                     // We use Pythagorean theorem to find the length of side between circlePoint and perpendicularPointOnLineVector
                     // There is an intersection if it is not greater than the radius
                     // We never square-root either side of the Pythagorean equation
-                    if (circleToPoint1.LengthSquared() - lengthAlongTriangleSide <= radius * radius)
+                    if (point1ToCircle.LengthSquared() - lengthAlongTriangleSide <= radius * radius)
                         return true;
                 }
             }
@@ -241,16 +229,21 @@ namespace SGame
         // Based on http://www.phatcode.net/articles.php?id=459 
         private bool CircleTriangleIntersection(Vector2 circleCenter, double radius, Vector2 A, Vector2 B, Vector2 C)
         {
+
+            Console.WriteLine("Testing intersection of " + circleCenter.ToString() + ", r=" + radius + " with " + A.ToString() + "," + B.ToString() + "," + C.ToString());
+
+            //Console.WriteLine("Case 1");
             // Case 1: Triangle vertex within circle
 
             // Calculate position vectors for A,B,C with origin at circleCenter (c stands for 'centered')
             Vector2 cA = A - circleCenter, cB = B - circleCenter, cC = C - circleCenter;
 
             // Check whether any of them are close enough to circleCenter
-            if (radius * radius <= cA.LengthSquared()) return true;
-            if (radius * radius <= cB.LengthSquared()) return true;
-            if (radius * radius <= cC.LengthSquared()) return true;
+            if (radius * radius >= cA.LengthSquared()) return true;
+            if (radius * radius >= cB.LengthSquared()) return true;
+            if (radius * radius >= cC.LengthSquared()) return true;
 
+            //Console.WriteLine("Case 2");
             // Case 2: Circle center within triangle
 
             // We calculate the sign of the position of the circleCenter relative to each side
@@ -262,6 +255,7 @@ namespace SGame
             if (sAB >= 0 && sBC >= 0 && sCA >= 0) return true;
             if (sAB <= 0 && sBC <= 0 && sCA <= 0) return true;
 
+            //Console.WriteLine("Case 3");
             // Case 3: Circle intersects triangle side
             if (CircleTriangleSideIntersection(circleCenter, radius, A, B)) return true;
             if (CircleTriangleSideIntersection(circleCenter, radius, B, C)) return true;
@@ -316,6 +310,7 @@ namespace SGame
             {
                 if (CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint))
                 {
+                    //Console.WriteLine("Intersected");
                     result.Add(id);
                 }
             }
