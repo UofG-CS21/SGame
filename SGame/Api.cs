@@ -192,10 +192,83 @@ namespace SGame
             return angle;
         }
 
+        // Calculates the sign of a point relative to a line defined by two points
+        int pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2)
+        {
+            // Calculate the (not normalized) normal to the line
+            Vector2 Normal = new Vector2(linePoint2.Y - linePoint1.Y, -(linePoint2.X - linePoint1.X));
+            // The sign is equal to the sign of the dot product of the normal, and the vector from point1 to the tested point
+            return System.Math.Sign(Vector2.Dot(Normal, point - linePoint1));
+        }
+
+        bool CircleTriangleSideIntersection(Vector2 circleCenter, double radius, Vector2 linePoint1, Vector2 linePoint2)
+        {
+            Vector2 lineVector = linePoint2 - linePoint1;
+            Vector2 circleToPoint1 = linePoint1 - circleCenter;
+
+            float lengthAlongTriangleSide = Vector2.Dot(circleToPoint1, lineVector);
+
+            // If the lenght is negative, the cosine of the angle is negative, so it lies more than 90 degrees around linePoint 1
+            // For that to intersect the triangle side, linePoint1 would already lie within the circle
+            // But we have checked that in Case 1, so it must not lie. Therefore such circle does not intersect the triangle side
+            if (lengthAlongTriangleSide > 0)
+            {
+                float sideLenghtSquared = lineVector.LengthSquared();
+
+                // Since we want to keep using squared distances, instead of doing 
+                // lengthAlongTriangleSide /= sideLength, we do
+                // lengthAlongTriangleSide * lengthAlongTriangleSide / sideLengthSquared
+                lengthAlongTriangleSide = lengthAlongTriangleSide * lengthAlongTriangleSide / sideLenghtSquared;
+
+                // If the length along the triangle is greater than the side of the triangle
+                // It would intersect with the line past the second triangle vertex
+                // Which we have, as before, checked in Case 1
+                if (lengthAlongTriangleSide < sideLenghtSquared)
+                {
+                    // We have the squared lengths of the vectors circle->point1 and point1->perpendicularPointOnLineVector
+                    // We use Pythagorean theorem to find the length of side between circlePoint and perpendicularPointOnLineVector
+                    // There is an intersection if it is not greater than the radius
+                    // We never square-root either side of the Pythagorean equation
+                    if (circleToPoint1.LengthSquared() - lengthAlongTriangleSide <= radius * radius)
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Returns true iff the circle centered at circleCenter with radius 'radius' intersects the triangle with vertices A,B,C 
+        // Based on http://www.phatcode.net/articles.php?id=459 
         private bool CircleTriangleIntersection(Vector2 circleCenter, double radius, Vector2 A, Vector2 B, Vector2 C)
         {
-            // TODO
-            return true;
+            // Case 1: Triangle vertex within circle
+
+            // Calculate position vectors for A,B,C with origin at circleCenter (c stands for 'centered')
+            Vector2 cA = A - circleCenter, cB = B - circleCenter, cC = C - circleCenter;
+
+            // Check whether any of them are close enough to circleCenter
+            if (radius * radius <= cA.LengthSquared()) return true;
+            if (radius * radius <= cB.LengthSquared()) return true;
+            if (radius * radius <= cC.LengthSquared()) return true;
+
+            // Case 2: Circle center within triangle
+
+            // We calculate the sign of the position of the circleCenter relative to each side
+            // If it lies within the triangle, they will all be the same
+            int sAB = pointLineSign(circleCenter, A, B);
+            int sBC = pointLineSign(circleCenter, B, C);
+            int sCA = pointLineSign(circleCenter, C, A);
+
+            if (sAB >= 0 && sBC >= 0 && sCA >= 0) return true;
+            if (sAB <= 0 && sBC <= 0 && sCA <= 0) return true;
+
+            // Case 3: Circle intersects triangle side
+            if (CircleTriangleSideIntersection(circleCenter, radius, A, B)) return true;
+            if (CircleTriangleSideIntersection(circleCenter, radius, B, C)) return true;
+            if (CircleTriangleSideIntersection(circleCenter, radius, C, A)) return true;
+
+            // No intersections were found
+            return false;
         }
 
         /// <summary>
