@@ -36,6 +36,16 @@ namespace SGame
         /// </summary>
         public int Id { get; }
 
+        /// <summary>
+        /// Max hit points of the spaceship.
+        /// </summary>
+        public int MaxHitPoints { get; set; }
+
+        /// <summary>
+        /// Hit points of the spaceship. Nothing happens when this hits zero atm.
+        /// </summary>
+        public int HitPoints { get; set; }
+
         public Stopwatch gameTime { get; set; }
 
         /// <summary>
@@ -52,6 +62,8 @@ namespace SGame
             this.Pos = new Vector2(0, 0);
             this.Velocity = new Vector2(0, 0);
             this.LastUpdate = gameTime.ElapsedMilliseconds;
+            this.MaxHitPoints = (int)(100 + (this.Area * this.Area * 0.2) + (this.Area));
+            this.HitPoints = this.MaxHitPoints;
         }
 
         public void UpdateState()
