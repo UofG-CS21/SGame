@@ -429,9 +429,125 @@ namespace SGame
             response.Send();
         }
 
+        /// <summary>
+        /// Handles a "Shoot" REST request, damaging all ships caught in its blast. pew pew.
+        /// </summary>
+        /// <param name="data">The JSON payload of the request, containing the token of the ship, the angle to shoot at, the width of the shot, and the energy to expend on the shot.true </param>
+        /// <param name="response">The HTTP response to the client.</param>
+        [ApiRoute("shoot")]
+        [ApiParam("token", typeof(string))]
+        [ApiParam("direction", typeof(float))]
+        [ApiParam("width", typeof(float))]
+        [ApiParam("energy", typeof(int))]
+
+        public void Shoot(ApiResponse response, ApiData data)
+        {
+            //Check that the arguments for each parameter are valid
+            int id = intersectionParamCheck(response, data);
+            if (id == -1)
+            {
+                return;
+            }
+            Spaceship ship = ships[id];
+            float width = (float)data.Json["width"];
+            float direction = (float)data.Json["direction"];
+
+            int energy = (int)Math.Min((int)data.Json["energy"], Math.Floor(ship.Energy));
+            ships[id].Energy -= energy; //remove energy for the shot
+
+            Console.WriteLine("Shot by " + id + ", pos = " + ships[id].Pos.ToString() + " , direction = " + direction + ", width = " + width + ", energy spent = " + energy);
+
+            List<int> struck = CircleSectorScan(ship.Pos, direction, width, energy);
+            JArray struckShips = new JArray();
+            foreach (int struckShipId in struck)
+            {
+                // ignore our ship
+                if (struckShipId == id)
+                    continue;
+
+                ships[struckShipId].HitPoints -= shotDamage(energy, width, distanceBetweenShips(ship.Pos.X, ship.Pos.Y, ships[struckShipId].Pos.X, ships[struckShipId].Pos.Y));
+
+                //The api doesnt have a return value for shooting, but ive left this in for now for testing purposes.
+                JToken struckShipInfo = new JObject();
+                struckShipInfo["id"] = struckShipId;
+                struckShipInfo["area"] = ships[struckShipId].Area;
+                struckShipInfo["posX"] = ships[struckShipId].Pos.X;
+                struckShipInfo["posY"] = ships[struckShipId].Pos.Y;
+                struckShipInfo["hp"] = ships[struckShipId].HitPoints;
+                struckShips.Add(struckShipInfo);
+            }
+
+            response.Data["struck"] = struckShips;
+            response.Send();
+        }
+
+
+        /// <summary>
+        /// Calculates the shotDamage applied to a ship. Shot damage drops off exponentially as distance increases, base =1.1
+        /// </summary>
+        private int shotDamage(int energy, float width, int distance)
+        {
+            return (int)((energy) / ((width / 10) * Math.Pow(1.1, distance)));
+        }
+
+        /// <summary>
+        /// Verifies the arguments passed in an intersection based request are appropriate.
+        /// </summary>
+        private int intersectionParamCheck(ApiResponse response, ApiData data)
+        {
+            UpdateGameState();
+            var maybeid = GetSpaceshipId(data.Json);
+            if (maybeid == null)
+            {
+                response.Data["error"] = "Could not find spaceship for given token";
+                response.Send(500);
+                return -1;
+            }
+
+            int id = maybeid.Value;
+
+            String[] requiredParams = new String[3] { "direction", "width", "energy" };
+
+            for (int i = 0; i < requiredParams.Length; i++)
+            {
+                if (data.Json[requiredParams[i]] == null)
+                {
+                    response.Data["error"] = "Requires parameter: " + requiredParams[i];
+                    response.Send(500);
+                    return -1;
+                }
+            }
+
+            float direction = (float)data.Json["direction"];
+
+            float width = (float)data.Json["width"];
+            if (width <= 0 || width >= 90)
+            {
+                response.Data["error"] = "Width not in interval (0,90) degrees";
+                response.Send(500);
+                return -1;
+            }
+
+            int energy = (int)data.Json["energy"];
+            if (energy <= 0)
+            {
+                response.Data["error"] = "Energy spent must be positive";
+                response.Send(500);
+                return -1;
+            }
+            return id;
+        }
+
+        private int distanceBetweenShips(float x1, float y1, float x2, float y2)
+        {
+            return (int)Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
+        }
+
     }
 
 
 }
+
+
 
 
