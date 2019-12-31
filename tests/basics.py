@@ -14,6 +14,7 @@ def test_disconnect(clients):
         assert resp
     # Client should successfully disconnect after getShipInfo has been called
 
+
 def test_getShipInfo_intial_state(clients):
     """
     Tests if getShipInfo matches the intial state of the ship
@@ -75,7 +76,8 @@ def test_scan(server, clients):
 
         print('scan that should not fail:', resp_data)
         # Checking if client 1 id is found in the response
-        assert any(scanned['id'] == client1_id for scanned in resp_data['scanned'])
+        assert any(scanned['id'] ==
+                   client1_id for scanned in resp_data['scanned'])
 
         # Scan should not discover ship in empty area
         resp = requests.post(client2.url + 'scan', json={
@@ -88,7 +90,8 @@ def test_scan(server, clients):
         resp_data = resp.json()
         # Checking that scan doesnt find any ships in that area
         print('scan that should fail:', resp_data)
-        assert not any(scanned['id'] == client1_id for scanned in resp_data['scanned'])
+        assert not any(scanned['id'] ==
+                       client1_id for scanned in resp_data['scanned'])
 
 
 allowed_fpe = 1e-6
@@ -233,3 +236,56 @@ def test_movement(server, clients):
         resp = requests.post(server.url + 'disconnect',
                              json={'token': client.token})
         assert resp
+
+
+def test_sudo(server, clients):
+    """
+    Tests that the "sudo" endpoint actually sets values properly.
+    """
+    # NOTE: Can only reliably set velocity and ares as they are the the only
+    #       values that do not change over time (for now)!
+    kvs = {
+        'velX': 1010,
+        'velY': 4242,
+        'area': 123456,
+    }
+
+    with clients(1) as client:
+        # Assert "initial state" != "state to set"
+        # (to make sure values are actually changed)
+        resp = requests.post(server.url + 'getShipInfo',
+                             json={'token': client.token})
+        assert resp
+        init_state = resp.json()
+        for k, v in kvs.items():
+            assert k in init_state
+            assert not isClose(v, init_state[k], 0.001)
+
+        # Change all values to the expected ones
+        json = {'token': client.token}
+        json.update(kvs)
+        print('sudo payload:', json)
+        resp = requests.post(server.url + 'sudo', json=json)
+        assert resp
+
+        # Assert "state after set" == "state to set"
+        resp = requests.post(server.url + 'getShipInfo',
+                             json={'token': client.token})
+        assert resp
+        for k, v in resp.json().items():
+            if k not in kvs:
+                continue
+            assert isClose(v, kvs[k], 0.001)
+
+
+def test_sudo_fail(server):
+    """
+    Tests that the "sudo" endpoint fails if no valid token is passed.
+    """
+    resp = requests.post(server.url + 'sudo',
+                         json={'token': '**NOT_A_VALID_TOKEN**'})
+    assert not resp
+
+    resp = requests.post(server.url + 'sudo',
+                         json={})
+    assert not resp
