@@ -43,7 +43,7 @@ namespace SGame
         {
             this.Name = name;
             this.Type = type;
-            this.Optional = false;
+            this.Optional = true;
         }
 
         /// <summary>
@@ -100,7 +100,14 @@ namespace SGame
         {
             this.response = response;
             this.Data = new JObject();
+            this.Sent = false;
         }
+
+
+        /// <summary>
+        /// The flag to check if the response has already been sent 
+        /// </summary>
+        public bool Sent { get; private set; }
 
         /// <summary>
         /// The data to send with the response.
@@ -111,8 +118,12 @@ namespace SGame
         /// Sends `Data` as a response to the API request, closing it off.
         /// </summary>
         /// <param name="status">The HTTP status code of the response.</param>
-        public void Send(int status = 200)
+        public void Send(int status=200)
         {
+            if (this.Sent)
+            {
+                throw new InvalidOperationException("Response already sent!");
+            }
             response.ContentType = "application/json";
             response.StatusCode = status;
 
@@ -122,6 +133,7 @@ namespace SGame
             System.IO.Stream output = response.OutputStream;
             output.Write(buffer, 0, buffer.Length);
             output.Close();
+            this.Sent = true;
         }
     }
 }
