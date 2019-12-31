@@ -101,8 +101,9 @@ namespace SGame
         public void DisconnectPlayer(ApiResponse response, ApiData data)
         {
             var maybeId = GetSpaceshipId(data.Json);
-            if (maybeId == null)
+            if (maybeId == null || !ships.ContainsKey(maybeId.Value))
             {
+                Console.WriteLine("Ship not found for given token");
                 response.Data["error"] = "Ship not found for given token";
                 response.Send(500);
                 return;

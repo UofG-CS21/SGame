@@ -6,11 +6,13 @@ def test_disconnect(clients):
     """
     Tests that a connected ship can disconnect via REST.
     """
+    # Content manager automatically connects and disconnects
     with clients(1) as client:
-        resp = requests.post(client.url + 'disconnect',
-                             json={'token': client.token})
+        resp = requests.post(client.url + 'getShipInfo', json={
+            'token': client.token,
+        })
         assert resp
-
+    # Client should successfully disconnect after getShipInfo has been called
 
 def test_getShipInfo_intial_state(clients):
     """
@@ -22,7 +24,7 @@ def test_getShipInfo_intial_state(clients):
         })
         assert resp
         resp_data = resp.json()
-
+    # Ensures that the intial values match the information from getShipInfo
         assert resp_data["area"] == 1
         assert resp_data['energy'] == 10
         assert resp_data['posX'] == 0
@@ -32,16 +34,17 @@ def test_getShipInfo_intial_state(clients):
 
 
 def test_scan(server, clients):
-
+    # Create two clients
     with clients(2) as (client1, client2):
         resp = requests.post(client1.url + 'getShipInfo', json={
             'token': client1.token,
         })
         assert resp
+        # Getting the id for client 1
         resp_data = resp.json()
         client1_id = resp_data['id']
 
-        # Go right
+        # Client 1 moves to the right
         resp = requests.post(client1.url + 'accelerate', json={
             'token': client1.token,
             'x': 1,
@@ -49,9 +52,10 @@ def test_scan(server, clients):
         })
         assert resp
 
+        # Waiting
         time.sleep(1)
 
-        # Stop previous acceleration
+        # Stop previous acceleration for client 1
         resp = requests.post(client1.url + 'accelerate', json={
             'token': client1.token,
             'x': -1,
@@ -59,7 +63,7 @@ def test_scan(server, clients):
         })
         assert resp
 
-        # Scan discovers ships
+        # Client 2 scans the area where client 1 should be
         resp = requests.post(client2.url + 'scan', json={
             'token': client2.token,
             'direction': 0,
@@ -70,6 +74,7 @@ def test_scan(server, clients):
         resp_data = resp.json()
 
         print('scan that should not fail:', resp_data)
+        # Checking if client 1 id is found in the response
         assert any(scanned['id'] == client1_id for scanned in resp_data['scanned'])
 
         # Scan should not discover ship in empty area
@@ -81,7 +86,7 @@ def test_scan(server, clients):
         })
         assert resp
         resp_data = resp.json()
-
+        # Checking that scan doesnt find any ships in that area
         print('scan that should fail:', resp_data)
         assert not any(scanned['id'] == client1_id for scanned in resp_data['scanned'])
 
