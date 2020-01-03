@@ -27,18 +27,18 @@ namespace SGame.Tests
     public class SGame_GeometryTests
     {
 
-        [Theory]
-        [ClassData(typeof(pLSTestData))]
-        public void Test_pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2, int expected_sign)
-        {
-            int actual_sign = new Api().pointLineSign(point, linePoint1, linePoint2);
-            //Avoid division by zero errors
-            if (actual_sign != 0)
-            {
-                actual_sign = actual_sign / Math.Abs(actual_sign);
-            }
-            Assert.Equal(expected_sign, actual_sign);
-        }
+        // [Theory]
+        // [ClassData(typeof(pLSTestData))]
+        // public void Test_pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2, int expected_sign)
+        // {
+        //     int actual_sign = new Api().pointLineSign(point, linePoint1, linePoint2);
+        //     //Avoid division by zero errors
+        //     if (actual_sign != 0)
+        //     {
+        //         actual_sign = actual_sign / Math.Abs(actual_sign);
+        //     }
+        //     Assert.Equal(expected_sign, actual_sign);
+        // }
 
         [Theory]
         [ClassData(typeof(CTSITestData))]
@@ -56,7 +56,15 @@ namespace SGame.Tests
             Assert.Equal(expected, actual);
         }
 
-        
+        [Theory]
+        [ClassData(typeof(CTITestData))]
+        public void CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth, bool expected)
+        {
+            bool actual = new Api().CircleSegmentIntersection(circleCenter, circleRadius, segmentCenter, segmentRadius, segmentAngle, segmentWidth);
+            Assert.Equal(expected, actual);
+        }
+
+
     }
 
 
