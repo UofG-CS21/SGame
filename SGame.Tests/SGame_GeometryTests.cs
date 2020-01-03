@@ -56,13 +56,13 @@ namespace SGame.Tests
             Assert.Equal(expected, actual);
         }
 
-        [Theory]
-        [ClassData(typeof(CTITestData))]
-        public void CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth, bool expected)
-        {
-            bool actual = new Api().CircleSegmentIntersection(circleCenter, circleRadius, segmentCenter, segmentRadius, segmentAngle, segmentWidth);
-            Assert.Equal(expected, actual);
-        }
+        // [Theory]
+        // [ClassData(typeof(CTITestData))]
+        // public void CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth, bool expected)
+        // {
+        //     bool actual = new Api().CircleSegmentIntersection(circleCenter, circleRadius, segmentCenter, segmentRadius, segmentAngle, segmentWidth);
+        //     Assert.Equal(expected, actual);
+        // }
 
 
     }
