@@ -304,7 +304,7 @@ testdata = [
 
 # Test to check scan works correctly
 @pytest.mark.parameterize("scandir, scan_width, posX_s2, posY_s2, radius_s2, expected", testdata)
-def test_scan(server, clients):
+def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, radius_s2, expected):
     with clients(2) as cl1, cl2:
         # Getting ID for ship 2, used to later to check if found
         resp = requests.post(cli2.url + 'getShipInfo', json={
@@ -315,7 +315,7 @@ def test_scan(server, clients):
         # Getting the id for ship 2
         resp_data = resp.json()
         client2_id = resp_data['id']
-        
+
         # Set first ship to a centre position of 0,0
         resp = requests.post(cl1.url + 'sudo', json = {
             'token': cl1.token,
@@ -347,6 +347,6 @@ def test_scan(server, clients):
        # Checking if the outcome matches the expected output 
         found = any(scanned['id'] ==
                    client2_id for scanned in scan_list['scanned'])
-        assert found == expected_outcome
+        assert found == expected
 
 
