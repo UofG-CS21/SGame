@@ -544,9 +544,79 @@ namespace SGame
             return (int)Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
         }
 
+#if DEBUG
+        /// <summary>
+        /// A function that, when invoked, sets a certain parameter of `ship` to `value`.
+        /// </summary>
+        /// <param name="ship">The ship to set the attribute on.</param>
+        /// <param name="value">The new value of the parameter to set.</param>
+        private delegate void AttributeSetter(Spaceship ship, JToken value);
+
+        /// <summary>
+        /// The map of `JSON key name -> AttributeSetter` used by `Sudo`.
+        /// Note that the names reflect those used by `GetShipInfo`!
+        /// 
+        /// In the future, if setters become more complex than just setting a value, one can replace the lambdas with
+        /// references to a more complex function/method.
+        /// </summary>
+        private static readonly Dictionary<string, AttributeSetter> SUDO_SETTER_MAP = new Dictionary<string, AttributeSetter>
+        {
+            { "area", (ship, value) => ship.Area = (double)value },
+            { "energy", (ship, energy) => ship.Energy = (double)energy },
+            { "posX", (ship, posX) => ship.Pos = new Vector2((float)posX, ship.Pos.Y) },
+            { "posY", (ship, posY) => ship.Pos = new Vector2(ship.Pos.X, (float)posY) },
+            { "velX", (ship, velX) => ship.Velocity = new Vector2((float)velX, ship.Velocity.Y) },
+            { "velY", (ship, velY) => ship.Velocity = new Vector2(ship.Velocity.X, (float)velY) },
+        };
+
+        /// <summary>
+        /// "SuperUser DO"; debug-only endpoint used to forcefully set attributes of a connected ship via REST.
+        /// </summary>
+        /// <param name="data">The JSON payload of the request, containing the token of the ship.</param>
+        /// <param name="response">The HTTP response to the client.</param>
+        [ApiRoute("sudo")]
+        [ApiParam("token", typeof(string))]
+
+        public void Sudo(ApiResponse response, ApiData data)
+        {
+            var id = GetSpaceshipId(data.Json);
+            if (id == null)
+            {
+                response.Data["error"] = "Could not find spaceship (did you pass a valid `token`?)";
+                response.Send(500);
+                return;
+            }
+
+            Spaceship ship = ships[id.Value];
+            foreach (var kv in data.Json)
+            {
+                if (kv.Key == "token") continue;
+
+                AttributeSetter setter = SUDO_SETTER_MAP.GetValueOrDefault(kv.Key, null);
+                if (setter == null)
+                {
+                    response.Data["error"] = "Unrecognized attribute `" + kv.Key + "`";
+                    response.Send(500);
+                    return;
+                }
+
+                try
+                {
+                    setter.Invoke(ship, kv.Value);
+                }
+                catch (Exception exc)
+                {
+                    response.Data["error"] = "Failed to set attribute `" + kv.Key + "`: " + exc.ToString();
+                    response.Send(500);
+                    return;
+                }
+            }
+
+            response.Send(200);
+        }
+#endif
+
     }
-
-
 }
 
 
