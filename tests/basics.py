@@ -313,6 +313,7 @@ def test_scan(server, clients):
             'posY': 0,
             'area': 1,
         })
+        assert resp
         # Set second ship to desired location and setting its area via the test data
         resp2 = requests.post(cl2.url + 'sudo', json = {
             'token': cl2.token,
@@ -327,6 +328,7 @@ def test_scan(server, clients):
             'width': scan_width,
             'energy': 5,
         })
+        assert resp_scan
         # Storing the results of scan
         scan_list = resp_scan.json()
 
