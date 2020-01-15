@@ -289,3 +289,53 @@ def test_sudo_fail(server):
     resp = requests.post(server.url + 'sudo',
                          json={})
     assert not resp
+
+
+testdata = [
+    (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
+    (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
+    (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
+    (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
+    (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
+    (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
+    (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
+    (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
+]
+
+@pytest.mark.parameterize("scandir, scan_width, posX_s2, posY_s2, radius_s2, expected", testdata)
+def test_scan(server, clients):
+    with clients(2) as cl1, cl2:
+        resp = requests.post(cl1.url + 'sudo', json = {
+            'token': = cl1.token,
+            'posX': =  0,
+            'posY': = 0,
+            'area': = 1,
+        })
+
+        resp2 = requests.post(cl2.url + 'sudo', json = {
+            'token': = cl2.token,
+            'posX': = posX_s2,
+            'posY': = posY_s2,
+            'area': = radius_s2,
+        })
+
+        resp_scan = requests.post(cl2.url + 'scan', json={
+            'token': cl2.token,
+            'direction': scandir,
+            'width': scan_width,
+            'energy': 5,
+        })
+     resp = requests.post(cli1.url + 'getShipInfo', json={
+            'token': cli1.token,
+        })
+        assert resp
+        # Getting the id for client 1
+        resp_data = resp.json()
+        client1_id = resp_data['id']
+
+       scan_list = resp_scan.json()
+        found = any(scanned['id'] ==
+                   client1_id for scanned in resp_scan['scanned'])
+        assert found == expected_outcome
+
+

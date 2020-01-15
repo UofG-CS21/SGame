@@ -197,7 +197,7 @@ namespace SGame
 
             float lengthAlongTriangleSide = Vector2.Dot(point1ToCircle, lineVector);
 
-            // If the lenght is negative, the cosine of the angle is negative, so it lies more than 90 degrees around linePoint 1
+            // If the length is negative, the cosine of the angle is negative, so it lies more than 90 degrees around linePoint 1
             // For that to intersect the triangle side, linePoint1 would already lie within the circle
             // But we have checked that in Case 1, so it must not lie. Therefore such circle does not intersect the triangle side
             if (lengthAlongTriangleSide > 0)
