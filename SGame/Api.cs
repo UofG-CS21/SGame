@@ -503,7 +503,7 @@ namespace SGame
         /// </summary>
         /// <param name="data">The JSON payload of the request, containing the token of the ship, the center angle of the shield, and the half-width of the shield.</param>
         /// <param name="response">The response to be sent to the client.</param>
-        [ApiRoute("scan")]
+        [ApiRoute("shield")]
         [ApiParam("token", typeof(string))]
         [ApiParam("direction", typeof(double))]
         [ApiParam("width", typeof(double))]
