@@ -306,17 +306,17 @@ testdata = [
 def test_scan(server, clients):
     with clients(2) as cl1, cl2:
         resp = requests.post(cl1.url + 'sudo', json = {
-            'token': = cl1.token,
-            'posX': =  0,
-            'posY': = 0,
-            'area': = 1,
+            'token': cl1.token,
+            'posX': 0,
+            'posY': 0,
+            'area': 1,
         })
 
         resp2 = requests.post(cl2.url + 'sudo', json = {
-            'token': = cl2.token,
-            'posX': = posX_s2,
-            'posY': = posY_s2,
-            'area': = radius_s2,
+            'token': cl2.token,
+            'posX': posX_s2,
+            'posY': posY_s2,
+            'area': radius_s2,
         })
 
         resp_scan = requests.post(cl2.url + 'scan', json={
