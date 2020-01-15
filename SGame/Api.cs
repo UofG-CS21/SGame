@@ -351,6 +351,22 @@ namespace SGame
         }
 
         /// <summary>
+        /// Convert an angle from radians to degrees.
+        /// </summary>
+        public static double Rad2Deg(double rad)
+        {
+            return rad * 180.0 / Math.PI;
+        }
+
+        /// <summary>
+        /// Convert an angle from degrees to radians.
+        /// </summary>
+        public static double Deg2Rad(double deg)
+        {
+            return deg * Math.PI / 180.0;
+        }
+
+        /// <summary>
         /// Handles a "Scan" REST request, returning a set of spaceships that are within the scan
         /// </summary>
         /// <param name="data">The JSON payload of the request, containing the token of the ship, the angle of scanning, the width of scan, and the energy spent on the scan.true </param>
@@ -482,6 +498,32 @@ namespace SGame
             response.Send();
         }
 
+        /// <summary>
+        /// Handles a "Shield" REST request, setting the shield direction and radius around the ship.
+        /// </summary>
+        /// <param name="data">The JSON payload of the request, containing the token of the ship, the center angle of the shield, and the half-width of the shield.</param>
+        /// <param name="response">The response to be sent to the client.</param>
+        [ApiRoute("scan")]
+        [ApiParam("token", typeof(string))]
+        [ApiParam("direction", typeof(double))]
+        [ApiParam("width", typeof(double))]
+        public void Shield(ApiResponse response, ApiData data)
+        {
+            var maybeid = GetSpaceshipId(data.Json);
+            if (maybeid == null)
+            {
+                response.Data["error"] = "Could not find spaceship for given token";
+                response.Send(500);
+            }
+            Spaceship ship = ships[maybeid.Value];
+            double dirDeg = (double)data.Json["direction"];
+            double hWidthDeg = (double)data.Json["width"];
+            ship.ShieldDir = Deg2Rad(dirDeg); // (autonormalized)
+            ship.ShieldWidth = Deg2Rad(dirDeg); // (autonormalized)
+
+            Console.WriteLine("Shields up for " + maybeid.Value + ", width/2 = " + hWidthDeg + "°, dir = " + dirDeg + "°");
+            response.Send(200);
+        }
 
         /// <summary>
         /// Calculates the shotDamage applied to a ship. Shot damage drops off exponentially as distance increases, base =1.1
@@ -504,20 +546,7 @@ namespace SGame
                 response.Send(500);
                 return -1;
             }
-
             int id = maybeid.Value;
-
-            String[] requiredParams = new String[3] { "direction", "width", "energy" };
-
-            for (int i = 0; i < requiredParams.Length; i++)
-            {
-                if (data.Json[requiredParams[i]] == null)
-                {
-                    response.Data["error"] = "Requires parameter: " + requiredParams[i];
-                    response.Send(500);
-                    return -1;
-                }
-            }
 
             float direction = (float)data.Json["direction"];
 
@@ -567,6 +596,8 @@ namespace SGame
             { "posY", (ship, posY) => ship.Pos = new Vector2(ship.Pos.X, (float)posY) },
             { "velX", (ship, velX) => ship.Velocity = new Vector2((float)velX, ship.Velocity.Y) },
             { "velY", (ship, velY) => ship.Velocity = new Vector2(ship.Velocity.X, (float)velY) },
+            { "shieldDir", (ship, shieldDir) => ship.ShieldDir = Deg2Rad((double)shieldDir) },
+            { "shieldWidth", (ship, shieldHW) => ship.ShieldWidth = Deg2Rad((double)shieldHW) },
         };
 
         /// <summary>

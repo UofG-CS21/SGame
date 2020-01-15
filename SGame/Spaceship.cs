@@ -47,11 +47,11 @@ namespace SGame
         public int HitPoints { get; set; }
 
         /// <summary>
-        /// Normalizes an angle in radians, i.e. makes it positive and between 0 and 2pi.
+        /// Normalizes an angle in radians, i.e. makes it positive and between 0 and `clampValue`.
         /// </summary>
-        private static double NormalizeAngle(double angle)
+        private static double NormalizeAngle(double angle, double clampValue)
         {
-            angle = angle % (2.0 * Math.PI);
+            angle = angle % clampValue;
             if (angle < 0.0) angle = (2.0 * Math.PI) - angle;
             return angle;
         }
@@ -71,7 +71,7 @@ namespace SGame
             }
             set
             {
-                _shieldDir = NormalizeAngle(value);
+                _shieldDir = NormalizeAngle(value, 2.0 * Math.PI);
             }
         }
 
@@ -79,7 +79,7 @@ namespace SGame
 
         /// <summary>
         /// The shield half extents, in radians (see `ShieldDir`'s documentation).
-        /// Automatically clamped to 0..2pi when setting it.
+        /// Automatically clamped to 0..pi when setting it.
         /// </summary>
         public double ShieldWidth
         {
@@ -89,7 +89,7 @@ namespace SGame
             }
             set
             {
-                _shieldWidth = NormalizeAngle(value);
+                _shieldWidth = NormalizeAngle(value, Math.PI);
             }
         }
 
