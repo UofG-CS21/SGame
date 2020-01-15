@@ -322,8 +322,8 @@ def test_scan(server, clients):
             'area': radius_s2,
         })
         # Scanning from the first ship
-        resp_scan = requests.post(cl2.url + 'scan', json={
-            'token': cl2.token,
+        resp_scan = requests.post(cl1.url + 'scan', json={
+            'token': cl1.token,
             'direction': scandir,
             'width': scan_width,
             'energy': 5,
