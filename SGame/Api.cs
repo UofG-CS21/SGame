@@ -43,6 +43,8 @@ namespace SGame
         /// <summary>
         Nullable<int> GetSpaceshipId(JObject data)
         {
+            //TODO: rewrite to check for dead ships, send error response, update all callers to
+            // handle updated version of function
             if (!data.ContainsKey("token"))
             {
                 return null;
@@ -314,7 +316,7 @@ namespace SGame
         /// its area will be equal to SCAN_ENERGY_SCALING_FACTOR times the energy spent
         /// </summary>
 
-        private int SCAN_ENERGY_SCALING_FACTOR = 1000;
+        private const int SCAN_ENERGY_SCALING_FACTOR = 1000;
         public List<int> CircleSectorScan(Vector2 pos, double worldDeg, double scanWidth, int energySpent)
         {
             // The radius of the cone will be such that the area scanned is energySpent * SCAN_ENERGY_SCALING_FACTOR
@@ -430,6 +432,7 @@ namespace SGame
             response.Send();
         }
 
+        private const double MINIMUM_AREA = 0.75;
         /// <summary>
         /// Handles a "Shoot" REST request, damaging all ships caught in its blast. pew pew.
         /// </summary>
@@ -456,17 +459,20 @@ namespace SGame
             int energy = (int)Math.Min((int)data.Json["energy"], Math.Floor(ship.Energy));
             ships[id].Energy -= energy; //remove energy for the shot
 
+
             Console.WriteLine("Shot by " + id + ", pos = " + ships[id].Pos.ToString() + " , direction = " + direction + ", width = " + width + ", energy spent = " + energy);
 
             List<int> struck = CircleSectorScan(ship.Pos, direction, width, energy);
             JArray struckShips = new JArray();
             foreach (int struckShipId in struck)
             {
-                // ignore our ship
-                if (struckShipId == id)
-                    continue;
+                ships[struckShipId].Area -= shotDamage(energy, width, distanceBetweenShips(ship.Pos.X, ship.Pos.Y, ships[struckShipId].Pos.X, ships[struckShipId].Pos.Y));
 
-                ships[struckShipId].HitPoints -= shotDamage(energy, width, distanceBetweenShips(ship.Pos.X, ship.Pos.Y, ships[struckShipId].Pos.X, ships[struckShipId].Pos.Y));
+                if (ships[struckShipId].Area < MINIMUM_AREA)
+                {
+                    ships[id].Area += ships[struckShipId].KillReward;
+                    // TODO: kill ships[structkShip] (create DeadShips or sth)
+                }
 
                 //The api doesnt have a return value for shooting, but ive left this in for now for testing purposes.
                 JToken struckShipInfo = new JObject();
@@ -474,9 +480,15 @@ namespace SGame
                 struckShipInfo["area"] = ships[struckShipId].Area;
                 struckShipInfo["posX"] = ships[struckShipId].Pos.X;
                 struckShipInfo["posY"] = ships[struckShipId].Pos.Y;
-                struckShipInfo["hp"] = ships[struckShipId].HitPoints;
                 struckShips.Add(struckShipInfo);
             }
+
+            //Ship performed combat action, lock kill reward if not in combat from before
+            if (ships[id].LastCombat - ships[id].LastUpdate > Spaceship.COMBAT_COOLDOWN)
+            {
+                ships[id].KillReward = ships[id].Area;
+            }
+            ships[id].LastCombat = ships[id].LastUpdate;
 
             response.Data["struck"] = struckShips;
             response.Send();
