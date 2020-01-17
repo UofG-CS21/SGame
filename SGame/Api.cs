@@ -33,6 +33,13 @@ namespace SGame
         Dictionary<string, int> players = new Dictionary<string, int>();
 
         /// <summary>
+        /// The internal table of [spaceship ID -> spaceship token] for the compute node.
+        /// Used to remove killed ships from players.
+        /// </summary>
+        Dictionary<int, string> inversePlayers = new Dictionary<int, string>();
+
+
+        /// <summary>
         /// Internal game state of [spaceship ID -> Spaceship ] for the server.
         /// </summary>
         Dictionary<int, Spaceship> ships = new Dictionary<int, Spaceship>();
@@ -102,6 +109,7 @@ namespace SGame
             freeID++;
             string playerToken = Guid.NewGuid().ToString();
             players[playerToken] = playerID;
+            inversePlayers[playerID] = playerToken;
             ships[playerID] = new Spaceship(playerID, gameTime);
 
             Console.WriteLine("Connected player " + playerID.ToString() + " with session token " + playerToken);
@@ -131,6 +139,7 @@ namespace SGame
             Console.WriteLine("Disconnecting player with id " + id);
             ships.Remove(id);
             players.Remove(token);
+            inversePlayers.Remove(id);
             response.Send(200);
         }
 
@@ -480,7 +489,10 @@ namespace SGame
                 if (ships[struckShipId].Area < MINIMUM_AREA)
                 {
                     ships[id].Area += ships[struckShipId].KillReward;
-                    // TODO: kill ships[structkShip] (create DeadShips or sth)
+                    ships.Remove(struckShipId);
+                    players.Remove(inversePlayers[struckShipId]);
+                    deadPlayers.Add(inversePlayers[struckShipId]);
+                    inversePlayers.Remove(struckShipId);
                 }
 
                 //The api doesnt have a return value for shooting, but ive left this in for now for testing purposes.
@@ -601,8 +613,6 @@ namespace SGame
             var id = GetSpaceshipId(response, data.Json);
             if (id == null)
             {
-                response.Data["error"] = "Could not find spaceship (did you pass a valid `token`?)";
-                response.Send(500);
                 return;
             }
 
