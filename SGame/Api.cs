@@ -484,17 +484,6 @@ namespace SGame
             JArray struckShips = new JArray();
             foreach (int struckShipId in struck)
             {
-                ships[struckShipId].Area -= shotDamage(energy, width, distanceBetweenShips(ship.Pos.X, ship.Pos.Y, ships[struckShipId].Pos.X, ships[struckShipId].Pos.Y));
-
-                if (ships[struckShipId].Area < MINIMUM_AREA)
-                {
-                    ships[id].Area += ships[struckShipId].KillReward;
-                    ships.Remove(struckShipId);
-                    players.Remove(inversePlayers[struckShipId]);
-                    deadPlayers.Add(inversePlayers[struckShipId]);
-                    inversePlayers.Remove(struckShipId);
-                }
-
                 //The api doesnt have a return value for shooting, but ive left this in for now for testing purposes.
                 JToken struckShipInfo = new JObject();
                 struckShipInfo["id"] = struckShipId;
@@ -502,6 +491,27 @@ namespace SGame
                 struckShipInfo["posX"] = ships[struckShipId].Pos.X;
                 struckShipInfo["posY"] = ships[struckShipId].Pos.Y;
                 struckShips.Add(struckShipInfo);
+
+                double damage = shotDamage(energy, width, distanceBetweenShips(ship.Pos.X, ship.Pos.Y, ships[struckShipId].Pos.X, ships[struckShipId].Pos.Y));
+
+                // We have killed a ship, gain it's kill reward, and move struck ship to the graveyard
+                if (ships[struckShipId].Area - damage < MINIMUM_AREA)
+                {
+                    ships[id].Area += ships[struckShipId].KillReward;
+                    ships.Remove(struckShipId);
+                    players.Remove(inversePlayers[struckShipId]);
+                    deadPlayers.Add(inversePlayers[struckShipId]);
+                    inversePlayers.Remove(struckShipId);
+                }
+                else // Struck ship survived - note that it's in combat
+                {
+                    if (ships[struckShipId].LastCombat - ships[struckShipId].LastUpdate > Spaceship.COMBAT_COOLDOWN)
+                    {
+                        ships[struckShipId].KillReward = ships[struckShipId].Area;
+                    }
+                    ships[struckShipId].LastCombat = ships[struckShipId].LastUpdate;
+                    ships[struckShipId].Area -= damage;
+                }
             }
 
             //Ship performed combat action, lock kill reward if not in combat from before
