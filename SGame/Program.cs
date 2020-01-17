@@ -83,15 +83,19 @@ namespace SGame
 
                 var body = new StreamReader(context.Request.InputStream).ReadToEnd();
                 JObject json = new JObject();
-                if(body.Length > 0)
+                if (body.Length > 0)
                 {
                     try
                     {
                         json = JObject.Parse(body);
                     }
-                    catch(JsonReaderException exc)
+                    catch (JsonReaderException exc)
                     {
-                        // TODO: Log this and (likely) send a HTTP 500
+                        Console.WriteLine("Internal error on parsing json body: " + exc);
+                        var resp = new ApiResponse(context.Response);
+                        resp.Data["error"] = "Internal error while parsing json.";
+                        resp.Send(500);
+                        continue;
                     }
                 }
 

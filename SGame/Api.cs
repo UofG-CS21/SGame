@@ -38,15 +38,23 @@ namespace SGame
         Dictionary<int, Spaceship> ships = new Dictionary<int, Spaceship>();
 
         /// <summary>
-        /// Takes data["token"] as spaceship token and looks up the spaceship ID in `players`, returning it.
-        /// Returns null if the token is not present or is not present in `players`.
+        /// The internal table of spaceship tokens, containing dead spaceships.
+        /// </summary>
+        HashSet<string> deadPlayers = new HashSet<string>();
+
+
         /// <summary>
-        Nullable<int> GetSpaceshipId(JObject data)
+        /// Takes data["token"] as spaceship token and looks up the spaceship ID in `players`, returning it.
+        /// If token is present and valid, returns the relevant player ID.
+        /// Otherwise, sends an error response, and returns null.
+        /// <summary>
+        Nullable<int> GetSpaceshipId(ApiResponse response, JObject data)
         {
-            //TODO: rewrite to check for dead ships, send error response, update all callers to
-            // handle updated version of function
+
             if (!data.ContainsKey("token"))
             {
+                response.Data["error"] = "Spaceship token not in sent data.";
+                response.Send(500);
                 return null;
             }
             var token = (string)data["token"];
@@ -55,6 +63,18 @@ namespace SGame
             {
                 return players[token];
             }
+
+            if (deadPlayers.Contains(token))
+            {
+
+                deadPlayers.Remove(token);
+                response.Data["error"] = "Your spaceship has been killed. Please reconnect.";
+                response.Send(500);
+                return null;
+            }
+
+            response.Data["error"] = "Ship not found for given token.";
+            response.Send(500);
             return null;
         }
 
@@ -68,8 +88,6 @@ namespace SGame
                 ships[id].UpdateState();
             }
         }
-
-
 
         /// <summary>
         /// Handles a "connect" REST request, connecting a player to the server.
@@ -102,12 +120,9 @@ namespace SGame
         [ApiParam("token", typeof(string))]
         public void DisconnectPlayer(ApiResponse response, ApiData data)
         {
-            var maybeId = GetSpaceshipId(data.Json);
-            if (maybeId == null || !ships.ContainsKey(maybeId.Value))
+            var maybeId = GetSpaceshipId(response, data.Json);
+            if (maybeId == null)
             {
-                Console.WriteLine("Ship not found for given token");
-                response.Data["error"] = "Ship not found for given token";
-                response.Send(500);
                 return;
             }
             int id = maybeId.Value;
@@ -131,11 +146,9 @@ namespace SGame
         public void AcceleratePlayer(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeId = GetSpaceshipId(data.Json);
+            var maybeId = GetSpaceshipId(response, data.Json);
             if (maybeId == null)
             {
-                response.Data["error"] = "Ship not found for given token";
-                response.Send(500);
                 return;
             }
             int id = maybeId.Value;
@@ -163,11 +176,9 @@ namespace SGame
         public void GetShipInfo(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var id = GetSpaceshipId(data.Json);
+            var id = GetSpaceshipId(response, data.Json);
             if (id == null)
             {
-                response.Data["error"] = "Could not find spaceship for given token";
-                response.Send(500);
                 return;
             }
 
@@ -366,11 +377,9 @@ namespace SGame
         public void Scan(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeid = GetSpaceshipId(data.Json);
+            var maybeid = GetSpaceshipId(response, data.Json);
             if (maybeid == null)
             {
-                response.Data["error"] = "Could not find spaceship for given token";
-                response.Send(500);
                 return;
             }
 
@@ -509,11 +518,9 @@ namespace SGame
         private int intersectionParamCheck(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeid = GetSpaceshipId(data.Json);
+            var maybeid = GetSpaceshipId(response, data.Json);
             if (maybeid == null)
             {
-                response.Data["error"] = "Could not find spaceship for given token";
-                response.Send(500);
                 return -1;
             }
 
@@ -591,7 +598,7 @@ namespace SGame
 
         public void Sudo(ApiResponse response, ApiData data)
         {
-            var id = GetSpaceshipId(data.Json);
+            var id = GetSpaceshipId(response, data.Json);
             if (id == null)
             {
                 response.Data["error"] = "Could not find spaceship (did you pass a valid `token`?)";
