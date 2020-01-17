@@ -347,7 +347,7 @@ namespace SGame
             scanWidth = (Math.PI * scanWidth) / 180.0;
 
             // We want the radius of the circle, such that a sercular sector of angle 2*scanwidth has area areaScanned
-            float radius = (float)Math.Sqrt(areaScanned / scanWidth);
+            float radius = (float)Math.Sqrt(areaScanned / (2 * scanWidth));
 
             // The circular sector is a triangle whose vertices are pos, and the points at an angle (worldDeg +- scanWidth) and distance radius
             // And a segment between those points on the circle centered at pos with that radius
@@ -454,18 +454,19 @@ namespace SGame
         /// <summary>
         /// Handles a "Shoot" REST request, damaging all ships caught in its blast. pew pew.
         /// </summary>
-        /// <param name="data">The JSON payload of the request, containing the token of the ship, the angle to shoot at, the width of the shot, and the energy to expend on the shot.true </param>
+        /// <param name="data">The JSON payload of the request, containing the token of the ship, the angle to shoot at, the width of the shot, the energy to expend on the shot (determines distance), and damage (scaling) </param>
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("shoot")]
         [ApiParam("token", typeof(string))]
         [ApiParam("direction", typeof(float))]
         [ApiParam("width", typeof(float))]
         [ApiParam("energy", typeof(int))]
+        [ApiParam("damage", typeof(float))]
 
         public void Shoot(ApiResponse response, ApiData data)
         {
             //Check that the arguments for each parameter are valid
-            int id = intersectionParamCheck(response, data);
+            int id = intersectionParamCheck(response, data, true);
             if (id == -1)
             {
                 return;
@@ -473,17 +474,21 @@ namespace SGame
             Spaceship ship = ships[id];
             float width = (float)data.Json["width"];
             float direction = (float)data.Json["direction"];
+            float damageScaling = (float)data.Json["damage"];
 
-            int energy = (int)Math.Min((int)data.Json["energy"], Math.Floor(ship.Energy));
-            ships[id].Energy -= energy; //remove energy for the shot
+            int energy = (int)Math.Min((int)data.Json["energy"], Math.Floor(ship.Energy / damageScaling));
+            ships[id].Energy -= energy * damageScaling; //remove energy for the shot
 
-
-            Console.WriteLine("Shot by " + id + ", pos = " + ships[id].Pos.ToString() + " , direction = " + direction + ", width = " + width + ", energy spent = " + energy);
+            Console.WriteLine("Shot by " + id + ", pos = " + ships[id].Pos.ToString() + " , direction = " + direction + ", width = " + width + ", energy spent = " + energy + ", scaling = " + damageScaling);
 
             List<int> struck = CircleSectorScan(ship.Pos, direction, width, energy);
             JArray struckShips = new JArray();
             foreach (int struckShipId in struck)
             {
+                // ignore our ship
+                if (struckShipId == id)
+                    continue;
+
                 //The api doesnt have a return value for shooting, but ive left this in for now for testing purposes.
                 JToken struckShipInfo = new JObject();
                 struckShipInfo["id"] = struckShipId;
@@ -492,7 +497,7 @@ namespace SGame
                 struckShipInfo["posY"] = ships[struckShipId].Pos.Y;
                 struckShips.Add(struckShipInfo);
 
-                double damage = shotDamage(energy, width, distanceBetweenShips(ship.Pos.X, ship.Pos.Y, ships[struckShipId].Pos.X, ships[struckShipId].Pos.Y));
+                double damage = shotDamage(energy, width, damageScaling, Vector2.Subtract(ships[id].Pos, ships[struckShipId].Pos).Length());
 
                 // We have killed a ship, gain it's kill reward, and move struck ship to the graveyard
                 if (ships[struckShipId].Area - damage < MINIMUM_AREA)
@@ -529,15 +534,27 @@ namespace SGame
         /// <summary>
         /// Calculates the shotDamage applied to a ship. Shot damage drops off exponentially as distance increases, base =1.1
         /// </summary>
-        private int shotDamage(int energy, float width, int distance)
+        private float shotDamage(int energy, float width, float scaling, float distance)
         {
-            return (int)((energy) / ((width / 10) * Math.Pow(1.1, distance)));
+            distance = Math.Max(distance, 1);
+            width = (float)(Math.PI * width) / (float)180.0;
+            return (float)(energy * scaling) / (float)(Math.Max(1, Math.Pow(2, 2 * width)) * Math.Sqrt(distance));
+
+            /* 
+                A new ship shoots at another new ship, using all its 10 energy. It can oneshot the ship at
+                [angle width] -> [oneshot distance]
+                90  20
+                45  180
+                30  352
+                15  800
+                1   1500
+            */
         }
 
         /// <summary>
         /// Verifies the arguments passed in an intersection based request are appropriate.
         /// </summary>
-        private int intersectionParamCheck(ApiResponse response, ApiData data)
+        private int intersectionParamCheck(ApiResponse response, ApiData data, bool requireDamage = false)
         {
             UpdateGameState();
             var maybeid = GetSpaceshipId(response, data.Json);
@@ -577,6 +594,25 @@ namespace SGame
                 response.Send(500);
                 return -1;
             }
+
+            if (requireDamage)
+            {
+                if (data.Json["damage"] == null)
+                {
+                    response.Data["error"] = "Requires parameter: " + "damage";
+                    response.Send(500);
+                    return -1;
+                }
+
+                float damage = (float)data.Json["damage"];
+                if (damage <= 0)
+                {
+                    response.Data["error"] = "Damage scaling must be positive";
+                    response.Send(500);
+                    return -1;
+                }
+            }
+
             return id;
         }
 
