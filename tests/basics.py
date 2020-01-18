@@ -1,5 +1,6 @@
 import requests
 import time
+import pytest
 
 
 def test_disconnect(clients):
