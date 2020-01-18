@@ -309,7 +309,7 @@ testdata = [
 ]
 
 # Test to check scan works correctly with the use of test data and the SUDOApi
-@pytest.mark.parameterize("scandir, scan_width, posX_s2, posY_s2, radius_s2, expected", testdata)
+@pytest.mark.parametrize("scandir, scan_width, posX_s2, posY_s2, radius_s2, expected", testdata)
 def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, radius_s2, expected):
     with clients(2) as cl1, cl2:
         # Getting ID for ship 2, used to later to check if found
