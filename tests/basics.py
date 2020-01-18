@@ -312,10 +312,10 @@ testdata = [
 # Test to check scan works correctly with the use of test data and the SUDOApi
 @pytest.mark.parametrize("scandir, scan_width, posX_s2, posY_s2, radius_s2, expected", testdata)
 def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, radius_s2, expected):
-    with clients(2) as cl1, cl2:
+    with clients(2) as (client1, client2):
         # Getting ID for ship 2, used to later to check if found
-        resp = requests.post(cli2.url + 'getShipInfo', json={
-            'token': cli2.token,
+        resp = requests.post(client2.url + 'getShipInfo', json={
+            'token': client2.token,
         })
         assert resp
 
@@ -324,24 +324,24 @@ def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, radius_s2,
         client2_id = resp_data['id']
 
         # Set first ship to a centre position of 0,0
-        resp = requests.post(cl1.url + 'sudo', json = {
-            'token': cl1.token,
+        resp = requests.post(client1.url + 'sudo', json = {
+            'token': client1.token,
             'posX': 0,
             'posY': 0,
             'area': 1,
         })
         assert resp
         # Set second ship to desired location and setting its area via the test data
-        resp2 = requests.post(cl2.url + 'sudo', json = {
-            'token': cl2.token,
+        resp2 = requests.post(client2.url + 'sudo', json = {
+            'token': client2.token,
             'posX': posX_s2,
             'posY': posY_s2,
             'area': radius_s2,
         })
         assert resp2
         # Scanning from the first ship
-        resp_scan = requests.post(cl1.url + 'scan', json={
-            'token': cl1.token,
+        resp_scan = requests.post(client1.url + 'scan', json={
+            'token': client1.token,
             'direction': scandir,
             'width': scan_width,
             'energy': 5,
