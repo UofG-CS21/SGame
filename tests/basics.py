@@ -292,9 +292,12 @@ def test_sudo_fail(server):
 
 # Test data for the fixture
 testdata = [
-    (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
-    (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
-    (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
+    # Test data 1: Check for ship on top of the other ship
+    (0, 30, 0, 0, 10, False),
+    # Test data 2: Test for general scan
+    (0, 30, 2, 0, 2, True),
+    # Test data 3: Test for ship outside scan region
+    (180, 30, 2, 0, 2, False),
     (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
     (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
     (scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
