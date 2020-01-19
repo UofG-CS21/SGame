@@ -309,6 +309,59 @@ namespace SGame
         }
 
         /// <summary>
+        /// Casts a ray to a circle, checking for the intersection points.
+        /// Returns true if any intersection is found, setting `inters1` or both `inters1` and `inters2` appropriately.
+        /// If both `inters1` and `inters2` are outputted, `inters1` is the intersection point nearest to `rayOrigin`.
+        /// </summary>
+        private static bool RaycastCircle(Vector2 rayOrigin, double rayDir, Vector2 circleCenter, double circleRadius,
+            out Vector2? inters1, out Vector2? inters2)
+        {
+            // ray: P = rayOrigin + [cos(rayDir), sin(rayDir)] * t, t >= 0
+            // circle: dot(Q, Q) = circleRadius^2, where Q = P - circleCenter
+            // Let Q = rayOrigin + [cos(rayDir), sin(rayDir)] * t - circleCenter, t >= 0
+            // then solve for t
+            var oc = rayOrigin - circleCenter;
+            var rd = DirVec(rayDir);
+
+            double c1 = 2.0 * Vector2.Dot(rd, rd);
+            double c2 = 2.0 * (rd.X + rd.Y);
+            double c3 = Vector2.Dot(oc, oc) - circleRadius * circleRadius;
+            double delta = c2 * c2 - 2.0 * c1 * c3;
+            switch (Math.Sign(delta))
+            {
+                case 1:
+                    double sqrtDelta = Math.Sqrt(delta);
+                    inters1 = rayOrigin + rd * (float)((-c2 - sqrtDelta) / c1);
+                    inters2 = rayOrigin + rd * (float)((-c2 + sqrtDelta) / c1);
+                    return true;
+                case 0:
+                    inters1 = rayOrigin + rd * (float)(-c2 / c1);
+                    inters2 = null;
+                    return true;
+                default: // -1
+                    inters1 = null;
+                    inters2 = null;
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Finds the two tangent points on a circle from an external point.
+        /// </summary>
+        private static void CircleTangents(Vector2 circleCenter, double circleRadius, Vector2 point, out Vector2 tg1, out Vector2 tg2)
+        {
+            // Consider the segment from `point` to `circleCenter` and the triangles it forms with the two radii from
+            // `circleCenter` to the tangents. Then if alpha is the angle between a radius and the line between the two centers,
+            // alpha = arccos(adj / hyp) = arccos(radius / centerDist)
+            // From that angle you can calculate the bisector angle at the external point, then the two tangent points as needed.
+            Vector2 centerDelta = circleCenter - point;
+            double bisectAngle = Math.PI * 0.5 - Math.Acos(circleRadius / centerDelta.Length());
+            double centerAngle = Math.Atan2(centerDelta.Y, centerDelta.X);
+            tg1 = circleCenter + DirVec(bisectAngle - centerAngle) * (float)circleRadius;
+            tg2 = circleCenter + DirVec((Math.PI - bisectAngle) - centerAngle) * (float)circleRadius;
+        }
+
+        /// <summary>
         /// Returns a list of ID's of ships that lie within a triangle with one vertex at pos, the center of its opposite side
         /// is at an angle of worldDeg degrees from the vertex, its two other sides are an angle scanWidth from this point, and
         /// its area will be equal to SCAN_ENERGY_SCALING_FACTOR times the energy spent
@@ -364,6 +417,14 @@ namespace SGame
         public static double Deg2Rad(double deg)
         {
             return deg * Math.PI / 180.0;
+        }
+
+        /// <summary>
+        /// Makes a direction vector out of an angle.
+        /// </summary>
+        private static Vector2 DirVec(double direction)
+        {
+            return new Vector2((float)Math.Cos(direction), (float)Math.Sin(direction));
         }
 
         /// <summary>
