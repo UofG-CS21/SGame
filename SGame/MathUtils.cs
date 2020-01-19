@@ -16,5 +16,21 @@ namespace SGame
             if (angle < 0.0) angle = (2.0 * Math.PI) - angle;
             return angle;
         }
+
+        /// <summary>
+        /// Checks two numbers for equality within a tolerance.
+        /// </summary>
+        public static bool ToleranceEquals<T>(T a, T b, T tolerance)
+        {
+            return Math.Abs(a - b) <= tolerance;
+        }
+
+        /// <summary>
+        /// Makes a direction vector out of an angle in radians.
+        /// </summary>
+        private static Vector2 DirVec(double direction)
+        {
+            return new Vector2((float)Math.Cos(direction), (float)Math.Sin(direction));
+        }
     }
 }

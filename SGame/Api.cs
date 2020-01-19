@@ -321,7 +321,7 @@ namespace SGame
             // Let Q = rayOrigin + [cos(rayDir), sin(rayDir)] * t - circleCenter, t >= 0
             // then solve for t
             var oc = rayOrigin - circleCenter;
-            var rd = DirVec(rayDir);
+            var rd = MathUtils.DirVec(rayDir);
 
             double c1 = 2.0 * Vector2.Dot(rd, rd);
             double c2 = 2.0 * (rd.X + rd.Y);
@@ -347,27 +347,130 @@ namespace SGame
 
         /// <summary>
         /// Finds the two tangent points on a circle from an external point.
+        /// `bisectAngle` will be set to the angle (0 to PI/2, in radians) between
+        /// the line betwen `circleCenter` and `point` and one of the two tangents.
         /// </summary>
-        private static void CircleTangents(Vector2 circleCenter, double circleRadius, Vector2 point, out Vector2 tg1, out Vector2 tg2)
+        private static void CircleTangents(Vector2 circleCenter, double circleRadius, Vector2 point, out Vector2 tg1, out Vector2 tg2, out double bisectAngle)
         {
             // Consider the segment from `point` to `circleCenter` and the triangles it forms with the two radii from
             // `circleCenter` to the tangents. Then if alpha is the angle between a radius and the line between the two centers,
             // alpha = arccos(adj / hyp) = arccos(radius / centerDist)
             // From that angle you can calculate the bisector angle at the external point, then the two tangent points as needed.
             Vector2 centerDelta = circleCenter - point;
-            double bisectAngle = Math.PI * 0.5 - Math.Acos(circleRadius / centerDelta.Length());
+            bisectAngle = Math.PI * 0.5 - Math.Acos(circleRadius / centerDelta.Length());
             double centerAngle = Math.Atan2(centerDelta.Y, centerDelta.X);
-            tg1 = circleCenter + DirVec(bisectAngle - centerAngle) * (float)circleRadius;
-            tg2 = circleCenter + DirVec((Math.PI - bisectAngle) - centerAngle) * (float)circleRadius;
+            tg1 = circleCenter + MathUtils.DirVec(bisectAngle - centerAngle) * (float)circleRadius;
+            tg2 = circleCenter + MathUtils.DirVec((Math.PI - bisectAngle) - centerAngle) * (float)circleRadius;
         }
+
+        /// <summary>
+        /// Returns true if the given point sits on top of a circle arc centered at `arcCenter`, with half-width `arcWidth` radians
+        /// around `arcDir` and radius `arcRadius`. Outputs the angle on the arc if this is the case.
+        /// </summary>
+        private static bool IsPointOnArc(Vector2 point, Vector2 arcCenter, double arcDir, double arcWidth, double arcRadius, out double onArcAngle)
+        {
+            // arc: P = arcCenter + arcRadius * [cos(alpha), sin(alpha)], where alpha = arcDir + arcWidth * t, where -1 <= t <= 1
+            // let point = P...
+            Vector2 dirVec = (point - arcCenter) * (float)(1.0 / arcRadius);
+            if (!MathUtils.ToleranceEquals(dirVec.Length(), 1.0, 0.001))
+            {
+                // Can't be a valid direction vector
+                return false;
+            }
+            double angle = Math.Atan2(dirVec.Y, dirVec.X) - arcDir;
+            if (angle < -arcWidth || angle > arcWidth)
+            {
+                return false;
+            }
+            onArcAngle = angle;
+            return true;
+        }
+
+        /// <summary>
+        /// Returns whether the given point sits on the ship's shield or not.
+        /// </summary>
+        private static bool IsPointOnShield(Spaceship ship, Vector2 point)
+        {
+            double arcAngle;
+            return IsPointOnArc(point, ship.Pos, ship.ShieldDir, ship.ShieldWidth, ship.Radius(), out arcAngle);
+        }
+
+        /// <summary>
+        /// Returns the percentage (0.0 to 1.0) of damage covered by a ship's shield when it is being shot
+        /// from `shotOrigin` with a cone of half-width `shotWidth` radians and length `shotRadius`.
+        /// </summary>
+        private static double ShieldCover(Spaceship ship, Vector2 shotOrigin, double shotDir, double shotWidth, double shotRadius)
+        {
+            shotWidth = Math.Abs(shotWidth); // Or things WILL break!!
+            const double shipR = ship.Radius();
+
+            // Find the two tangent points from the origin of the shot to the ship
+            Vector2 tg1, tg2;
+            double tgAngle;
+            CircleTangents(ship.Pos, shipR, shotOrigin, out tg1, out tg2, out tgAngle);
+
+            // Bring the two angles formed by the shot tangents from
+            // "center axis" space (= reference is the line between the center of the ship and the shot origin)
+            // to "shot cone" space (= reference is the center axis of the shot cone)
+            // Mark them "left" and "right", where left <= right always - but note that they can both be positive and/or negative!
+            double shipCenterAngle = Math.Atan2(ship.Pos.Y, ship.Pos.X);
+            double CAS2SS = shipCenterAngle - shotDir;
+            double tgLeftAngleSS = -tgAngle + CAS2SS, tgRightAngleSS = tgAngle + CAS2SS;
+            if (tgLeftAngleSS > tgRightAngleSS)
+            {
+                (tgLeftAngleSS, tgRightAngleSS) = (tgRightAngleSS, tgLeftAngleSS);
+            }
+
+            // Now need to raycast from the shot origin to the ship.
+            // - Everything "behind" the tangent points is covered by the rest of the ship.
+            // - On the left and right hand sides of the cones, one only checks for shielding up to:
+            //   - The side of the shot cone; or
+            //   - The tangent on that side
+            // Note that "left" and "right" edges are specular in the direction they choose between the edge of the shot cone and the tangent on that side!
+            double leftRayAngleSS = Math.Max(-shotWidth, tgLeftAngleSS);
+            double rightRayAngleSS = Math.Min(tgRightAngleSS, shotWidth);
+
+            Vector2? leftHitNear, leftHitFar;
+            bool leftHit = RaycastCircle(shotOrigin, shotDir - leftRayAngleSS, ship.Pos, shipR, out leftHitNear, out leftHitFar);
+            Vector2? rightHitNear, rightHitFar;
+            bool rightHit = RaycastCircle(shotOrigin, shotDir + rightRayAngleSS, ship.Pos, shipR, out rightHitNear, out rightHitFar);
+
+            if (!leftHit || !rightHit)
+            {
+                // Raycast missed - this should never happen here!
+                throw new InvalidOperationException("Raycast missed during shield calculation!");
+            }
+
+            // Now consider the ray hits. We only care about the hits nearest to the shot origin
+            // (that's where the shot would hit!); need to check if the points there would be shielded or not
+            // Only if:
+            // - *Both* points are shielded
+            // - The point on the ship circle exactly in the middle between the two raycasted points is shielded.
+            //   (why? Consider the case where the two side points are shielded, but the shield is facing the opposite direction!)
+            //
+            // then the shield fully absorbed the impact.
+            Vector2 leftHitShipPos = leftHitNear.Value - ship.Pos, rightHitShipPos = rightHitNear.Value - ship.Pos;
+            double leftHitShipAngle = Math.Atan2(leftHitShipPos.Y, leftHitShipPos.X), rightHitShipAngle = Math.Atan2(rightHitShipPos.Y, rightHitShipPos.X);
+            double midHitShipAngle = (leftHitShipAngle + rightHitShipAngle) / 2;
+            Vector2 midHitPoint = ship.Pos + MathUtils.DirVec(midHitShipAngle) * shipR;
+
+            return IsPointOnShield(ship, leftHitNear.Value)
+                && IsPointOnShield(ship, rightHitNear.Value)
+                && IsPointOnShield(ship, midHitPoint);
+
+            // FIXME: Need to also take distances into account - the hit points may have to be swapped with the intersection
+            // points between the round "cap" arc of the cone and the spaceship circle!!
+
+            // TODO(?): Implement partial shielding - where a fraction 0 < x < 1 is returned for a partial cover
+        }
+
+        private int SCAN_ENERGY_SCALING_FACTOR = 1000;
 
         /// <summary>
         /// Returns a list of ID's of ships that lie within a triangle with one vertex at pos, the center of its opposite side
         /// is at an angle of worldDeg degrees from the vertex, its two other sides are an angle scanWidth from this point, and
         /// its area will be equal to SCAN_ENERGY_SCALING_FACTOR times the energy spent
         /// </summary>
-
-        private int SCAN_ENERGY_SCALING_FACTOR = 1000;
         public List<int> CircleSectorScan(Vector2 pos, double worldDeg, double scanWidth, int energySpent)
         {
             // The radius of the cone will be such that the area scanned is energySpent * SCAN_ENERGY_SCALING_FACTOR
@@ -417,14 +520,6 @@ namespace SGame
         public static double Deg2Rad(double deg)
         {
             return deg * Math.PI / 180.0;
-        }
-
-        /// <summary>
-        /// Makes a direction vector out of an angle.
-        /// </summary>
-        private static Vector2 DirVec(double direction)
-        {
-            return new Vector2((float)Math.Cos(direction), (float)Math.Sin(direction));
         }
 
         /// <summary>
