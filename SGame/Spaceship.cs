@@ -46,16 +46,6 @@ namespace SGame
         /// </summary>
         public int HitPoints { get; set; }
 
-        /// <summary>
-        /// Normalizes an angle in radians, i.e. makes it positive and between 0 and `clampValue`.
-        /// </summary>
-        private static double NormalizeAngle(double angle, double clampValue)
-        {
-            angle = angle % clampValue;
-            if (angle < 0.0) angle = (2.0 * Math.PI) - angle;
-            return angle;
-        }
-
         private double _shieldDir;
 
         /// <summary>
@@ -71,7 +61,7 @@ namespace SGame
             }
             set
             {
-                _shieldDir = NormalizeAngle(value, 2.0 * Math.PI);
+                _shieldDir = MathUtils.NormalizeAngle(value, 2.0 * Math.PI);
             }
         }
 
@@ -89,7 +79,7 @@ namespace SGame
             }
             set
             {
-                _shieldWidth = NormalizeAngle(value, Math.PI);
+                _shieldWidth = MathUtils.NormalizeAngle(value, Math.PI);
             }
         }
 
