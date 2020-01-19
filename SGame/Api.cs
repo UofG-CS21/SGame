@@ -375,15 +375,11 @@ namespace SGame
             if (!MathUtils.ToleranceEquals(dirVec.Length(), 1.0, 0.001))
             {
                 // Can't be a valid direction vector
+                onArcAngle = double.NaN;
                 return false;
             }
-            double angle = Math.Atan2(dirVec.Y, dirVec.X) - arcDir;
-            if (angle < -arcWidth || angle > arcWidth)
-            {
-                return false;
-            }
-            onArcAngle = angle;
-            return true;
+            onArcAngle = Math.Atan2(dirVec.Y, dirVec.X) - arcDir;
+            return (-arcWidth <= onArcAngle && onArcAngle <= arcWidth);
         }
 
         /// <summary>
@@ -399,10 +395,10 @@ namespace SGame
         /// Returns the percentage (0.0 to 1.0) of damage covered by a ship's shield when it is being shot
         /// from `shotOrigin` with a cone of half-width `shotWidth` radians and length `shotRadius`.
         /// </summary>
-        private static double ShieldCover(Spaceship ship, Vector2 shotOrigin, double shotDir, double shotWidth, double shotRadius)
+        private static double ShieldingAmount(Spaceship ship, Vector2 shotOrigin, double shotDir, double shotWidth, double shotRadius)
         {
             shotWidth = Math.Abs(shotWidth); // Or things WILL break!!
-            const double shipR = ship.Radius();
+            double shipR = ship.Radius();
 
             // Find the two tangent points from the origin of the shot to the ship
             Vector2 tg1, tg2;
@@ -452,11 +448,12 @@ namespace SGame
             Vector2 leftHitShipPos = leftHitNear.Value - ship.Pos, rightHitShipPos = rightHitNear.Value - ship.Pos;
             double leftHitShipAngle = Math.Atan2(leftHitShipPos.Y, leftHitShipPos.X), rightHitShipAngle = Math.Atan2(rightHitShipPos.Y, rightHitShipPos.X);
             double midHitShipAngle = (leftHitShipAngle + rightHitShipAngle) / 2;
-            Vector2 midHitPoint = ship.Pos + MathUtils.DirVec(midHitShipAngle) * shipR;
+            Vector2 midHitPoint = ship.Pos + Vector2.Multiply(MathUtils.DirVec(midHitShipAngle), (float)shipR);
 
-            return IsPointOnShield(ship, leftHitNear.Value)
+            bool shielded = IsPointOnShield(ship, leftHitNear.Value)
                 && IsPointOnShield(ship, rightHitNear.Value)
                 && IsPointOnShield(ship, midHitPoint);
+            return shielded ? 1.0 : 0.0;
 
             // FIXME: Need to also take distances into account - the hit points may have to be swapped with the intersection
             // points between the round "cap" arc of the cone and the spaceship circle!!
@@ -532,7 +529,6 @@ namespace SGame
         [ApiParam("direction", typeof(float))]
         [ApiParam("width", typeof(float))]
         [ApiParam("energy", typeof(int))]
-
         public void Scan(ApiResponse response, ApiData data)
         {
             UpdateGameState();
@@ -612,7 +608,6 @@ namespace SGame
         [ApiParam("direction", typeof(float))]
         [ApiParam("width", typeof(float))]
         [ApiParam("energy", typeof(int))]
-
         public void Shoot(ApiResponse response, ApiData data)
         {
             //Check that the arguments for each parameter are valid
@@ -622,8 +617,8 @@ namespace SGame
                 return;
             }
             Spaceship ship = ships[id];
-            float width = (float)data.Json["width"];
-            float direction = (float)data.Json["direction"];
+            double width = (double)data.Json["width"];
+            double direction = (double)data.Json["direction"];
 
             int energy = (int)Math.Min((int)data.Json["energy"], Math.Floor(ship.Energy));
             ships[id].Energy -= energy; //remove energy for the shot
@@ -637,16 +632,22 @@ namespace SGame
                 // ignore our ship
                 if (struckShipId == id)
                     continue;
+                var struckShip = ships[struckShipId];
+                double shipDistance = (struckShip.Pos - ship.Pos).Length();
 
-                ships[struckShipId].HitPoints -= shotDamage(energy, width, distanceBetweenShips(ship.Pos.X, ship.Pos.Y, ships[struckShipId].Pos.X, ships[struckShipId].Pos.Y));
+                // FIXME: What is the real maximum radius of a shot? Assuming distance between ships here...
+                double shielding = ShieldingAmount(struckShip, ship.Pos, direction, width, shipDistance);
+                Console.WriteLine(struckShipId + " shielded itself for " + shielding * 100.0 + "% of " + id + "'s shot");
+
+                struckShip.HitPoints -= (int)(ShotDamage(energy, (float)width, (int)shipDistance) * (1.0 - shielding));
 
                 //The api doesnt have a return value for shooting, but ive left this in for now for testing purposes.
                 JToken struckShipInfo = new JObject();
                 struckShipInfo["id"] = struckShipId;
-                struckShipInfo["area"] = ships[struckShipId].Area;
-                struckShipInfo["posX"] = ships[struckShipId].Pos.X;
-                struckShipInfo["posY"] = ships[struckShipId].Pos.Y;
-                struckShipInfo["hp"] = ships[struckShipId].HitPoints;
+                struckShipInfo["area"] = struckShip.Area;
+                struckShipInfo["posX"] = struckShip.Pos.X;
+                struckShipInfo["posY"] = struckShip.Pos.Y;
+                struckShipInfo["hp"] = struckShip.HitPoints;
                 struckShips.Add(struckShipInfo);
             }
 
@@ -684,9 +685,9 @@ namespace SGame
         /// <summary>
         /// Calculates the shotDamage applied to a ship. Shot damage drops off exponentially as distance increases, base =1.1
         /// </summary>
-        private int shotDamage(int energy, float width, int distance)
+        private double ShotDamage(int energy, double width, int distance)
         {
-            return (int)((energy) / ((width / 10) * Math.Pow(1.1, distance)));
+            return Math.Floor(energy / ((width / 10) * Math.Pow(1.1, distance)));
         }
 
         /// <summary>
@@ -722,11 +723,6 @@ namespace SGame
                 return -1;
             }
             return id;
-        }
-
-        private int distanceBetweenShips(float x1, float y1, float x2, float y2)
-        {
-            return (int)Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
         }
 
 #if DEBUG

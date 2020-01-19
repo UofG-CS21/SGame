@@ -1,4 +1,5 @@
-using System.Math;
+using System;
+using System.Numerics;
 
 namespace SGame
 {
@@ -20,7 +21,7 @@ namespace SGame
         /// <summary>
         /// Checks two numbers for equality within a tolerance.
         /// </summary>
-        public static bool ToleranceEquals<T>(T a, T b, T tolerance)
+        public static bool ToleranceEquals(double a, double b, double tolerance)
         {
             return Math.Abs(a - b) <= tolerance;
         }
@@ -28,7 +29,7 @@ namespace SGame
         /// <summary>
         /// Makes a direction vector out of an angle in radians.
         /// </summary>
-        private static Vector2 DirVec(double direction)
+        public static Vector2 DirVec(double direction)
         {
             return new Vector2((float)Math.Cos(direction), (float)Math.Sin(direction));
         }
