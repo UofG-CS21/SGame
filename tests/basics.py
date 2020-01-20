@@ -315,7 +315,10 @@ testdata = [
     (0, 45, 1500, 0, 10, 100, 1000, False),
 
     # Case 9: Ship ouside of the scan
-    (0, 15, 900, 0, 10, 100, 1000, True)
+    (0, 15, 900, 0, 10, 100, 1000, True),
+
+    # Case 10: Ship on upper boundary scan
+    (0, 15, 1887.8151, 505.838353, 10, 100, 1000, True)
 ]
 
 # Test to check scan works correctly with the use of test data and the SUDOApi
