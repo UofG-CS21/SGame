@@ -306,26 +306,28 @@ testdata = [
     # Case 3: Test for ship outside scan region i.e scanning the opposite direction
     (180, 30, 2, 0, 2, 1, 5, False),
 
-    # Case 4: Ship is on the side boundary of the scan
-
-    # Case 5: Ship's centre is not in scan area
-
-    # Case 6: Ship is on the end boundry of the scan
-
-    # Case 7: Ship center is within circular segment, but not touching it or the triangle
+    # Case 4: Ship center is within circular segment, but not touching it or the triangle
     (0, 45, 850, 0, 6 ,103, 1000, True),
 
-    # Case 8: Ship outwith circular segment
+    # Case 5: Ship outwith circular segment
     (0, 45, 1500, 0, 10, 100, 1000, False),
 
-    # Case 9: Ship ouside of the scan
+    # Case 6: Ship ouside of the scan
     (0, 15, 900, 0, 10, 100, 1000, True),
 
-    # Case 10: Ship on upper boundary scan
+    # Case 7: Ship on upper boundary scan
     (0, 15, 1887.8151, 505.838353, 10, 100, 1000, True),
 
-    # Case 10.1: Ship on lower boundary scan
+    # Case 8: Ship on lower boundary scan
     (0, 15, 1887.8151, -505.838353, 10, 100, 1000, True)
+
+    # Case 9: Ship is on the end boundry of the scan
+
+    # Case 10: Ship is on the circular section
+
+    # Case 11: Ship is behind the scan area
+
+    # Case 12: Ship is on the circular center, but center is outwith scan
 ]
 
 # Test to check scan works correctly with the use of test data and the SUDOApi
