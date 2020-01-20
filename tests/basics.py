@@ -312,7 +312,10 @@ testdata = [
     (0, 45, 850, 0, 6 ,103, 1000, True),
 
     # Case 8: Ship outwith circular segment
-    (0, 45, 1500, 0, 10, 100, 1000, False)
+    (0, 45, 1500, 0, 10, 100, 1000, False),
+
+    # Case 9: Ship ouside of the scan
+    (0, 15, 900, 0, 10, 100, 1000, True)
 ]
 
 # Test to check scan works correctly with the use of test data and the SUDOApi
