@@ -305,11 +305,14 @@ testdata = [
     # Case 5: Ship's centre is not in scan area
     #(scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
     # Case 6: Ship is on the end boundry of the scan
-    #(scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
-    #(scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
-    #(scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
+
+    # scandir, scan_width, posX_s2, posY_s2, radius_s2, area_s1, energy, expected"
+
     # Case 7: Ship center is within circular segment, but not touching it or the triangle
     (0, 45, 850, 0, 6 ,103, 1000, True)
+
+    # Case 8: Ship outwith circular segment
+    (0, 45 -1, -1, 10, 100, 1000, False)
 ]
 
 # Test to check scan works correctly with the use of test data and the SUDOApi
