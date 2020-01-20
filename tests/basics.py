@@ -295,7 +295,7 @@ def test_sudo_fail(server):
 # Test data for the fixture
 testdata = [
 
-    # FORMAT : scandir, scan_width, posX_s2, posY_s2, radius_s2, area_s1, energy, expected
+    # FORMAT : scandir, scan_width, posX_s2, posY_s2, area_s2, area_s1, energy, expected
 
     # Case 1: ship is on top of the other ship
     (0, 30, 0, 0, 10, 1, 5, True),
@@ -331,8 +331,8 @@ testdata = [
 ]
 
 # Test to check scan works correctly with the use of test data and the SUDOApi
-@pytest.mark.parametrize("scandir, scan_width, posX_s2, posY_s2, radius_s2, area_s1, energy, expected", testdata)
-def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, radius_s2, area_s1, energy, expected):
+@pytest.mark.parametrize("scandir, scan_width, posX_s2, posY_s2, area_s2, area_s1, energy, expected", testdata)
+def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, area_s2, area_s1, energy, expected):
     with clients(2) as (client1, client2):
         # Getting ID for ship 2, used to later to check if found
         resp = requests.post(client2.url + 'getShipInfo', json={
@@ -364,7 +364,7 @@ def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, radius_s2,
             'token': client2.token,
             'posX': posX_s2,
             'posY': posY_s2,
-            'area': radius_s2,
+            'area': area_s2,
         })
         assert resp2
         # Scanning from the first ship
