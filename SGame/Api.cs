@@ -346,6 +346,45 @@ namespace SGame
         }
 
         /// <summary>
+        /// Calculates the intersection point[s] between two circles.
+        /// Returns true if any intersection is found, setting `inters1` or both `inters1` and `inters2` appropriately.
+        /// </summary>
+        private static bool CircleCircleIntersection(Vector2 center1, double radius1, Vector2 center2, double radius2,
+            out Vector2? inters1, out Vector2? inters2)
+        {
+            // See: https://math.stackexchange.com/a/1367732
+            double rDist = (center1 - center2).Length();
+            int distSign = Math.Sign(rDist - (radius1 + radius2));
+            if (distSign == 1)
+            {
+                inters1 = null;
+                inters2 = null;
+                return false;
+            }
+            else
+            {
+                double r1r2Sq = radius1 * radius1 - radius2 * radius2;
+                double rDistSq = rDist * rDist;
+                double c1 = r1r2Sq / (2.0 * rDistSq);
+                Vector2 k1 = Vector2.Multiply(center1 + center2, 0.5f)
+                             + Vector2.Multiply(center2 - center1, (float)c1);
+                if (distSign == 0)
+                {
+                    inters1 = k1;
+                    inters2 = null;
+                }
+                else
+                {
+                    double c2 = 0.5 * Math.Sqrt(2.0 * (radius1 * radius1 + radius2 * radius2) / rDistSq - (r1r2Sq * r1r2Sq) / (rDistSq * rDistSq) - 1.0);
+                    Vector2 k2 = Vector2.Multiply(new Vector2(center2.Y - center1.Y, center1.X - center2.X), (float)c2);
+                    inters1 = k1 - k2;
+                    inters2 = k1 + k2;
+                }
+                return true;
+            }
+        }
+
+        /// <summary>
         /// Finds the two tangent points on a circle from an external point.
         /// `bisectAngle` will be set to the angle (0 to PI/2, in radians) between
         /// the line betwen `circleCenter` and `point` and one of the two tangents.
@@ -401,9 +440,9 @@ namespace SGame
             double shipR = ship.Radius();
 
             // Find the two tangent points from the origin of the shot to the ship
-            Vector2 tg1, tg2;
+            Vector2 tgLeft, tgRight;
             double tgAngle;
-            CircleTangents(ship.Pos, shipR, shotOrigin, out tg1, out tg2, out tgAngle);
+            CircleTangents(ship.Pos, shipR, shotOrigin, out tgLeft, out tgRight, out tgAngle);
 
             // Bring the two angles formed by the shot tangents from
             // "center axis" space (= reference is the line between the center of the ship and the shot origin)
@@ -415,16 +454,56 @@ namespace SGame
             if (tgLeftAngleSS > tgRightAngleSS)
             {
                 (tgLeftAngleSS, tgRightAngleSS) = (tgRightAngleSS, tgLeftAngleSS);
+                (tgLeft, tgRight) = (tgRight, tgLeft);
             }
+
+            // If the circle arc "cap" of the shoot cone intersects with the ship circle, take the intersection points
+            // into account for raycasting calculations:
+            // - Calculate the world-space angles from the shot origin to each point
+            // - Bring the angles to "shot cone" space (= reference is the center axis of the shot cone)
+            // - Mark them "left" and "right", where left <= right always - but note that they can both be positive and/or negative!
+            Vector2? capHitLeft, capHitRight;
+            double leftCapAngleSS = Double.NegativeInfinity, rightCapAngleSS = Double.PositiveInfinity;
+            if (CircleCircleIntersection(shotOrigin, shotRadius, ship.Pos, shipR, out capHitLeft, out capHitRight))
+            {
+                // FIXME: Is the "only one point is tangent between the shot cap and the ship arc" edge case properly handled?
+                if (capHitRight == null) capHitRight = capHitLeft;
+
+                // First put the intersection points so that the "left" cap hit point is nearest to the "left" tangent point,
+                // and the "right" cap point is nearest to the "right" tangent point;
+
+                double capDist1 = (capHitLeft.Value - tgLeft).Length(), capDist2 = (capHitRight.Value - tgLeft).Length();
+                if (capDist2 < capDist1)
+                {
+                    (capHitLeft, capHitRight) = (capHitRight, capHitLeft);
+                }
+
+                // Now calculate angles between the cap hits and the shot origin and bring them from world-space to shot-space
+                // **Only if the distance between the shot origin and the respective tangent point is greater than the distance
+                //   between the shot origin and the respective cap hit point the cap hit point angles are using during
+                //   raycast angle calculations!!** (draw a picture if this sentence is not clear)
+                Vector2 leftCapDelta = capHitLeft.Value - shotOrigin, rightCapDelta = capHitRight.Value - shotOrigin;
+                Vector2 leftTgDelta = tgLeft - shotOrigin, rightTgDelta = tgRight - shotOrigin;
+                if (leftCapDelta.LengthSquared() < leftTgDelta.LengthSquared())
+                {
+                    leftCapAngleSS = Math.Atan2(leftCapDelta.Y, leftCapDelta.X) - shotDir;
+                }
+                if (rightCapDelta.LengthSquared() < rightTgDelta.LengthSquared())
+                {
+                    rightCapAngleSS = Math.Atan2(rightCapDelta.Y, rightCapDelta.X) - shotDir;
+                }
+            }
+            // else just ignore the cone cap -> the values being set to +/-infinity will do the trick
 
             // Now need to raycast from the shot origin to the ship.
             // - Everything "behind" the tangent points is covered by the rest of the ship.
             // - On the left and right hand sides of the cones, one only checks for shielding up to:
             //   - The side of the shot cone; or
-            //   - The tangent on that side
+            //   - The tangent on that side; or
+            //   - The intersection between the circle arc "cap" of the shoot cone and the circle of the ship
             // Note that "left" and "right" edges are specular in the direction they choose between the edge of the shot cone and the tangent on that side!
-            double leftRayAngleSS = Math.Max(-shotWidth, tgLeftAngleSS);
-            double rightRayAngleSS = Math.Min(tgRightAngleSS, shotWidth);
+            double leftRayAngleSS = Math.Max(Math.Max(-shotWidth, tgLeftAngleSS), leftCapAngleSS);
+            double rightRayAngleSS = Math.Min(Math.Min(tgRightAngleSS, shotWidth), rightCapAngleSS);
 
             Vector2? leftHitNear, leftHitFar;
             bool leftHit = RaycastCircle(shotOrigin, shotDir - leftRayAngleSS, ship.Pos, shipR, out leftHitNear, out leftHitFar);
@@ -454,9 +533,6 @@ namespace SGame
                 && IsPointOnShield(ship, rightHitNear.Value)
                 && IsPointOnShield(ship, midHitPoint);
             return shielded ? 1.0 : 0.0;
-
-            // FIXME: Need to also take distances into account - the hit points may have to be swapped with the intersection
-            // points between the round "cap" arc of the cone and the spaceship circle!!
 
             // TODO(?): Implement partial shielding - where a fraction 0 < x < 1 is returned for a partial cover
         }
