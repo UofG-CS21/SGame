@@ -294,19 +294,23 @@ def test_sudo_fail(server):
 
 # Test data for the fixture
 testdata = [
+
+    # FORMAT : scandir, scan_width, posX_s2, posY_s2, radius_s2, area_s1, energy, expected
+
     # Case 1: ship is on top of the other ship
     (0, 30, 0, 0, 10, 1, 5, True),
+
     # Case 2: Ship adjacent and should be detected
     (0, 30, 2, 0, 2, 1, 5, True),
+
     # Case 3: Test for ship outside scan region i.e scanning the opposite direction
     (180, 30, 2, 0, 2, 1, 5, False),
-    # Case 4: Ship is on the side boundary of the scan
-    #(scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
-    # Case 5: Ship's centre is not in scan area
-    #(scandir, scan_width, posX_s2, posY_s2, radius_s2, expected_outcome),
-    # Case 6: Ship is on the end boundry of the scan
 
-    # scandir, scan_width, posX_s2, posY_s2, radius_s2, area_s1, energy, expected"
+    # Case 4: Ship is on the side boundary of the scan
+
+    # Case 5: Ship's centre is not in scan area
+
+    # Case 6: Ship is on the end boundry of the scan
 
     # Case 7: Ship center is within circular segment, but not touching it or the triangle
     (0, 45, 850, 0, 6 ,103, 1000, True),
@@ -318,7 +322,10 @@ testdata = [
     (0, 15, 900, 0, 10, 100, 1000, True),
 
     # Case 10: Ship on upper boundary scan
-    (0, 15, 1887.8151, 505.838353, 10, 100, 1000, True)
+    (0, 15, 1887.8151, 505.838353, 10, 100, 1000, True),
+
+    # Case 10.1: Ship on lower boundary scan
+    (0, 15, 1887.8151, -505.838353, 10, 100, 1000, True)
 ]
 
 # Test to check scan works correctly with the use of test data and the SUDOApi
