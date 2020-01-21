@@ -325,14 +325,13 @@ testdata = [
     (0, 45, 900, 0, 0, 900, 1000, True),
 
     # Case 10: Ship is on the circular section
+    (0, 45, 90, 0, 10, 90, 1000, True),
 
     # Case 11: Ship is behind the scan area
     # Ship is behind and below
     (0, 30, -1196.8268, -690.9883, 5, 100, 1000, False),
     # Ship is behind and above
     (0, 30, -1196.8268, 690.9883, 5, 100, 1000, False)
-    
-    # Case 12: Ship is on the circular center, but center is outwith scan
 ]
 
 # Test to check scan works correctly with the use of test data and the SUDOApi
