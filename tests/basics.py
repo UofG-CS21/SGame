@@ -322,7 +322,7 @@ testdata = [
     (0, 15, 1887.8151, -505.838353, 10, 100, 1000, True),
 
     # Case 9: Ship is on the end boundry of the scan
-    (0, 45, 900, 0, 0, 900, True),
+    (0, 45, 900, 0, 0, 900, 1000, True),
 
     # Case 10: Ship is on the circular section
 
