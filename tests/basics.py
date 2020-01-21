@@ -319,14 +319,18 @@ testdata = [
     (0, 15, 1887.8151, 505.838353, 10, 100, 1000, True),
 
     # Case 8: Ship on lower boundary scan
-    (0, 15, 1887.8151, -505.838353, 10, 100, 1000, True)
+    (0, 15, 1887.8151, -505.838353, 10, 100, 1000, True),
 
     # Case 9: Ship is on the end boundry of the scan
 
     # Case 10: Ship is on the circular section
 
     # Case 11: Ship is behind the scan area
-
+    # Ship is behind and below
+    (0, 30, -1196.8268, -690.9883, 5, 100, 1000, False),
+    # Ship is behind and above
+    (0, 30, -1196.8268, 690.9883, 5, 100, 1000, False)
+    
     # Case 12: Ship is on the circular center, but center is outwith scan
 ]
 
