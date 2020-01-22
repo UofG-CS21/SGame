@@ -61,16 +61,59 @@ namespace SGame.Tests
             bool actual = new Api().CircleSegmentIntersection(circleCenter, circleRadius, segmentCenter, segmentRadius, segmentAngle, segmentWidth);
             Assert.Equal(expected, actual);
         }
-
-
     }
+
+
 
     public class CSITestData : IEnumerable<object[]>
     {
         public IEnumerator<object[]> GetEnumerator()
         {
             //distance between centres is greater then the sum of the two circles radii
-            yield return new object[] { new Vector2(0, 0), 2, new Vector2(-10, 0), 1, Math.PI, Math.PI / 2, false };
+            yield return new object[] { new Vector2(12, 0), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
+
+
+            //Distance between centre is equal to tum of the two circle radii, and:
+            //Ship does not touch sector
+            yield return new object[] { new Vector2(0, 9), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
+
+            //Ship does  touch sector
+            yield return new object[] { new Vector2(9, 0), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, true };
+
+
+            //Distance between center is lesser, but:
+            //ship centre outside circle sector, side 1, circle intersects segment and edges (already covered by previous methods)
+            yield return new object[] { new Vector2(0, 6), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
+
+            //ship centre outside circle sector, side 1, circle does not intersect segment 
+            yield return new object[] { new Vector2(-2, 6), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
+
+            //ship centre outside circle sector, side 2, circle intersects segment and edges (already covered by previous methods)
+            yield return new object[] { new Vector2(0, -6), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
+
+            //ship centre outside circle sector, side 2, circle does not intersect segment
+            yield return new object[] { new Vector2(-2, -6), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
+
+            //ship centre outside circle sector, special case, circle intersects segment. !!!This probably should pass as true!!!
+            yield return new object[] { new Vector2((float)(-1.2), 0), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
+
+            //ship centre outside circle sector, special case, circle does not intersect segment
+            yield return new object[] { new Vector2(-2, 0), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
+
+
+
+            //circle segment fully within ships radius, case 1: centre points differ
+            yield return new object[] { new Vector2((float)(-0.5), 0), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
+
+            //circle segment fully within ships radius, case 2: centre points same
+            yield return new object[] { new Vector2(0, 0), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, true };
+
+
+
+            //same centre points and radius
+            yield return new object[] { new Vector2(0, 0), 4, new Vector2(0, 0), 4, 0, Math.PI / 4, true };
+
+
 
         }
 
