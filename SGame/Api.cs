@@ -314,7 +314,7 @@ namespace SGame
         /// its area will be equal to SCAN_ENERGY_SCALING_FACTOR times the energy spent
         /// </summary>
 
-        private int SCAN_ENERGY_SCALING_FACTOR = 1000;
+        private int SCAN_ENERGY_SCALING_FACTOR = 2000;
         public List<int> CircleSectorScan(Vector2 pos, double worldDeg, double scanWidth, int energySpent)
         {
             // The radius of the cone will be such that the area scanned is energySpent * SCAN_ENERGY_SCALING_FACTOR
@@ -325,7 +325,7 @@ namespace SGame
             scanWidth = (Math.PI * scanWidth) / 180.0;
 
             // We want the radius of the circle, such that a sercular sector of angle 2*scanwidth has area areaScanned
-            float radius = (float)Math.Sqrt(areaScanned / scanWidth);
+            float radius = (float)Math.Sqrt(areaScanned / (2 * scanWidth));
 
             // The circular sector is a triangle whose vertices are pos, and the points at an angle (worldDeg +- scanWidth) and distance radius
             // And a segment between those points on the circle centered at pos with that radius
