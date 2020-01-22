@@ -27,15 +27,9 @@ namespace SGame.Tests
             int point_sign_1 = MathsUtil.pointLineSign(point, triPoint1, triPoint2);
             int point_sign_2 = MathsUtil.pointLineSign(point, triPoint2, triPoint3);
             int point_sign_3 = MathsUtil.pointLineSign(point, triPoint3, triPoint1);
-            //Avoid division by zero errors and normalise.
-            if ((point_sign_1 >= 0 && point_sign_2 >= 0 && point_sign_3 >= 0) || (point_sign_1 <= 0 && point_sign_2 <= 0 && point_sign_3 <= 0))
-            {
-                Assert.Equal(expected, true);
-            }
-            else
-            {
-                Assert.Equal(expected, false);
-            }
+
+            Assert.Equal(expected, ((point_sign_1 >= 0 && point_sign_2 >= 0 && point_sign_3 >= 0) || (point_sign_1 <= 0 && point_sign_2 <= 0 && point_sign_3 <= 0)));
+
         }
 
         [Theory]
