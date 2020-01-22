@@ -103,7 +103,6 @@ def isClose(a, b, err=allowed_fpe):
 
 
 def test_movement(server, clients):
-    return 
     """
     Tests that accelerate/ movement such that a ship can accelerate using an x and y.
     """
