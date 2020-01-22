@@ -1,5 +1,6 @@
 import requests
 import time
+import pytest
 
 
 def test_disconnect(clients):
@@ -289,3 +290,101 @@ def test_sudo_fail(server):
     resp = requests.post(server.url + 'sudo',
                          json={})
     assert not resp
+
+# Test data for the fixture
+testdata = [
+
+    # FORMAT : scandir, scan_width, posX_s2, posY_s2, area_s2, area_s1, energy, expected
+
+    # Case 1: ship is on top of the other ship
+    (0, 30, 0, 0, 10, 1, 5, True),
+
+    # Case 2: Ship adjacent and should be detected
+    (0, 30, 2, 0, 2, 1, 5, True),
+
+    # Case 3: Test for ship outside scan region i.e scanning the opposite direction
+    (180, 30, 2, 0, 2, 1, 5, False),
+
+    # Case 4: Ship center is within circular segment, but not touching it or the triangle
+    (0, 45, 850, 0, 6 ,103, 1000, True),
+
+    # Case 5: Ship outwith circular segment
+    (0, 45, 1500, 0, 10, 100, 1000, False),
+
+    # Case 6: Ship ouside of the scan
+    (0, 15, 900, 0, 10, 100, 1000, True),
+
+    # Case 7: Ship on upper boundary scan
+    (0, 15, 1887.8151, 505.838353, 10, 100, 1000, True),
+
+    # Case 8: Ship on lower boundary scan
+    (0, 15, 1887.8151, -505.838353, 10, 100, 1000, True),
+
+    # Case 9: Ship is on the end boundry of the scan
+    (0, 45, 900, 0, 0, 900, 1000, True),
+
+    # Case 10: Ship is on the circular section
+    (0, 45, 90, 0, 10, 90, 1000, True),
+
+    # Case 11: Ship is behind the scan area
+    # Ship is behind and below
+    (0, 30, -1196.8268, -690.9883, 5, 100, 1000, False),
+    # Ship is behind and above
+    (0, 30, -1196.8268, 690.9883, 5, 100, 1000, False)
+]
+
+# Test to check scan works correctly with the use of test data and the SUDOApi
+@pytest.mark.parametrize("scandir, scan_width, posX_s2, posY_s2, area_s2, area_s1, energy, expected", testdata)
+def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, area_s2, area_s1, energy, expected):
+    with clients(2) as (client1, client2):
+        # Getting ID for ship 2, used to later to check if found
+        resp = requests.post(client2.url + 'getShipInfo', json={
+            'token': client2.token,
+        })
+        assert resp
+
+        # Getting the id for ship 2
+        resp_data = resp.json()
+        client2_id = resp_data['id']
+
+        # Set first ship to a centre position of 0,0
+        resp = requests.post(client1.url + 'sudo', json = {
+            'token': client1.token,
+            'posX': 0,
+            'posY': 0,
+            'area': area_s1,
+            'energy' : energy
+        })
+        assert resp
+
+        resp = requests.post(client1.url + 'getShipInfo', json = {
+                'token': client1.token
+            })
+        #print(resp.text)
+
+        # Set second ship to desired location and setting its area via the test data
+        resp2 = requests.post(client2.url + 'sudo', json = {
+            'token': client2.token,
+            'posX': posX_s2,
+            'posY': posY_s2,
+            'area': area_s2,
+        })
+        assert resp2
+        # Scanning from the first ship
+        resp_scan = requests.post(client1.url + 'scan', json={
+            'token': client1.token,
+            'direction': scandir,
+            'width': scan_width,
+            'energy': energy,
+        })
+        assert resp_scan
+        # Storing the results of scan
+        scan_list = resp_scan.json()
+
+
+       # Checking if the outcome matches the expected output 
+        found = any(scanned['id'] ==
+                   client2_id for scanned in scan_list['scanned'])
+        assert found == expected
+
+
