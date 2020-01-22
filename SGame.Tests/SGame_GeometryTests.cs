@@ -16,13 +16,6 @@ using Xunit;
 namespace SGame.Tests
 {
 
-    // int pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2)
-    //     {
-    //         // Calculate the (not normalized) normal to the line
-    //         Vector2 Normal = new Vector2(linePoint2.Y - linePoint1.Y, -(linePoint2.X - linePoint1.X));
-    //         // The sign is equal to the sign of the dot product of the normal, and the vector from point1 to the tested point
-    //         return System.Math.Sign(Vector2.Dot(Normal, point - linePoint1));
-    //     }
 
     public class SGame_GeometryTests
     {
@@ -56,13 +49,13 @@ namespace SGame.Tests
             Assert.Equal(expected, actual);
         }
 
-        // [Theory]
-        // [ClassData(typeof(CTITestData))]
-        // public void CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth, bool expected)
-        // {
-        //     bool actual = new Api().CircleSegmentIntersection(circleCenter, circleRadius, segmentCenter, segmentRadius, segmentAngle, segmentWidth);
-        //     Assert.Equal(expected, actual);
-        // }
+        [Theory]
+        [ClassData(typeof(CTITestData))]
+        public void CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth, bool expected)
+        {
+            bool actual = new Api().CircleSegmentIntersection(circleCenter, circleRadius, segmentCenter, segmentRadius, segmentAngle, segmentWidth);
+            Assert.Equal(expected, actual);
+        }
 
 
     }
@@ -118,6 +111,30 @@ namespace SGame.Tests
     }
 
     public class CTITestData : IEnumerable<object[]>
+    {
+        public IEnumerator<object[]> GetEnumerator()
+        {
+            //1 intersection
+            yield return new object[] { new Vector2(-5, -6), 2, new Vector2(-13, -8), new Vector2(-5, 0), new Vector2(3, -8), true };
+
+            //2 intersections
+            yield return new object[] { new Vector2(-7, -2), 2, new Vector2(-13, -6), new Vector2(-7, 0), new Vector2(-1, -6), true };
+
+            //Triangle is completely within circle.
+            yield return new object[] { new Vector2(-3, -2), 4, new Vector2(-6, -3), new Vector2(-3, 0), new Vector2(0, -3), true };
+
+            //Triangle is completly outwith circle.
+            yield return new object[] { new Vector2(5, -4), 4, new Vector2(-6, -3), new Vector2(-3, 0), new Vector2(0, -3), false };
+
+            //Circle is completely within triangle.
+            yield return new object[] { new Vector2(-3, -2), 1, new Vector2(-7, -4), new Vector2(-3, 0), new Vector2(1, -4), true };
+
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    public class CSITestData : IEnumerable<object[]>
     {
         public IEnumerator<object[]> GetEnumerator()
         {
