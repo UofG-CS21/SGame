@@ -20,18 +20,23 @@ namespace SGame.Tests
     public class SGame_GeometryTests
     {
 
-        // [Theory]
-        // [ClassData(typeof(pLSTestData))]
-        // public void Test_pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2, int expected_sign)
-        // {
-        //     int actual_sign = new Api().pointLineSign(point, linePoint1, linePoint2);
-        //     //Avoid division by zero errors
-        //     if (actual_sign != 0)
-        //     {
-        //         actual_sign = actual_sign / Math.Abs(actual_sign);
-        //     }
-        //     Assert.Equal(expected_sign, actual_sign);
-        // }
+        [Theory]
+        [ClassData(typeof(pLSTestData))]
+        public void Test_pointLineSign(Vector2 point, Vector2 triPoint1, Vector2 triPoint2, Vector2 triPoint3, bool expected)
+        {
+            int point_sign_1 = new Api().pointLineSign(point, triPoint1, triPoint2);
+            int point_sign_2 = new Api().pointLineSign(point, triPoint2, triPoint3);
+            int point_sign_3 = new Api().pointLineSign(point, triPoint3, triPoint1);
+            //Avoid division by zero errors and normalise.
+            if ((point_sign_1 >= 0 && point_sign_2 >= 0 && point_sign_3 >= 0) || (point_sign_1 <= 0 && point_sign_2 <= 0 && point_sign_3 <= 0))
+            {
+                Assert.Equal(expected, true);
+            }
+            else
+            {
+                Assert.Equal(expected, false);
+            }
+        }
 
         [Theory]
         [ClassData(typeof(CTSITestData))]
@@ -50,7 +55,7 @@ namespace SGame.Tests
         }
 
         [Theory]
-        [ClassData(typeof(CTITestData))]
+        [ClassData(typeof(CSITestData))]
         public void CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth, bool expected)
         {
             bool actual = new Api().CircleSegmentIntersection(circleCenter, circleRadius, segmentCenter, segmentRadius, segmentAngle, segmentWidth);
@@ -60,18 +65,73 @@ namespace SGame.Tests
 
     }
 
+    public class CSITestData : IEnumerable<object[]>
+    {
+        public IEnumerator<object[]> GetEnumerator()
+        {
+            //distance between centres is greater then the sum of the two circles radii
+            yield return new object[] { new Vector2(0, 0), 2, new Vector2(-10, 0), 1, Math.PI, Math.PI / 2, false };
+
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
 
     //Everything after this is test data. Not sure if this is the cleanest way of storing it.
     public class pLSTestData : IEnumerable<object[]>
     {
         public IEnumerator<object[]> GetEnumerator()
         {
-            yield return new object[] { new Vector2(10, 0), new Vector2(0, -5), new Vector2(0, 5), 1 };
-            yield return new object[] { new Vector2(-10, 0), new Vector2(0, -5), new Vector2(0, 5), -1 };
-            yield return new object[] { new Vector2(0, 10), new Vector2(-5, 0), new Vector2(5, 0), 1 };
-            yield return new object[] { new Vector2(0, -10), new Vector2(-5, 0), new Vector2(5, 0), -1 };
-            yield return new object[] { new Vector2(0, 0), new Vector2(-5, 0), new Vector2(5, 0), 0 };
-            yield return new object[] { new Vector2(12, 15), new Vector2(-4, 16), new Vector2(8, 12), 1 };
+            //Point within triangle
+            yield return new object[] { new Vector2(10, 0), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), true };
+
+
+
+            //Point outside adjacent to line: 
+            //tripoint1 to tripoint2
+            yield return new object[] { new Vector2(-10, 0), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), false };
+
+            //tripoint2 to tripoint3
+            yield return new object[] { new Vector2(7, 4), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), false };
+
+            //tripoint1 to tripoint3
+            yield return new object[] { new Vector2(7, -4), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), false };
+
+
+
+            //point on line, but within triangle still:
+            //tripoint1 to tripoint2
+            yield return new object[] { new Vector2(0, 0), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), true };
+
+            //tripoint2 to tripoint3
+            yield return new object[] { new Vector2(6, 3), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), true };
+
+            //tripoint1 to tripoint3
+            yield return new object[] { new Vector2(6, -3), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), true };
+
+
+
+            //point on line, but outwith triangle :
+            //tripoint1 to tripoint2,
+            yield return new object[] { new Vector2(0, 10), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), false };
+
+            //tripoint2 to tripoint3
+            yield return new object[] { new Vector2(18, -1), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), false };
+
+            //tripoint1 to tripoint3
+            yield return new object[] { new Vector2(18, 1), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), false };
+
+
+            //Point is same as tripoint:
+            //point is same as tripoint1
+            yield return new object[] { new Vector2(0, -5), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), true };
+
+            //point is same as tripoint2
+            yield return new object[] { new Vector2(0, 5), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), true };
+
+            //point is same as tripoint3
+            yield return new object[] { new Vector2(15, 0), new Vector2(0, -5), new Vector2(0, 5), new Vector2(15, 0), true };
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -111,30 +171,6 @@ namespace SGame.Tests
     }
 
     public class CTITestData : IEnumerable<object[]>
-    {
-        public IEnumerator<object[]> GetEnumerator()
-        {
-            //1 intersection
-            yield return new object[] { new Vector2(-5, -6), 2, new Vector2(-13, -8), new Vector2(-5, 0), new Vector2(3, -8), true };
-
-            //2 intersections
-            yield return new object[] { new Vector2(-7, -2), 2, new Vector2(-13, -6), new Vector2(-7, 0), new Vector2(-1, -6), true };
-
-            //Triangle is completely within circle.
-            yield return new object[] { new Vector2(-3, -2), 4, new Vector2(-6, -3), new Vector2(-3, 0), new Vector2(0, -3), true };
-
-            //Triangle is completly outwith circle.
-            yield return new object[] { new Vector2(5, -4), 4, new Vector2(-6, -3), new Vector2(-3, 0), new Vector2(0, -3), false };
-
-            //Circle is completely within triangle.
-            yield return new object[] { new Vector2(-3, -2), 1, new Vector2(-7, -4), new Vector2(-3, 0), new Vector2(1, -4), true };
-
-        }
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-    }
-
-    public class CSITestData : IEnumerable<object[]>
     {
         public IEnumerator<object[]> GetEnumerator()
         {
