@@ -311,22 +311,25 @@ testdata = [
     # Case 5: Ship outwith circular segment
     (0, 45, 1500, 0, 10, 100, 1000, False),
 
-    # Case 6: Ship ouside of the scan
+    # Case 6: Ship inside of the scan
     (0, 15, 900, 0, 10, 100, 1000, True),
 
-    # Case 7: Ship on upper boundary scan
-    (0, 15, 1887.8151, 505.838353, 10, 100, 1000, True),
+    # Case 7: Triangle vertex within ship
+    (0, 15, 1887.8151, 506, 10, 100, 1000, True),
 
-    # Case 8: Ship on lower boundary scan
-    (0, 15, 1887.8151, -505.838353, 10, 100, 1000, True),
+    # Case 8: Triangle vertex within ship
+    (0, 15, 1887.8151, -506.838353, 10, 100, 1000, True),
 
-    # Case 9: Ship is on the end boundry of the scan
-    (0, 45, 900, 0, 0, 900, 1000, True),
+    # Case 9: Ship on lower boundary
+    (0, 15, 1699.03, -456.15, 10, 100, 1000, True),
 
-    # Case 10: Ship is on the circular section
-    (0, 45, 90, 0, 10, 90, 1000, True),
+     # Case 10: Ship on upper boundary
+    (0, 15, 1699.03, 456.15, 10, 100, 1000, True),
 
-    # Case 11: Ship is behind the scan area
+    # Case 11: Ship is on the end boundry of the scan
+    (0, 45, 1129.37, 0, 5, 100, 1000, True),
+
+    # Case 12: Ship is behind the scan area
     # Ship is behind and below
     (0, 30, -1196.8268, -690.9883, 5, 100, 1000, False),
     # Ship is behind and above
