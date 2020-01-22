@@ -7,6 +7,7 @@ using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
 namespace SGame
 {
     /// <summary>
@@ -182,7 +183,7 @@ namespace SGame
         }
 
         // Calculates the sign of a point relative to a line defined by two points
-        int pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2)
+        internal int pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2)
         {
             // Calculate the (not normalized) normal to the line
             Vector2 Normal = new Vector2(linePoint2.Y - linePoint1.Y, -(linePoint2.X - linePoint1.X));
@@ -190,7 +191,7 @@ namespace SGame
             return System.Math.Sign(Vector2.Dot(Normal, point - linePoint1));
         }
 
-        bool CircleTriangleSideIntersection(Vector2 circleCenter, double radius, Vector2 linePoint1, Vector2 linePoint2)
+        internal bool CircleTriangleSideIntersection(Vector2 circleCenter, double radius, Vector2 linePoint1, Vector2 linePoint2)
         {
             Vector2 lineVector = linePoint2 - linePoint1;
             Vector2 point1ToCircle = circleCenter - linePoint1;
@@ -228,7 +229,7 @@ namespace SGame
 
         // Returns true iff the circle centered at circleCenter with radius 'radius' intersects the triangle with vertices A,B,C 
         // Based on http://www.phatcode.net/articles.php?id=459 
-        private bool CircleTriangleIntersection(Vector2 circleCenter, double radius, Vector2 A, Vector2 B, Vector2 C)
+        internal bool CircleTriangleIntersection(Vector2 circleCenter, double radius, Vector2 A, Vector2 B, Vector2 C)
         {
 
             Console.WriteLine("Testing intersection of " + circleCenter.ToString() + ", r=" + radius + " with " + A.ToString() + "," + B.ToString() + "," + C.ToString());
@@ -268,7 +269,7 @@ namespace SGame
 
         // Return true iff the circle cenered at circleCenter with radius circleRadius intersects 
         // the segment of a circle centered at segmentRadius, with its midpoint in the direction segmentAngle, and its angular width 2*segmentWidth
-        private bool CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth)
+        internal bool CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth)
         {
             // If the centers of the segment-circle and the ship circle are further appart than the sum of their radii, 
             if (circleRadius + segmentRadius < Vector2.Subtract(segmentCenter, circleCenter).Length())
