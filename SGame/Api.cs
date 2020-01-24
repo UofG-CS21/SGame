@@ -752,7 +752,7 @@ namespace SGame
             double dirDeg = (double)data.Json["direction"];
             double hWidthDeg = (double)data.Json["width"];
             ship.ShieldDir = Deg2Rad(dirDeg); // (autonormalized)
-            ship.ShieldWidth = Deg2Rad(dirDeg); // (autonormalized)
+            ship.ShieldWidth = Deg2Rad(hWidthDeg); // (autonormalized)
 
             Console.WriteLine("Shields up for " + maybeid.Value + ", width/2 = " + hWidthDeg + "°, dir = " + dirDeg + "°");
             response.Send(200);
