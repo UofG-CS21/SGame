@@ -183,7 +183,7 @@ namespace SGame
         }
 
         // Calculates the sign of a point relative to a line defined by two points
-        int pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2)
+        internal int pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2)
         {
             // Calculate the (not normalized) normal to the line
             Vector2 Normal = new Vector2(linePoint2.Y - linePoint1.Y, -(linePoint2.X - linePoint1.X));
@@ -191,7 +191,7 @@ namespace SGame
             return System.Math.Sign(Vector2.Dot(Normal, point - linePoint1));
         }
 
-        bool CircleTriangleSideIntersection(Vector2 circleCenter, double radius, Vector2 linePoint1, Vector2 linePoint2)
+        internal bool CircleTriangleSideIntersection(Vector2 circleCenter, double radius, Vector2 linePoint1, Vector2 linePoint2)
         {
             Vector2 lineVector = linePoint2 - linePoint1;
             Vector2 point1ToCircle = circleCenter - linePoint1;
@@ -229,7 +229,7 @@ namespace SGame
 
         // Returns true iff the circle centered at circleCenter with radius 'radius' intersects the triangle with vertices A,B,C 
         // Based on http://www.phatcode.net/articles.php?id=459 
-        private bool CircleTriangleIntersection(Vector2 circleCenter, double radius, Vector2 A, Vector2 B, Vector2 C)
+        internal bool CircleTriangleIntersection(Vector2 circleCenter, double radius, Vector2 A, Vector2 B, Vector2 C)
         {
 
             Console.WriteLine("Testing intersection of " + circleCenter.ToString() + ", r=" + radius + " with " + A.ToString() + "," + B.ToString() + "," + C.ToString());
@@ -269,7 +269,7 @@ namespace SGame
 
         // Return true iff the circle cenered at circleCenter with radius circleRadius intersects 
         // the segment of a circle centered at segmentRadius, with its midpoint in the direction segmentAngle, and its angular width 2*segmentWidth
-        private bool CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth)
+        internal bool CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth)
         {
             // If the centers of the segment-circle and the ship circle are further appart than the sum of their radii, 
             if (circleRadius + segmentRadius < Vector2.Subtract(segmentCenter, circleCenter).Length())
@@ -314,7 +314,7 @@ namespace SGame
         /// Returns true if any intersection is found, setting `inters1` or both `inters1` and `inters2` appropriately.
         /// If both `inters1` and `inters2` are outputted, `inters1` is the intersection point nearest to `rayOrigin`.
         /// </summary>
-        private static bool RaycastCircle(Vector2 rayOrigin, double rayDir, Vector2 circleCenter, double circleRadius,
+        internal static bool RaycastCircle(Vector2 rayOrigin, double rayDir, Vector2 circleCenter, double circleRadius,
             out Vector2? inters1, out Vector2? inters2)
         {
             // ray: P = rayOrigin + [cos(rayDir), sin(rayDir)] * t, t >= 0
@@ -350,7 +350,7 @@ namespace SGame
         /// Calculates the intersection point[s] between two circles.
         /// Returns true if any intersection is found, setting `inters1` or both `inters1` and `inters2` appropriately.
         /// </summary>
-        private static bool CircleCircleIntersection(Vector2 center1, double radius1, Vector2 center2, double radius2,
+        internal static bool CircleCircleIntersection(Vector2 center1, double radius1, Vector2 center2, double radius2,
             out Vector2? inters1, out Vector2? inters2)
         {
             // See: https://math.stackexchange.com/a/1367732
@@ -390,7 +390,7 @@ namespace SGame
         /// `bisectAngle` will be set to the angle (0 to PI/2, in radians) between
         /// the line betwen `circleCenter` and `point` and one of the two tangents.
         /// </summary>
-        private static void CircleTangents(Vector2 circleCenter, double circleRadius, Vector2 point, out Vector2 tg1, out Vector2 tg2, out double bisectAngle)
+        internal static void CircleTangents(Vector2 circleCenter, double circleRadius, Vector2 point, out Vector2 tg1, out Vector2 tg2, out double bisectAngle)
         {
             // Consider the segment from `point` to `circleCenter` and the triangles it forms with the two radii from
             // `circleCenter` to the tangents. Then if alpha is the angle between a radius and the line between the two centers,
@@ -407,7 +407,7 @@ namespace SGame
         /// Returns true if the given point sits on top of a circle arc centered at `arcCenter`, with half-width `arcWidth` radians
         /// around `arcDir` and radius `arcRadius`. Outputs the angle on the arc if this is the case.
         /// </summary>
-        private static bool IsPointOnArc(Vector2 point, Vector2 arcCenter, double arcDir, double arcWidth, double arcRadius, out double onArcAngle)
+        internal static bool IsPointOnArc(Vector2 point, Vector2 arcCenter, double arcDir, double arcWidth, double arcRadius, out double onArcAngle)
         {
             // arc: P = arcCenter + arcRadius * [cos(alpha), sin(alpha)], where alpha = arcDir + arcWidth * t, where -1 <= t <= 1
             // let point = P...
@@ -425,7 +425,7 @@ namespace SGame
         /// <summary>
         /// Returns whether the given point sits on the ship's shield or not.
         /// </summary>
-        private static bool IsPointOnShield(Spaceship ship, Vector2 point)
+        internal static bool IsPointOnShield(Spaceship ship, Vector2 point)
         {
             double arcAngle;
             return IsPointOnArc(point, ship.Pos, ship.ShieldDir, ship.ShieldWidth, ship.Radius(), out arcAngle);
@@ -435,7 +435,7 @@ namespace SGame
         /// Returns the percentage (0.0 to 1.0) of damage covered by a ship's shield when it is being shot
         /// from `shotOrigin` with a cone of half-width `shotWidth` radians and length `shotRadius`.
         /// </summary>
-        private static double ShieldingAmount(Spaceship ship, Vector2 shotOrigin, double shotDir, double shotWidth, double shotRadius)
+        internal static double ShieldingAmount(Spaceship ship, Vector2 shotOrigin, double shotDir, double shotWidth, double shotRadius)
         {
             shotWidth = Math.Abs(shotWidth); // Or things WILL break!!
             double shipR = ship.Radius();
@@ -762,7 +762,7 @@ namespace SGame
         /// <summary>
         /// Calculates the shotDamage applied to a ship. Shot damage drops off exponentially as distance increases, base =1.1
         /// </summary>
-        private double ShotDamage(int energy, double width, int distance)
+        internal double ShotDamage(int energy, double width, int distance)
         {
             return Math.Floor(energy / ((width / 10) * Math.Pow(1.1, distance)));
         }
@@ -770,7 +770,7 @@ namespace SGame
         /// <summary>
         /// Verifies the arguments passed in an intersection based request are appropriate.
         /// </summary>
-        private int intersectionParamCheck(ApiResponse response, ApiData data)
+        internal int intersectionParamCheck(ApiResponse response, ApiData data)
         {
             UpdateGameState();
             var maybeid = GetSpaceshipId(data.Json);
