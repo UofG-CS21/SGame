@@ -15,12 +15,15 @@ namespace SGame
     class Api
     {
         /// <summary>
-        /// Stopwatch measuring elapsed in-game time
+        /// Manges the elapsed in-game time.
         /// </summary>
-        Stopwatch gameTime = new Stopwatch();
+        GameTime gameTime;
 
         // start the gameTime stopwatch on API creation
-        public Api() => gameTime.Start();
+        public Api()
+        {
+            this.gameTime = new GameTime();
+        }
 
         /// <summary>
         /// The next free spaceship ID to use.
