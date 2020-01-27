@@ -71,5 +71,14 @@ namespace SGame
                     break;
             }
         }
+
+        /// <summary>
+        /// Set the elapsed time manually. Switches to manual mode (if it wasn't already).
+        /// </summary>
+        public void SetElapsedMillisecondsManually(long ms)
+        {
+            Mode = GameTimeMode.Manual;
+            manualMs = ms;
+        }
     }
 }
