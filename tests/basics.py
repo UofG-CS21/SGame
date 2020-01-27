@@ -1,6 +1,41 @@
 import requests
 import time
 
+allowed_fpe = 1e-6
+
+
+def isClose(a, b, err=allowed_fpe):
+    return abs(a-b) <= err
+
+# call at the BEGIiNNING of a test if you want it to use manual time. Time will be set to 0.
+def reset_time(server, token):
+    # set time to 0
+    resp = requests.post(server.url + 'sudo', json={
+        'token' : token,
+        'time' : 0,
+    })
+    assert resp
+
+    #force update the ship (which will mess up since it went back in time)
+    resp = requests.post(server.url + 'getShipInfo', json={
+        'token' : token
+    })
+
+
+    energy_cap = resp.json()['area'] * 10
+    resp = requests.post(server.url + 'sudo', json={
+        'token' : token,
+        'energy' : energy_cap
+    })
+    assert resp
+
+def set_time(server, token, time):
+    resp = requests.post(server.url + 'sudo', json={
+        'token' : token,
+        'time' : time,
+    })
+    assert resp
+
 
 def test_disconnect(clients):
     """
@@ -37,6 +72,9 @@ def test_getShipInfo_intial_state(clients):
 def test_scan(server, clients):
     # Create two clients
     with clients(2) as (client1, client2):
+
+        reset_time(server, client1.token)
+
         resp = requests.post(client1.url + 'getShipInfo', json={
             'token': client1.token,
         })
@@ -53,8 +91,8 @@ def test_scan(server, clients):
         })
         assert resp
 
-        # Waiting
-        time.sleep(1)
+        # Waiting 1 second
+        set_time(server, client1.token, 1000)
 
         # Stop previous acceleration for client 1
         resp = requests.post(client1.url + 'accelerate', json={
@@ -94,13 +132,6 @@ def test_scan(server, clients):
                        client1_id for scanned in resp_data['scanned'])
 
 
-allowed_fpe = 1e-6
-
-
-def isClose(a, b, err=allowed_fpe):
-    return abs(a-b) <= err
-
-
 def test_movement(server, clients):
     """
     Tests that accelerate/ movement such that a ship can accelerate using an x and y.
@@ -111,6 +142,8 @@ def test_movement(server, clients):
             'token': client.token,
         })
         assert resp
+
+        reset_time(server, client.token)
 
         # Checking that the velocity is 0 at the start
         resp_data = resp.json()
@@ -156,7 +189,13 @@ def test_movement(server, clients):
         assert isClose(resp_data['velY'], sumY)
 
         # Wait for energy to recharge
-        time.sleep(10)
+        resp = requests.post(server.url + 'sudo', json={
+            'token': client.token,
+            'time': 10000,
+            })
+        assert resp
+
+
         resp = requests.post(server.url + 'getShipInfo', json={
             'token': client.token,
         })
@@ -188,7 +227,12 @@ def test_movement(server, clients):
         assert isClose(resp_data['velY'], 0)
 
         # Wait for energy to recover
-        time.sleep(10)
+        resp = requests.post(server.url + 'sudo', json={
+            'token': client.token,
+            'time': 20000,
+            })
+        assert resp
+
         resp = requests.post(server.url + 'getShipInfo', json={
             'token': client.token,
         })
@@ -220,7 +264,11 @@ def test_movement(server, clients):
         old_y = resp_data['posY']
 
         # give the ship time to move
-        time.sleep(4.5)
+        resp = requests.post(server.url + 'sudo', json={
+            'token': client.token,
+            'time': 24500,
+            })
+        assert resp
 
         # check that it moved the correct amount
         resp = requests.post(server.url + 'getShipInfo', json={
