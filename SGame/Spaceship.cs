@@ -1,7 +1,5 @@
 using System.Numerics;
-using System.Diagnostics;
 using System;
-using System.IO;
 
 namespace SGame
 {
@@ -36,10 +34,12 @@ namespace SGame
         /// </summary>
         public int Id { get; }
 
-        public Stopwatch gameTime { get; set; }
-
         /// <summary>
-        /// Timestamp of last time the ship's state was updated
+        /// The game timer used for this spaceship. 
+        /// </summary>
+        public GameTime GameTime { get; set; }
+
+        /// Max hit points of the spaceship.
         /// </summary>
         public double LastUpdate { get; set; }
 
@@ -58,9 +58,9 @@ namespace SGame
         ///</summary>
         public const double COMBAT_COOLDOWN = 60 * 1000; // one minute
 
-        public Spaceship(int id, Stopwatch gameTime)
+        public Spaceship(int id, GameTime gameTime)
         {
-            this.gameTime = gameTime;
+            this.GameTime = gameTime;
             this.Id = id;
             this.Area = 1;
             this.Energy = 10.0;
@@ -73,7 +73,7 @@ namespace SGame
 
         public void UpdateState()
         {
-            long time = gameTime.ElapsedMilliseconds;
+            long time = GameTime.ElapsedMilliseconds;
             double elapsedSeconds = (double)(time - LastUpdate) / 1000;
             Pos += Vector2.Multiply(Velocity, (float)elapsedSeconds);
             Energy = Math.Min(Area * 10, Energy + elapsedSeconds * Area);

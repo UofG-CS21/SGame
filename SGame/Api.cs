@@ -15,12 +15,15 @@ namespace SGame
     class Api
     {
         /// <summary>
-        /// Stopwatch measuring elapsed in-game time
+        /// Manges the elapsed in-game time.
         /// </summary>
-        Stopwatch gameTime = new Stopwatch();
+        GameTime gameTime;
 
         // start the gameTime stopwatch on API creation
-        public Api() => gameTime.Start();
+        public Api()
+        {
+            this.gameTime = new GameTime();
+        }
 
         /// <summary>
         /// The next free spaceship ID to use.
@@ -644,6 +647,7 @@ namespace SGame
             { "posY", (ship, posY) => ship.Pos = new Vector2(ship.Pos.X, (float)posY) },
             { "velX", (ship, velX) => ship.Velocity = new Vector2((float)velX, ship.Velocity.Y) },
             { "velY", (ship, velY) => ship.Velocity = new Vector2(ship.Velocity.X, (float)velY) },
+            { "time", (ship, timeMs) => ship.GameTime.SetElapsedMillisecondsManually((long)timeMs) }
         };
 
         /// <summary>
