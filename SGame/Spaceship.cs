@@ -39,6 +39,15 @@ namespace SGame
         /// </summary>
         public GameTime GameTime { get; set; }
 
+        /// Max hit points of the spaceship.
+        /// </summary>
+        public int MaxHitPoints { get; set; }
+
+        /// <summary>
+        /// Hit points of the spaceship. Nothing happens when this hits zero atm.
+        /// </summary>
+        public int HitPoints { get; set; }
+
         /// <summary>
         /// Timestamp of last time the ship's state was updated
         /// </summary>
@@ -53,6 +62,8 @@ namespace SGame
             this.Pos = new Vector2(0, 0);
             this.Velocity = new Vector2(0, 0);
             this.LastUpdate = gameTime.ElapsedMilliseconds;
+            this.MaxHitPoints = (int)(100 + (this.Area * this.Area * 0.2) + (this.Area));
+            this.HitPoints = this.MaxHitPoints;
         }
 
         public void UpdateState()
@@ -62,6 +73,11 @@ namespace SGame
             Pos += Vector2.Multiply(Velocity, (float)elapsedSeconds);
             Energy = Math.Min(Area * 10, Energy + elapsedSeconds * Area);
             LastUpdate = time;
+        }
+
+        public double Radius()
+        {
+            return System.Math.Sqrt(Area / System.Math.PI);
         }
     }
 

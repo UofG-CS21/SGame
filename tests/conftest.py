@@ -6,6 +6,7 @@ import os, sys
 import pytest
 import requests
 import subprocess as sp
+from typing import Iterable
 from time import sleep
 
 
@@ -47,28 +48,63 @@ def server(request) -> ServerFixture:
     yield ServerFixture(host, port)
 
 
-class ClientFixture:
+class Client:
     """The state of a connected ship."""
 
     def __init__(self, id: int, token: str, url: str):
-        self.id = int(id)
+        self.id = id
         """The connected ship's ID."""
-        self.token = str(token)
+        self.token = token
         """The connected ship's token."""
-        self.url = str(url)
+        self.url = url
         """The REST API URL this client connected to."""
 
+class ClientsFixture:
+    """A fixture that manages a number of clients to connect."""
+
+    def __init__(self, server: ServerFixture):
+        self.server = server
+
+    def __call__(self, n_clients: int) -> 'self':
+        self.n_clients = n_clients
+        return self
+
+    def __enter__(self) -> Iterable[Client]:
+        """Connects `n_clients` clients.
+        Returns either a list of all connected `Client`s or just the single `Client`
+        that was connected if `n_clients` was 1."""
+
+        self.clients = []
+        for i in range(self.n_clients):
+            resp = requests.post(url=self.server.url + 'connect')
+            if not resp: raise RuntimeError(f"Could not connect to server at {server.url}!")
+
+            resp_dict = resp.json()
+            if 'id' not in resp_dict: raise RuntimeError("Ship id not present in `connect` response!")
+            if 'token' not in resp_dict: raise RuntimeError("Ship token not present in `connect` response!")
+            self.clients.append(Client(int(resp_dict['id']), resp_dict['token'], self.server.url))
+
+        if len(self.clients) > 1:
+            return self.clients
+        else:
+            return self.clients[0]
+
+    def __exit__(self, type, value, traceback):
+        """Disconnect all clients."""
+        for client in self.clients:
+            requests.post(url=self.server.url + 'disconnect', json={'token': client.token})
+        self.clients = []
+        return False  # Raise any exceptions back to caller
 
 @pytest.fixture
-def client(server) -> ClientFixture:
+def clients(server) -> ClientsFixture:
     """
-    A test fixture that calls the `connect` REST API and gets a ship id / token pair.
+    Returns a callable that, when given the number `n` of clients to create as parameter,
+    connects `n` clients.
+    ```
+    def my_test(clients):
+        with client1, client2 as clients(2):
+            <do stuff with the clients>
+    ```
     """
-    resp = requests.post(url=server.url + 'connect')
-    if not resp: raise RuntimeError(f"Could not connect to server at {server.url}!")
-
-    resp_dict = resp.json()
-    if 'id' not in resp_dict: raise RuntimeError("Ship id not present in `connect` response!")
-    if 'token' not in resp_dict: raise RuntimeError("Ship token not present in `connect` response!")
-
-    return ClientFixture(int(resp_dict['id']), resp_dict['token'], server.url)
+    return ClientsFixture(server) # Acts as a callable but it's actually a class...
