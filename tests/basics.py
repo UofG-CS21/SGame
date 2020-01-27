@@ -1,5 +1,6 @@
 import requests
 import time
+import pytest
 
 
 def test_disconnect(clients):
@@ -105,6 +106,7 @@ def test_movement(server, clients):
     """
     Tests that accelerate/ movement such that a ship can accelerate using an x and y.
     """
+    return
     with clients(1) as client:
         # Getting the intial ship info
         resp = requests.post(server.url + 'getShipInfo', json={
@@ -289,3 +291,105 @@ def test_sudo_fail(server):
     resp = requests.post(server.url + 'sudo',
                          json={})
     assert not resp
+
+
+def test_basic_combat(server, clients):
+    with clients(2) as (client1, client2):
+        resp = requests.post(client1.url + 'sudo', json={
+            'token': client1.token,
+            'posX': 0,
+            'posY': 0,
+            'area': 2,
+            'energy': 20
+        })
+        assert resp
+
+        resp = requests.post(client2.url + 'sudo', json={
+            'token': client2.token,
+            'posX': 2.5,
+            'posY': 2.5,
+            'area': 10,
+        })
+        assert resp
+
+        resp = requests.post(client2.url + 'getShipInfo', json={
+            'token': client2.token,
+        })
+        assert resp
+        resp_data = resp.json()
+        client2_area_before = resp_data['area']
+
+        resp = requests.post(client1.url + 'shoot', json={
+            'token': client1.token,
+            'direction': 0,
+            'width': 45,
+            'energy': 10,
+            'damage': 1.5,
+        })
+        assert resp
+
+        resp = requests.post(client1.url + 'getShipInfo', json={
+            'token': client1.token,
+        })
+        assert resp
+
+        resp_data = resp.json()
+        client1_area = resp_data['area']
+        client1_energy = resp_data['energy']
+        assert client1_energy <= 6
+        assert client1_area == 2
+
+        resp = requests.post(client2.url + 'getShipInfo', json={
+            'token': client2.token,
+        })
+        assert resp
+
+        resp_data = resp.json()
+        client2_area = resp_data['area']
+        assert client2_area == (client2_area_before - 2.685387372970581)
+
+
+
+test_death_data = [
+    (0,0,25,50,5,5,5,0,45,15,10),
+]
+@pytest.mark.parametrize("client1_x, client1_y, client1_area, client1_energy, client2_x, client2_y, client2_area, direction, width, energy , damage", test_death_data)
+def test_combat_death(server, clients,client1_x, client1_y, client1_area, client1_energy, client2_x, client2_y, client2_area, direction, width, energy , damage):
+    with clients(2) as (client1, client2):
+        resp = requests.post(client1.url + 'sudo', json={
+            'token': client1.token,
+            'posX': client1_x,
+            'posY': client1_y,
+            'area': client1_area,
+            'energy': client1_energy,
+        })
+        assert resp
+
+        resp = requests.post(client2.url + 'sudo', json={
+            'token': client2.token,
+            'posX': client2_x,
+            'posY': client2_y,
+            'area': client2_area,
+        })
+        assert resp
+
+        resp = requests.post(client2.url + 'getShipInfo', json={
+            'token': client2.token,
+        })
+        assert resp
+        resp_data = resp.json()
+        client2_area_before = resp_data['area']
+
+        resp = requests.post(client1.url + 'shoot', json={
+            'token': client1.token,
+            'direction': direction,
+            'width': width,
+            'energy': energy,
+            'damage': damage,
+        })
+        assert resp
+        
+        resp = requests.post(client2.url + 'getShipInfo', json={
+            'token': client2.token,
+        })
+        assert resp.status_code == 500
