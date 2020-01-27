@@ -14,6 +14,7 @@ def reset_time(server, token):
         'token' : token,
         'time' : 0,
     })
+    print(resp.json())
     assert resp
 
     #force update the ship (which will mess up since it went back in time)
