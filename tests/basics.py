@@ -106,7 +106,6 @@ def test_movement(server, clients):
     """
     Tests that accelerate/ movement such that a ship can accelerate using an x and y.
     """
-    return
     with clients(1) as client:
         # Getting the intial ship info
         resp = requests.post(server.url + 'getShipInfo', json={
@@ -349,13 +348,15 @@ def test_basic_combat(server, clients):
         assert client2_area == (client2_area_before - 2.685387372970581)
 
 
-
+# Dataset for death test 
 test_death_data = [
+    # FORMAT: client1 posX, client1 posY, client1 area, client1 energy, client2 posX, client2 posY, client2 area ,shoot dir ,shoot width ,shoot energy, damage scaling
     (0,0,25,50,5,5,5,0,45,15,10),
 ]
 @pytest.mark.parametrize("client1_x, client1_y, client1_area, client1_energy, client2_x, client2_y, client2_area, direction, width, energy , damage", test_death_data)
 def test_combat_death(server, clients,client1_x, client1_y, client1_area, client1_energy, client2_x, client2_y, client2_area, direction, width, energy , damage):
     with clients(2) as (client1, client2):
+        # Setting up client1 
         resp = requests.post(client1.url + 'sudo', json={
             'token': client1.token,
             'posX': client1_x,
@@ -365,6 +366,7 @@ def test_combat_death(server, clients,client1_x, client1_y, client1_area, client
         })
         assert resp
 
+        # Setting up client2 
         resp = requests.post(client2.url + 'sudo', json={
             'token': client2.token,
             'posX': client2_x,
@@ -373,13 +375,7 @@ def test_combat_death(server, clients,client1_x, client1_y, client1_area, client
         })
         assert resp
 
-        resp = requests.post(client2.url + 'getShipInfo', json={
-            'token': client2.token,
-        })
-        assert resp
-        resp_data = resp.json()
-        client2_area_before = resp_data['area']
-
+        # Shooting with data
         resp = requests.post(client1.url + 'shoot', json={
             'token': client1.token,
             'direction': direction,
@@ -389,6 +385,7 @@ def test_combat_death(server, clients,client1_x, client1_y, client1_area, client
         })
         assert resp
         
+        # Making sure client2 gets 500 response as client2's ship is dead
         resp = requests.post(client2.url + 'getShipInfo', json={
             'token': client2.token,
         })
