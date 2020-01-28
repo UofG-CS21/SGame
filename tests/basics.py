@@ -1,6 +1,7 @@
 import requests
 import time
 import pytest
+from threading import Thread
 
 
 def test_disconnect(clients):
@@ -352,6 +353,9 @@ def test_basic_combat(server, clients):
 test_death_data = [
     # FORMAT: client1 posX, client1 posY, client1 area, client1 energy, client2 posX, client2 posY, client2 area ,shoot dir ,shoot width ,shoot energy, damage scaling
     (0,0,25,50,5,5,5,0,45,15,10),
+    (2.5,3,30,50,6,4,8,0,30,15,9),
+    (4,4,40,40,8,4,4,0,25,20,8),
+    (100,0,50,100,-50,0,5,180,20,70,10),
 ]
 @pytest.mark.parametrize("client1_x, client1_y, client1_area, client1_energy, client2_x, client2_y, client2_area, direction, width, energy , damage", test_death_data)
 def test_combat_death(server, clients,client1_x, client1_y, client1_area, client1_energy, client2_x, client2_y, client2_area, direction, width, energy , damage):
@@ -390,3 +394,102 @@ def test_combat_death(server, clients,client1_x, client1_y, client1_area, client
             'token': client2.token,
         })
         assert resp.status_code == 500
+
+
+# Helper method used in threads
+def client_shoot(clientname, direction, width, energy, damage):
+        resp = requests.post(clientname.url + 'shoot', json={
+            'token': clientname.token,
+            'direction': direction,
+            'width': width,
+            'energy': energy,
+            'damage': damage,
+        })
+        # Ensures the request happens
+        assert resp
+
+# Test in which two ships shoot at the same time 
+def test_simultaneous_shooting(server, clients):
+    with clients(3) as (client1, client2, client3):
+        # Setting up client 1
+        resp = requests.post(client1.url + 'sudo', json={
+            'token': client1.token,
+            'posX': 0,
+            'posY': 0,
+            'area': 30,
+            'energy': 200,
+        })
+        assert resp 
+        # Setting up client 2
+        resp = requests.post(client1.url + 'sudo', json={
+            'token': client1.token,
+            'posX': 0,
+            'posY': 3,
+            'area': 30,
+            'energy': 200,
+        })
+        assert resp 
+
+        # Setting up client 3
+        resp = requests.post(client1.url + 'sudo', json={
+            'token': client1.token,
+            'posX': 4,
+            'posY': 0,
+            'area': 15,
+        })
+        assert resp 
+        # Using threads to shoot at the same time
+        t1 = Thread(target=client_shoot(client1,0,30,10,10))
+        t2 = Thread(target=client_shoot(client2,0,30,10,10))
+        t1.start()
+        t2.start()
+
+        # Making sure client 3 is dead
+        resp = requests.post(client3.url + 'getShipInfo', json={
+            'token': client3.token,
+        })
+        assert resp.status_code == 500
+
+
+def test_kill_reward(server, clients):
+    with clients(2) as (client1, client2):
+        # Setting up client 1
+        resp = requests.post(client1.url + 'sudo', json={
+            'token': client1.token,
+            'posX': 0,
+            'posY': 0,
+            'area': 30,
+            'energy': 200,
+        })
+        assert resp 
+
+        # Setting up client2 
+        resp = requests.post(client2.url + 'sudo', json={
+            'token': client2.token,
+            'posX': 5,
+            'posY': 5,
+            'area': 20,
+        })
+        assert resp
+
+        # Shooting once
+        resp = requests.post(client1.url + 'shoot', json={
+            'token': client1.token,
+            'direction': 0,
+            'width': 45,
+            'energy': 50,
+            'damage': 10,
+        })
+        assert resp
+               
+        resp = requests.post(client1.url + 'getShipInfo', json={
+            'token': client1.token,
+        })
+        assert resp
+
+        resp_data = resp.json()
+        # Checking the first ship gains the killreward
+        assert resp_data['area'] == 31 # should actually check area = ship 1 area + ship 2 area
+        # Is the kill reward supposed to be 1 ????
+
+
