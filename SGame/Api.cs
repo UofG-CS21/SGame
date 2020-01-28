@@ -399,8 +399,11 @@ namespace SGame
             Vector2 centerDelta = circleCenter - point;
             bisectAngle = Math.PI * 0.5 - Math.Acos(circleRadius / centerDelta.Length());
             double centerAngle = Math.Atan2(centerDelta.Y, centerDelta.X);
-            tg1 = circleCenter + MathUtils.DirVec(bisectAngle - centerAngle) * (float)circleRadius;
-            tg2 = circleCenter + MathUtils.DirVec((Math.PI - bisectAngle) - centerAngle) * (float)circleRadius;
+
+            //Internal is the third angle in the rightangled triangle which connects the tangent point, circle centre and point.
+            double internalAngle = Math.PI / 2 - bisectAngle;
+            tg1 = circleCenter - MathUtils.DirVec(centerAngle - internalAngle) * (float)circleRadius;
+            tg2 = circleCenter - MathUtils.DirVec(centerAngle + internalAngle) * (float)circleRadius;
         }
 
         /// <summary>
