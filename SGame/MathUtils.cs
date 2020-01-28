@@ -27,6 +27,56 @@ namespace SGame
         }
 
         /// <summary>
+        /// Improved version of Math.Atan2. Gives actual result based on unit circle.
+        /// </summary>
+        public static double BetterArcTan(double y, double x)
+        {
+            double result;
+            if (x == 0)
+            {
+                if (y > 0)
+                {
+                    result = Math.PI / 2;
+                }
+                else if (y < 0)
+                {
+                    result = -Math.PI / 2;
+                }
+                else
+                {
+                    result = 0;
+                }
+                return result;
+            }
+            result = Math.Atan2(y, x);
+            if (x < 0)
+            {
+                if (result >= 0 && result < Math.PI / 2)
+                {
+                    result = result - Math.PI;
+                }
+                else if (result < 0 && result > -Math.PI / 2)
+                {
+                    result = result + Math.PI;
+                }
+            }
+
+            if (y == 0)
+            {
+                result = Api.Deg2Rad((x >= 0 ? 0 : 180));
+            }
+
+
+            
+
+
+
+            return result;
+        }
+
+
+
+        /// <summary>
         /// Makes a direction vector out of an angle in radians.
         /// </summary>
         public static Vector2 DirVec(double direction)
