@@ -418,8 +418,11 @@ namespace SGame
                 onArcAngle = double.NaN;
                 return false;
             }
-            onArcAngle = Math.Atan2(dirVec.Y, dirVec.X) - arcDir;
-            return (-arcWidth <= onArcAngle && onArcAngle <= arcWidth);
+
+            onArcAngle = MathUtils.BetterArcTan(dirVec.Y, dirVec.X) - arcDir;
+
+            //Since vectors have to be floats, There is some uncertainty introuduced when double angles are converted. So i added a tolerance.
+            return (-arcWidth <= onArcAngle && onArcAngle <= arcWidth) || (MathUtils.ToleranceEquals(Rad2Deg(-arcWidth), Rad2Deg(onArcAngle), 0.000001)) || (MathUtils.ToleranceEquals(Rad2Deg(arcWidth), Rad2Deg(onArcAngle), 0.000001));
         }
 
         /// <summary>
