@@ -7,12 +7,12 @@ allowed_fpe = 1e-6
 def isClose(a, b, err=allowed_fpe):
     return abs(a-b) <= err
 
-# call at the BEGIiNNING of a test if you want it to use manual time. Time will be set to 0.
-def reset_time(server, token):
+def reset_time(server, token, time: int = 0):
+    """Call at the BEGINNING of a test if you want it to use manual time. Time will be set to `time`."""
     # set time to 0
     resp = requests.post(server.url + 'sudo', json={
         'token' : token,
-        'time' : 0,
+        'time' : time,
     })
     assert resp
 
@@ -20,7 +20,6 @@ def reset_time(server, token):
     resp = requests.post(server.url + 'getShipInfo', json={
         'token' : token
     })
-
 
     energy_cap = resp.json()['area'] * 10
     resp = requests.post(server.url + 'sudo', json={
