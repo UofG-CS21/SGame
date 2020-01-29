@@ -7,6 +7,7 @@ using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
 namespace SGame
 {
     /// <summary>
@@ -206,140 +207,14 @@ namespace SGame
             response.Send();
         }
 
-        // Calculates the sign of a point relative to a line defined by two points
-        int pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2)
-        {
-            // Calculate the (not normalized) normal to the line
-            Vector2 Normal = new Vector2(linePoint2.Y - linePoint1.Y, -(linePoint2.X - linePoint1.X));
-            // The sign is equal to the sign of the dot product of the normal, and the vector from point1 to the tested point
-            return System.Math.Sign(Vector2.Dot(Normal, point - linePoint1));
-        }
-
-        bool CircleTriangleSideIntersection(Vector2 circleCenter, double radius, Vector2 linePoint1, Vector2 linePoint2)
-        {
-            Vector2 lineVector = linePoint2 - linePoint1;
-            Vector2 point1ToCircle = circleCenter - linePoint1;
-
-            float lengthAlongTriangleSide = Vector2.Dot(point1ToCircle, lineVector);
-
-            // If the lenght is negative, the cosine of the angle is negative, so it lies more than 90 degrees around linePoint 1
-            // For that to intersect the triangle side, linePoint1 would already lie within the circle
-            // But we have checked that in Case 1, so it must not lie. Therefore such circle does not intersect the triangle side
-            if (lengthAlongTriangleSide > 0)
-            {
-                float sideLenghtSquared = lineVector.LengthSquared();
-
-                // Since we want to keep using squared distances, instead of doing 
-                // lengthAlongTriangleSide /= sideLength, we do
-                // lengthAlongTriangleSide * lengthAlongTriangleSide / sideLengthSquared
-                lengthAlongTriangleSide = lengthAlongTriangleSide * lengthAlongTriangleSide / sideLenghtSquared;
-
-                // If the length along the triangle is greater than the side of the triangle
-                // It would intersect with the line past the second triangle vertex
-                // Which we have, as before, checked in Case 1
-                if (lengthAlongTriangleSide < sideLenghtSquared)
-                {
-                    // We have the squared lengths of the vectors circle->point1 and point1->perpendicularPointOnLineVector
-                    // We use Pythagorean theorem to find the length of side between circlePoint and perpendicularPointOnLineVector
-                    // There is an intersection if it is not greater than the radius
-                    // We never square-root either side of the Pythagorean equation
-                    if (point1ToCircle.LengthSquared() - lengthAlongTriangleSide <= radius * radius)
-                        return true;
-                }
-            }
-
-            return false;
-        }
-
-        // Returns true iff the circle centered at circleCenter with radius 'radius' intersects the triangle with vertices A,B,C 
-        // Based on http://www.phatcode.net/articles.php?id=459 
-        private bool CircleTriangleIntersection(Vector2 circleCenter, double radius, Vector2 A, Vector2 B, Vector2 C)
-        {
-
-            Console.WriteLine("Testing intersection of " + circleCenter.ToString() + ", r=" + radius + " with " + A.ToString() + "," + B.ToString() + "," + C.ToString());
-
-            //Console.WriteLine("Case 1");
-            // Case 1: Triangle vertex within circle
-
-            // Calculate position vectors for A,B,C with origin at circleCenter (c stands for 'centered')
-            Vector2 cA = A - circleCenter, cB = B - circleCenter, cC = C - circleCenter;
-
-            // Check whether any of them are close enough to circleCenter
-            if (radius * radius >= cA.LengthSquared()) return true;
-            if (radius * radius >= cB.LengthSquared()) return true;
-            if (radius * radius >= cC.LengthSquared()) return true;
-
-            //Console.WriteLine("Case 2");
-            // Case 2: Circle center within triangle
-
-            // We calculate the sign of the position of the circleCenter relative to each side
-            // If it lies within the triangle, they will all be the same
-            int sAB = pointLineSign(circleCenter, A, B);
-            int sBC = pointLineSign(circleCenter, B, C);
-            int sCA = pointLineSign(circleCenter, C, A);
-
-            if (sAB >= 0 && sBC >= 0 && sCA >= 0) return true;
-            if (sAB <= 0 && sBC <= 0 && sCA <= 0) return true;
-
-            //Console.WriteLine("Case 3");
-            // Case 3: Circle intersects triangle side
-            if (CircleTriangleSideIntersection(circleCenter, radius, A, B)) return true;
-            if (CircleTriangleSideIntersection(circleCenter, radius, B, C)) return true;
-            if (CircleTriangleSideIntersection(circleCenter, radius, C, A)) return true;
-
-            // No intersections were found
-            return false;
-        }
-
-        // Return true iff the circle cenered at circleCenter with radius circleRadius intersects 
-        // the segment of a circle centered at segmentRadius, with its midpoint in the direction segmentAngle, and its angular width 2*segmentWidth
-        private bool CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth)
-        {
-            // If the centers of the segment-circle and the ship circle are further appart than the sum of their radii, 
-            if (circleRadius + segmentRadius < Vector2.Subtract(segmentCenter, circleCenter).Length())
-                return false;
-
-            // We have already checked for intersection between the triangle part of the circular sector and the ship circle
-            // Therefore, we know there is no intersection between the edges of the circular sector and the ship
-            // Thus, either the ship is strictly within the segment,
-            // Or all its points of intersection are within the segment itself
-            // In both cases, the center of the circle must be inbetween the angles formed by the circular sector's edges from its center
-            // And if they are, and we know they are close enough to the circle to intersect, then they intersect
-
-            // So all we need to know is whether circleCenter lies between the angles of segmentAngle + segmentWidth and segmentAngle - segmentWidth
-            // The difference between the angle formed by the circleCenter, and both the circular sector's angles, must be smaller than the difference
-            // between the circular sector's angles (i.e. the angle of circleCenter is closer to both edges of the circular sector, than they are to each other)
-
-            float circularSectorEdgeAngleDistance = segmentWidth * 2;
-
-            Vector2 segmentCenterToCircleCenter = circleCenter - segmentCenter;
-
-            float circleCenterAngle = (float)Math.Atan2(segmentCenterToCircleCenter.Y, segmentCenterToCircleCenter.X);
-
-            float distance1 = Math.Abs((segmentAngle - segmentWidth) - circleCenterAngle);
-            if (distance1 > Math.PI)
-                distance1 = 2 * (float)Math.PI - distance1;
-
-            if (distance1 > circularSectorEdgeAngleDistance)
-                return false;
-
-            float distance2 = Math.Abs((segmentAngle + segmentWidth) - circleCenterAngle);
-            if (distance2 > Math.PI)
-                distance2 = 2 * (float)Math.PI - distance2;
-
-            if (distance2 > circularSectorEdgeAngleDistance)
-                return false;
-
-            return true;
-        }
-
         /// <summary>
         /// Returns a list of ID's of ships that lie within a triangle with one vertex at pos, the center of its opposite side
         /// is at an angle of worldDeg degrees from the vertex, its two other sides are an angle scanWidth from this point, and
         /// its area will be equal to SCAN_ENERGY_SCALING_FACTOR times the energy spent
         /// </summary>
 
-        private const int SCAN_ENERGY_SCALING_FACTOR = 1000;
+        private const int SCAN_ENERGY_SCALING_FACTOR = 2000;
+
         public List<int> CircleSectorScan(Vector2 pos, double worldDeg, double scanWidth, int energySpent)
         {
             // The radius of the cone will be such that the area scanned is energySpent * SCAN_ENERGY_SCALING_FACTOR
@@ -365,7 +240,7 @@ namespace SGame
             // Go through all spaceships and add those that intersect with our triangle
             foreach (int id in ships.Keys)
             {
-                if (CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint) || CircleSegmentIntersection(ships[id].Pos, (float)ships[id].Radius(), pos, radius, (float)worldDeg, (float)scanWidth))
+                if (MathsUtil.CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint) || MathsUtil.CircleSegmentIntersection(ships[id].Pos, (float)ships[id].Radius(), pos, radius, (float)worldDeg, (float)scanWidth))
                 {
                     //Console.WriteLine("Intersected");
                     result.Add(id);
@@ -374,6 +249,7 @@ namespace SGame
 
             return result;
         }
+
 
         /// <summary>
         /// Handles a "Scan" REST request, returning a set of spaceships that are within the scan
@@ -389,13 +265,13 @@ namespace SGame
         public void Scan(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeid = GetSpaceshipId(response, data.Json);
-            if (maybeid == null)
+            var maybeId = GetSpaceshipId(response, data.Json);
+            if (maybeId == null)
             {
                 return;
             }
 
-            int id = maybeid.Value;
+            int id = maybeId.Value;
 
             String[] requiredParams = new String[3] { "direction", "width", "energy" };
 
@@ -469,7 +345,7 @@ namespace SGame
         public void Shoot(ApiResponse response, ApiData data)
         {
             //Check that the arguments for each parameter are valid
-            int id = intersectionParamCheck(response, data, true);
+            int id = IntersectionParamCheck(response, data, true);
             if (id == -1)
             {
                 return;
@@ -500,7 +376,7 @@ namespace SGame
                 struckShipInfo["posY"] = ships[struckShipId].Pos.Y;
                 struckShips.Add(struckShipInfo);
 
-                double damage = shotDamage(energy, width, damageScaling, Vector2.Subtract(ships[id].Pos, ships[struckShipId].Pos).Length());
+                double damage = ShotDamage(energy, width, damageScaling, Vector2.Subtract(ships[id].Pos, ships[struckShipId].Pos).Length());
 
                 // We have killed a ship, gain it's kill reward, and move struck ship to the graveyard
                 if (ships[struckShipId].Area - damage < MINIMUM_AREA)
@@ -537,7 +413,7 @@ namespace SGame
         /// <summary>
         /// Calculates the shotDamage applied to a ship. Shot damage drops off exponentially as distance increases, base =1.1
         /// </summary>
-        private float shotDamage(int energy, float width, float scaling, float distance)
+        private float ShotDamage(int energy, float width, float scaling, float distance)
         {
             distance = Math.Max(distance, 1);
             width = (float)(Math.PI * width) / (float)180.0;
@@ -557,16 +433,16 @@ namespace SGame
         /// <summary>
         /// Verifies the arguments passed in an intersection based request are appropriate.
         /// </summary>
-        private int intersectionParamCheck(ApiResponse response, ApiData data, bool requireDamage = false)
+        private int IntersectionParamCheck(ApiResponse response, ApiData data, bool requireDamage = false)
         {
             UpdateGameState();
-            var maybeid = GetSpaceshipId(response, data.Json);
-            if (maybeid == null)
+            var maybeId = GetSpaceshipId(response, data.Json);
+            if (maybeId == null)
             {
                 return -1;
             }
 
-            int id = maybeid.Value;
+            int id = maybeId.Value;
 
             String[] requiredParams = new String[3] { "direction", "width", "energy" };
 
@@ -619,7 +495,7 @@ namespace SGame
             return id;
         }
 
-        private int distanceBetweenShips(float x1, float y1, float x2, float y2)
+        private int DistanceBetweenShips(float x1, float y1, float x2, float y2)
         {
             return (int)Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
         }
@@ -628,9 +504,10 @@ namespace SGame
         /// <summary>
         /// A function that, when invoked, sets a certain parameter of `ship` to `value`.
         /// </summary>
+        /// <param name="api">The API instance.</param>
         /// <param name="ship">The ship to set the attribute on.</param>
         /// <param name="value">The new value of the parameter to set.</param>
-        private delegate void AttributeSetter(Spaceship ship, JToken value);
+        private delegate void AttributeSetter(Api api, Spaceship ship, JToken value);
 
         /// <summary>
         /// The map of `JSON key name -> AttributeSetter` used by `Sudo`.
@@ -641,13 +518,13 @@ namespace SGame
         /// </summary>
         private static readonly Dictionary<string, AttributeSetter> SUDO_SETTER_MAP = new Dictionary<string, AttributeSetter>
         {
-            { "area", (ship, value) => ship.Area = (double)value },
-            { "energy", (ship, energy) => ship.Energy = (double)energy },
-            { "posX", (ship, posX) => ship.Pos = new Vector2((float)posX, ship.Pos.Y) },
-            { "posY", (ship, posY) => ship.Pos = new Vector2(ship.Pos.X, (float)posY) },
-            { "velX", (ship, velX) => ship.Velocity = new Vector2((float)velX, ship.Velocity.Y) },
-            { "velY", (ship, velY) => ship.Velocity = new Vector2(ship.Velocity.X, (float)velY) },
-            { "time", (ship, timeMs) => ship.GameTime.SetElapsedMillisecondsManually((long)timeMs) }
+            { "area", (api, ship, value) => ship.Area = (double)value },
+            { "energy", (api, ship, energy) => ship.Energy = (double)energy },
+            { "posX", (api, ship, posX) => ship.Pos = new Vector2((float)posX, ship.Pos.Y) },
+            { "posY", (api, ship, posY) => ship.Pos = new Vector2(ship.Pos.X, (float)posY) },
+            { "velX", (api, ship, velX) => ship.Velocity = new Vector2((float)velX, ship.Velocity.Y) },
+            { "velY", (api, ship, velY) => ship.Velocity = new Vector2(ship.Velocity.X, (float)velY) },
+            { "time", (api, ship, timeMs) => api.gameTime.SetElapsedMillisecondsManually((long)timeMs) }
         };
 
         /// <summary>
@@ -656,17 +533,18 @@ namespace SGame
         /// <param name="data">The JSON payload of the request, containing the token of the ship.</param>
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("sudo")]
-        [ApiParam("token", typeof(string))]
-
+        [ApiParam("token", typeof(string), Optional = true)]
         public void Sudo(ApiResponse response, ApiData data)
         {
+            Spaceship ship = null;
             var id = GetSpaceshipId(response, data.Json);
             if (id == null)
             {
                 return;
             }
 
-            Spaceship ship = ships[id.Value];
+            ship = ships[id.Value];
+
             foreach (var kv in data.Json)
             {
                 if (kv.Key == "token") continue;
@@ -681,7 +559,7 @@ namespace SGame
 
                 try
                 {
-                    setter.Invoke(ship, kv.Value);
+                    setter.Invoke(this, ship, kv.Value);
                 }
                 catch (Exception exc)
                 {
