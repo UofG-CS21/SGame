@@ -83,13 +83,13 @@ namespace SGame
 
                 var body = new StreamReader(context.Request.InputStream).ReadToEnd();
                 JObject json = new JObject();
-                if(body.Length > 0)
+                if (body.Length > 0)
                 {
                     try
                     {
                         json = JObject.Parse(body);
                     }
-                    catch(JsonReaderException exc)
+                    catch (JsonReaderException exc)
                     {
                         // TODO: Log this and (likely) send a HTTP 500
                     }
@@ -97,7 +97,7 @@ namespace SGame
 
 #if DEBUG
                 // Handle "exit" in debug mode
-                if(requestUrl == "exit")
+                if (requestUrl == "exit")
                 {
                     break;
                 }
