@@ -1,7 +1,5 @@
 using System.Numerics;
-using System.Diagnostics;
 using System;
-using System.IO;
 
 namespace SGame
 {
@@ -37,6 +35,10 @@ namespace SGame
         public int Id { get; }
 
         /// <summary>
+        /// The game timer used for this spaceship. 
+        /// </summary>
+        public GameTime GameTime { get; set; }
+
         /// Max hit points of the spaceship.
         /// </summary>
         public int MaxHitPoints { get; set; }
@@ -82,18 +84,12 @@ namespace SGame
                 _shieldWidth = MathUtils.NormalizeAngle(value, Math.PI);
             }
         }
-
-        /// <summary>
-        /// Used to keep track of time deltas.
-        /// </summary>
-        public Stopwatch GameTime { get; set; }
-
         /// <summary>
         /// Timestamp of last time the ship's state was updated
         /// </summary>
         public double LastUpdate { get; set; }
 
-        public Spaceship(int id, Stopwatch gameTime)
+        public Spaceship(int id, GameTime gameTime)
         {
             this.GameTime = gameTime;
             this.Id = id;

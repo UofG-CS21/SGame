@@ -16,12 +16,15 @@ namespace SGame
     class Api
     {
         /// <summary>
-        /// Stopwatch measuring elapsed in-game time
+        /// Manges the elapsed in-game time.
         /// </summary>
-        Stopwatch gameTime = new Stopwatch();
+        GameTime gameTime;
 
         // start the gameTime stopwatch on API creation
-        public Api() => gameTime.Start();
+        public Api()
+        {
+            this.gameTime = new GameTime();
+        }
 
         /// <summary>
         /// The next free spaceship ID to use.
@@ -158,7 +161,6 @@ namespace SGame
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("getShipInfo")]
         [ApiParam("token", typeof(string))]
-
         public void GetShipInfo(ApiResponse response, ApiData data)
         {
             UpdateGameState();
@@ -561,7 +563,7 @@ namespace SGame
             scanWidth = (Math.PI * scanWidth) / 180.0;
 
             // We want the radius of the circle, such that a sercular sector of angle 2*scanwidth has area areaScanned
-            float radius = (float)Math.Sqrt(areaScanned / scanWidth);
+            float radius = (float)Math.Sqrt(areaScanned / (2 * scanWidth));
 
             // The circular sector is a triangle whose vertices are pos, and the points at an angle (worldDeg +- scanWidth) and distance radius
             // And a segment between those points on the circle centered at pos with that radius
@@ -576,7 +578,7 @@ namespace SGame
             // Go through all spaceships and add those that intersect with our triangle
             foreach (int id in ships.Keys)
             {
-                if (CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint) || CircleSegmentIntersection(ships[id].Pos, (float)ships[id].Radius(), pos, radius, (float)worldDeg, (float)scanWidth))
+                if (MathsUtil.CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint) || MathsUtil.CircleSegmentIntersection(ships[id].Pos, (float)ships[id].Radius(), pos, radius, (float)worldDeg, (float)scanWidth))
                 {
                     //Console.WriteLine("Intersected");
                     result.Add(id);
@@ -585,6 +587,7 @@ namespace SGame
 
             return result;
         }
+
 
         /// <summary>
         /// Convert an angle from radians to degrees.
@@ -615,15 +618,15 @@ namespace SGame
         public void Scan(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeid = GetSpaceshipId(data.Json);
-            if (maybeid == null)
+            var maybeId = GetSpaceshipId(data.Json);
+            if (maybeId == null)
             {
                 response.Data["error"] = "Could not find spaceship for given token";
                 response.Send(500);
                 return;
             }
 
-            int id = maybeid.Value;
+            int id = maybeId.Value;
 
             String[] requiredParams = new String[3] { "direction", "width", "energy" };
 
@@ -694,7 +697,7 @@ namespace SGame
         public void Shoot(ApiResponse response, ApiData data)
         {
             //Check that the arguments for each parameter are valid
-            int id = intersectionParamCheck(response, data);
+            int id = IntersectionParamCheck(response, data);
             if (id == -1)
             {
                 return;
@@ -776,18 +779,17 @@ namespace SGame
         /// <summary>
         /// Verifies the arguments passed in an intersection based request are appropriate.
         /// </summary>
-        internal int intersectionParamCheck(ApiResponse response, ApiData data)
+        internal int IntersectionParamCheck(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeid = GetSpaceshipId(data.Json);
-            if (maybeid == null)
+            var maybeId = GetSpaceshipId(data.Json);
+            if (maybeId == null)
             {
                 response.Data["error"] = "Could not find spaceship for given token";
                 response.Send(500);
                 return -1;
             }
-            int id = maybeid.Value;
-
+            int id = maybeId.Value;
             float direction = (float)data.Json["direction"];
 
             float width = (float)data.Json["width"];
@@ -833,6 +835,7 @@ namespace SGame
             { "velY", (ship, velY) => ship.Velocity = new Vector2(ship.Velocity.X, (float)velY) },
             { "shieldDir", (ship, shieldDir) => ship.ShieldDir = Deg2Rad((double)shieldDir) },
             { "shieldWidth", (ship, shieldHW) => ship.ShieldWidth = Deg2Rad((double)shieldHW) },
+            { "time", (ship, timeMs) => ship.GameTime.SetElapsedMillisecondsManually((long)timeMs) }
         };
 
         /// <summary>

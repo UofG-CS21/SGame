@@ -43,7 +43,7 @@ namespace SGame
         {
             this.Name = name;
             this.Type = type;
-            this.Optional = true;
+            this.Optional = false;
         }
 
         /// <summary>
