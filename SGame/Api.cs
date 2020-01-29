@@ -455,7 +455,7 @@ namespace SGame
             // "center axis" space (= reference is the line between the center of the ship and the shot origin)
             // to "shot cone" space (= reference is the center axis of the shot cone)
             // Mark them "left" and "right", where left <= right always - but note that they can both be positive and/or negative!
-            double shipCenterAngle = Math.Atan2(ship.Pos.Y, ship.Pos.X);
+            double shipCenterAngle = MathUtils.BetterArcTan(ship.Pos.Y, ship.Pos.X);
             double CAS2SS = shipCenterAngle - shotDir;
             double tgLeftAngleSS = -tgAngle + CAS2SS, tgRightAngleSS = tgAngle + CAS2SS;
             if (tgLeftAngleSS > tgRightAngleSS)
