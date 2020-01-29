@@ -537,13 +537,20 @@ namespace SGame
         public void Sudo(ApiResponse response, ApiData data)
         {
             Spaceship ship = null;
-            var id = GetSpaceshipId(response, data.Json);
-            if (id == null)
+
+            if (data.Json.ContainsKey("token"))
             {
-                return;
+                var token = (string)data.Json["token"];
+                if (players.ContainsKey(token))
+                    ship = ships[players[token]];
+                else
+                {
+                    response.Data["error"] = "Ship not found for given token.";
+                    response.Send(500);
+                    return;
+                }
             }
 
-            ship = ships[id.Value];
 
             foreach (var kv in data.Json)
             {

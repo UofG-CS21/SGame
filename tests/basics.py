@@ -9,31 +9,17 @@ def isClose(a, b, err=allowed_fpe):
     return abs(a-b) <= err
 
 
-def reset_time(server, token, time: int = 0):
+def reset_time(server):
     """Call at the BEGINNING of a test if you want it to use manual time. Time will be set to `time`."""
     # set time to 0
     resp = requests.post(server.url + 'sudo', json={
-        'token': token,
-        'time': time,
-    })
-    assert resp
-
-    # force update the ship (which will mess up since it went back in time)
-    resp = requests.post(server.url + 'getShipInfo', json={
-        'token': token
-    })
-
-    energy_cap = resp.json()['area'] * 10
-    resp = requests.post(server.url + 'sudo', json={
-        'token': token,
-        'energy': energy_cap
+        'time': 0,
     })
     assert resp
 
 
-def set_time(server, token, time):
+def set_time(server, time):
     resp = requests.post(server.url + 'sudo', json={
-        'token': token,
         'time': time,
     })
     assert resp
@@ -73,9 +59,8 @@ def test_getShipInfo_intial_state(clients):
 
 def test_scan(server, clients):
     # Create two clients
+    reset_time(server)
     with clients(2) as (client1, client2):
-
-        reset_time(server, client1.token)
 
         resp = requests.post(client1.url + 'getShipInfo', json={
             'token': client1.token,
@@ -94,7 +79,7 @@ def test_scan(server, clients):
         assert resp
 
         # Waiting 1 second
-        set_time(server, client1.token, 1000)
+        set_time(server, 1000)
 
         # Stop previous acceleration for client 1
         resp = requests.post(client1.url + 'accelerate', json={
@@ -138,14 +123,14 @@ def test_movement(server, clients):
     """
     Tests that accelerate/ movement such that a ship can accelerate using an x and y.
     """
+
+    reset_time(server)
     with clients(1) as client:
         # Getting the intial ship info
         resp = requests.post(server.url + 'getShipInfo', json={
             'token': client.token,
         })
         assert resp
-
-        reset_time(server, client.token)
 
         # Checking that the velocity is 0 at the start
         resp_data = resp.json()
@@ -191,11 +176,7 @@ def test_movement(server, clients):
         assert isClose(resp_data['velY'], sumY)
 
         # Wait for energy to recharge
-        resp = requests.post(server.url + 'sudo', json={
-            'token': client.token,
-            'time': 10000,
-        })
-        assert resp
+        set_time(server, 10000)
 
         resp = requests.post(server.url + 'getShipInfo', json={
             'token': client.token,
@@ -228,11 +209,7 @@ def test_movement(server, clients):
         assert isClose(resp_data['velY'], 0)
 
         # Wait for energy to recover
-        resp = requests.post(server.url + 'sudo', json={
-            'token': client.token,
-            'time': 20000,
-        })
-        assert resp
+        set_time(server, 20000)
 
         resp = requests.post(server.url + 'getShipInfo', json={
             'token': client.token,
@@ -265,11 +242,7 @@ def test_movement(server, clients):
         old_y = resp_data['posY']
 
         # give the ship time to move
-        resp = requests.post(server.url + 'sudo', json={
-            'token': client.token,
-            'time': 24500,
-        })
-        assert resp
+        set_time(server, 24500)
 
         # check that it moved the correct amount
         resp = requests.post(server.url + 'getShipInfo', json={
@@ -327,7 +300,7 @@ def test_sudo(server, clients):
             assert isClose(v, kvs[k], 0.001)
 
 
-def test_sudo_fail(server):
+def test_sudo_bad_or_missing_token(server):
     """
     Tests that the "sudo" endpoint fails if no valid token is passed.
     """
@@ -335,10 +308,9 @@ def test_sudo_fail(server):
                          json={'token': '**NOT_A_VALID_TOKEN**'})
     assert not resp
 
-<<<<<<< HEAD
     resp = requests.post(server.url + 'sudo',
                          json={})
-    assert not resp
+    assert resp
 
 
 def test_basic_combat(server, clients):
@@ -410,7 +382,6 @@ def test_basic_combat(server, clients):
             # damage = (10*1.5)/ (2.97.. * sqrt(3.53)) = 2.68...
         assert client2_area == (client2_area_before - 2.685387372970581)
 
-
 # Dataset for death test 
 test_death_data = [
     # FORMAT: client1 posX, client1 posY, client1 area, client1 energy, client2 posX, client2 posY, client2 area ,shoot dir ,shoot width ,shoot energy, damage scaling
@@ -462,10 +433,11 @@ def test_combat_death(server, clients,client1_x, client1_y, client1_area, client
 
 
 def test_kill_reward(server, clients):
-    with clients(2) as (client1, client2):
 
-        # Control time manually to get around LastCombat
-        reset_time(server, client1.token)
+    # Control time manually to get around LastCombat
+    reset_time(server)
+
+    with clients(2) as (client1, client2):
 
         # Setting up client 1
         resp = requests.post(client1.url + 'sudo', json={
@@ -487,7 +459,7 @@ def test_kill_reward(server, clients):
         assert resp
 
         # Moving forward, going over COMBAT_COOLDOWN
-        set_time(server, client1.token, 100000)
+        set_time(server, 100000)
 
         # Shooting once
         resp = requests.post(client1.url + 'shoot', json={
@@ -511,81 +483,14 @@ def test_kill_reward(server, clients):
 
 # Test to check another ship can steal a kill
 def test_kill_steal(server, clients):
-    with clients(3) as (client1, client2, client3):
-
-        reset_time(server, client1.token)
-        set_time(server, client1.token, 47)
-        
+    reset_time(server)
+    with clients(3) as (client1, client2, client3):        
 
         # Setting up client 1
-=======
-
-# Test data for the fixture
-testdata = [
-
-    # FORMAT : scandir, scan_width, posX_s2, posY_s2, area_s2, area_s1, energy, expected
-
-    # Case 1: ship is on top of the other ship
-    (0, 30, 0, 0, 10, 1, 5, True),
-
-    # Case 2: Ship adjacent and should be detected
-    (0, 30, 2, 0, 2, 1, 5, True),
-
-    # Case 3: Test for ship outside scan region i.e scanning the opposite direction
-    (180, 30, 2, 0, 2, 1, 5, False),
-
-    # Case 4: Ship center is within circular segment, but not touching it or the triangle
-    (0, 45, 850, 0, 6, 103, 1000, True),
-
-    # Case 5: Ship outwith circular segment
-    (0, 45, 1500, 0, 10, 100, 1000, False),
-
-    # Case 6: Ship inside of the scan
-    (0, 15, 900, 0, 10, 100, 1000, True),
-
-    # Case 7: Triangle vertex within ship
-    (0, 15, 1887.8151, 506, 10, 100, 1000, True),
-
-    # Case 8: Triangle vertex within ship
-    (0, 15, 1887.8151, -506.838353, 10, 100, 1000, True),
-
-    # Case 9: Ship on lower boundary
-    (0, 15, 1699.03, -456.15, 10, 100, 1000, True),
-
-    # Case 10: Ship on upper boundary
-    (0, 15, 1699.03, 456.15, 10, 100, 1000, True),
-
-    # Case 11: Ship is on the end boundry of the scan
-    (0, 45, 1129.37, 0, 5, 100, 1000, True),
-
-    # Case 12: Ship is behind the scan area
-    # Ship is behind and below
-    (0, 30, -1196.8268, -690.9883, 5, 100, 1000, False),
-    # Ship is behind and above
-    (0, 30, -1196.8268, 690.9883, 5, 100, 1000, False)
-]
-
-# Test to check scan works correctly with the use of test data and the SUDOApi
-@pytest.mark.parametrize("scandir, scan_width, posX_s2, posY_s2, area_s2, area_s1, energy, expected", testdata)
-def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, area_s2, area_s1, energy, expected):
-    with clients(2) as (client1, client2):
-        # Getting ID for ship 2, used to later to check if found
-        resp = requests.post(client2.url + 'getShipInfo', json={
-            'token': client2.token,
-        })
-        assert resp
-
-        # Getting the id for ship 2
-        resp_data = resp.json()
-        client2_id = resp_data['id']
-
-        # Set first ship to a centre position of 0,0
->>>>>>> 41d193ca4a2409d0ef701ebaf9ed9c22f7f19354
         resp = requests.post(client1.url + 'sudo', json={
             'token': client1.token,
             'posX': 0,
             'posY': 0,
-<<<<<<< HEAD
             'area': 20,
             'energy': 200,
         })
@@ -610,10 +515,8 @@ def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, area_s2, a
         })
         assert resp
 
-        set_time(server, client1.token, 200000)
+        set_time(server, 100000)
 
-
-        assert resp
         # Shooting once and dealing damage of 98~ 
         resp = requests.post(client1.url + 'shoot', json={
             'token': client1.token,
@@ -679,16 +582,72 @@ def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, area_s2, a
         
        
 
-=======
+# Test data for the fixture
+testdata = [
+
+    # FORMAT : scandir, scan_width, posX_s2, posY_s2, area_s2, area_s1, energy, expected
+
+    # Case 1: ship is on top of the other ship
+    (0, 30, 0, 0, 10, 1, 5, True),
+
+    # Case 2: Ship adjacent and should be detected
+    (0, 30, 2, 0, 2, 1, 5, True),
+
+    # Case 3: Test for ship outside scan region i.e scanning the opposite direction
+    (180, 30, 2, 0, 2, 1, 5, False),
+
+    # Case 4: Ship center is within circular segment, but not touching it or the triangle
+    (0, 45, 850, 0, 6, 103, 1000, True),
+
+    # Case 5: Ship outwith circular segment
+    (0, 45, 1500, 0, 10, 100, 1000, False),
+
+    # Case 6: Ship inside of the scan
+    (0, 15, 900, 0, 10, 100, 1000, True),
+
+    # Case 7: Triangle vertex within ship
+    (0, 15, 1887.8151, 506, 10, 100, 1000, True),
+
+    # Case 8: Triangle vertex within ship
+    (0, 15, 1887.8151, -506.838353, 10, 100, 1000, True),
+
+    # Case 9: Ship on lower boundary
+    (0, 15, 1699.03, -456.15, 10, 100, 1000, True),
+
+    # Case 10: Ship on upper boundary
+    (0, 15, 1699.03, 456.15, 10, 100, 1000, True),
+
+    # Case 11: Ship is on the end boundry of the scan
+    (0, 45, 1129.37, 0, 5, 100, 1000, True),
+
+    # Case 12: Ship is behind the scan area
+    # Ship is behind and below
+    (0, 30, -1196.8268, -690.9883, 5, 100, 1000, False),
+    # Ship is behind and above
+    (0, 30, -1196.8268, 690.9883, 5, 100, 1000, False)
+]
+
+# Test to check scan works correctly with the use of test data and the SUDOApi
+@pytest.mark.parametrize("scandir, scan_width, posX_s2, posY_s2, area_s2, area_s1, energy, expected", testdata)
+def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, area_s2, area_s1, energy, expected):
+    with clients(2) as (client1, client2):
+        # Getting ID for ship 2, used to later to check if found
+        resp = requests.post(client2.url + 'getShipInfo', json={
+            'token': client2.token,
+        })
+        assert resp
+
+        # Getting the id for ship 2
+        resp_data = resp.json()
+        client2_id = resp_data['id']
+
+        # Set first ship to a centre position of 0,0
+        resp = requests.post(client1.url + 'sudo', json={
+            'token': client1.token,
             'area': area_s1,
             'energy': energy
         })
         assert resp
-
-        resp = requests.post(client1.url + 'getShipInfo', json={
-            'token': client1.token
-        })
-        # print(resp.text)
 
         # Set second ship to desired location and setting its area via the test data
         resp2 = requests.post(client2.url + 'sudo', json={
@@ -713,4 +672,3 @@ def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, area_s2, a
         found = any(scanned['id'] ==
                     client2_id for scanned in scan_list['scanned'])
         assert found == expected
->>>>>>> 41d193ca4a2409d0ef701ebaf9ed9c22f7f19354
