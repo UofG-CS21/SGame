@@ -580,7 +580,7 @@ def test_kill_steal(server, clients):
         assert 'error' in resp_data.keys()
         assert resp_data['error'] == "Your spaceship has been killed. Please reconnect." 
         
-       
+
 
 # Test data for the fixture
 testdata = [
@@ -672,3 +672,71 @@ def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, area_s2, a
         found = any(scanned['id'] ==
                     client2_id for scanned in scan_list['scanned'])
         assert found == expected
+
+
+def test_combat_battle(server, clients):
+    reset_time(server)
+    with clients(3) as (client1, client2, client3):  
+        # Setting up client 1
+        resp = requests.post(client1.url + 'sudo', json={
+            'token': client1.token,
+            'posX': 0,
+            'posY': 0,
+            'energy': 200,
+            'area': 20,
+        })
+        assert resp
+
+        # Setting up client 2 
+        resp = requests.post(client2.url + 'sudo', json={
+            'token': client2.token,
+            'posX': 10,
+            'posY': 0,
+            'energy': 100,
+            'area': 20,
+        })
+        assert resp
+
+        set_time(server, 100000)
+
+        # Setting up client 3 
+        resp = requests.post(client3.url + 'sudo', json={
+            'token': client3.token,
+            'posX': 30,
+            'posY': 0,
+            'energy': 10,
+            'area': 5,
+        })
+        assert resp
+
+        # Client 2 shooting client 3 
+        resp = requests.post(client2.url + 'shoot', json={
+            'token': client2.token,
+            'direction': 0,
+            'width': 10,
+            'energy': 50,
+            'damage': 10,
+        })
+        assert resp
+
+
+        # Client 1 shooting client 2 
+        resp = requests.post(client1.url + 'shoot', json={
+            'token': client1.token,
+            'direction': 0,
+            'width': 10,
+            'energy': 2,
+            'damage': 100,
+        })
+        assert resp
+
+        # Checking the client one gains both ship 2 and 3 area
+        resp = requests.post(client1.url + 'getShipInfo', json={
+            'token': client1.token,
+        })
+        
+        resp_data = resp.json()
+        assert resp_data['area'] == 45 
+
+
+

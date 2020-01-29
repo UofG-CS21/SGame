@@ -80,6 +80,7 @@ namespace SGame
             LastUpdate = time;
             if (this.LastUpdate - this.LastCombat > COMBAT_COOLDOWN)
                 this.KillReward = this.Area;
+            else this.KillReward = System.Math.Max(this.KillReward, this.Area);
         }
 
         public double Radius()
