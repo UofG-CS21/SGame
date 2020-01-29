@@ -239,15 +239,15 @@ namespace SGame
         public void Scan(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeid = GetSpaceshipId(data.Json);
-            if (maybeid == null)
+            var maybeId = GetSpaceshipId(data.Json);
+            if (maybeId == null)
             {
                 response.Data["error"] = "Could not find spaceship for given token";
                 response.Send(500);
                 return;
             }
 
-            int id = maybeid.Value;
+            int id = maybeId.Value;
 
             String[] requiredParams = new String[3] { "direction", "width", "energy" };
 
@@ -319,7 +319,7 @@ namespace SGame
         public void Shoot(ApiResponse response, ApiData data)
         {
             //Check that the arguments for each parameter are valid
-            int id = intersectionParamCheck(response, data);
+            int id = IntersectionParamCheck(response, data);
             if (id == -1)
             {
                 return;
@@ -341,7 +341,7 @@ namespace SGame
                 if (struckShipId == id)
                     continue;
 
-                ships[struckShipId].HitPoints -= shotDamage(energy, width, distanceBetweenShips(ship.Pos.X, ship.Pos.Y, ships[struckShipId].Pos.X, ships[struckShipId].Pos.Y));
+                ships[struckShipId].HitPoints -= ShotDamage(energy, width, DistanceBetweenShips(ship.Pos.X, ship.Pos.Y, ships[struckShipId].Pos.X, ships[struckShipId].Pos.Y));
 
                 //The api doesnt have a return value for shooting, but ive left this in for now for testing purposes.
                 JToken struckShipInfo = new JObject();
@@ -361,7 +361,7 @@ namespace SGame
         /// <summary>
         /// Calculates the shotDamage applied to a ship. Shot damage drops off exponentially as distance increases, base =1.1
         /// </summary>
-        private int shotDamage(int energy, float width, int distance)
+        private int ShotDamage(int energy, float width, int distance)
         {
             return (int)((energy) / ((width / 10) * Math.Pow(1.1, distance)));
         }
@@ -369,18 +369,18 @@ namespace SGame
         /// <summary>
         /// Verifies the arguments passed in an intersection based request are appropriate.
         /// </summary>
-        private int intersectionParamCheck(ApiResponse response, ApiData data)
+        private int IntersectionParamCheck(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeid = GetSpaceshipId(data.Json);
-            if (maybeid == null)
+            var maybeId = GetSpaceshipId(data.Json);
+            if (maybeId == null)
             {
                 response.Data["error"] = "Could not find spaceship for given token";
                 response.Send(500);
                 return -1;
             }
 
-            int id = maybeid.Value;
+            int id = maybeId.Value;
 
             String[] requiredParams = new String[3] { "direction", "width", "energy" };
 
@@ -414,7 +414,7 @@ namespace SGame
             return id;
         }
 
-        private int distanceBetweenShips(float x1, float y1, float x2, float y2)
+        private int DistanceBetweenShips(float x1, float y1, float x2, float y2)
         {
             return (int)Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
         }
