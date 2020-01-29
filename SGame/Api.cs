@@ -578,7 +578,7 @@ namespace SGame
             // Go through all spaceships and add those that intersect with our triangle
             foreach (int id in ships.Keys)
             {
-                if (MathsUtil.CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint) || MathsUtil.CircleSegmentIntersection(ships[id].Pos, (float)ships[id].Radius(), pos, radius, (float)worldDeg, (float)scanWidth))
+                if (MathUtils.CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint) || MathUtils.CircleSegmentIntersection(ships[id].Pos, (float)ships[id].Radius(), pos, radius, (float)worldDeg, (float)scanWidth))
                 {
                     //Console.WriteLine("Intersected");
                     result.Add(id);
