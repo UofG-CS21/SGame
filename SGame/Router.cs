@@ -53,6 +53,11 @@ namespace SGame
                     continue;
                 }
 
+                if (apiRoutes.ContainsKey(apiRouteAttr.Route))
+                {
+                    throw new InvalidOperationException("A route at '" + apiRouteAttr.Route + "is already registered!");
+                }
+
                 var handler = method.CreateDelegate(typeof(ApiRouteDelegate), this.api) as ApiRouteDelegate;
                 apiRoutes[apiRouteAttr.Route] = handler;
             }
