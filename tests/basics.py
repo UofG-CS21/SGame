@@ -8,31 +8,33 @@ allowed_fpe = 1e-6
 def isClose(a, b, err=allowed_fpe):
     return abs(a-b) <= err
 
+
 def reset_time(server, token, time: int = 0):
     """Call at the BEGINNING of a test if you want it to use manual time. Time will be set to `time`."""
     # set time to 0
     resp = requests.post(server.url + 'sudo', json={
-        'token' : token,
-        'time' : time,
+        'token': token,
+        'time': time,
     })
     assert resp
 
-    #force update the ship (which will mess up since it went back in time)
+    # force update the ship (which will mess up since it went back in time)
     resp = requests.post(server.url + 'getShipInfo', json={
-        'token' : token
+        'token': token
     })
 
     energy_cap = resp.json()['area'] * 10
     resp = requests.post(server.url + 'sudo', json={
-        'token' : token,
-        'energy' : energy_cap
+        'token': token,
+        'energy': energy_cap
     })
     assert resp
 
+
 def set_time(server, token, time):
     resp = requests.post(server.url + 'sudo', json={
-        'token' : token,
-        'time' : time,
+        'token': token,
+        'time': time,
     })
     assert resp
 
@@ -192,9 +194,8 @@ def test_movement(server, clients):
         resp = requests.post(server.url + 'sudo', json={
             'token': client.token,
             'time': 10000,
-            })
+        })
         assert resp
-
 
         resp = requests.post(server.url + 'getShipInfo', json={
             'token': client.token,
@@ -230,7 +231,7 @@ def test_movement(server, clients):
         resp = requests.post(server.url + 'sudo', json={
             'token': client.token,
             'time': 20000,
-            })
+        })
         assert resp
 
         resp = requests.post(server.url + 'getShipInfo', json={
@@ -267,7 +268,7 @@ def test_movement(server, clients):
         resp = requests.post(server.url + 'sudo', json={
             'token': client.token,
             'time': 24500,
-            })
+        })
         assert resp
 
         # check that it moved the correct amount
@@ -334,9 +335,6 @@ def test_sudo_fail(server):
                          json={'token': '**NOT_A_VALID_TOKEN**'})
     assert not resp
 
-    resp = requests.post(server.url + 'sudo',
-                         json={})
-    assert not resp
 
 # Test data for the fixture
 testdata = [
@@ -353,7 +351,7 @@ testdata = [
     (180, 30, 2, 0, 2, 1, 5, False),
 
     # Case 4: Ship center is within circular segment, but not touching it or the triangle
-    (0, 45, 850, 0, 6 ,103, 1000, True),
+    (0, 45, 850, 0, 6, 103, 1000, True),
 
     # Case 5: Ship outwith circular segment
     (0, 45, 1500, 0, 10, 100, 1000, False),
@@ -370,7 +368,7 @@ testdata = [
     # Case 9: Ship on lower boundary
     (0, 15, 1699.03, -456.15, 10, 100, 1000, True),
 
-     # Case 10: Ship on upper boundary
+    # Case 10: Ship on upper boundary
     (0, 15, 1699.03, 456.15, 10, 100, 1000, True),
 
     # Case 11: Ship is on the end boundry of the scan
@@ -398,22 +396,22 @@ def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, area_s2, a
         client2_id = resp_data['id']
 
         # Set first ship to a centre position of 0,0
-        resp = requests.post(client1.url + 'sudo', json = {
+        resp = requests.post(client1.url + 'sudo', json={
             'token': client1.token,
             'posX': 0,
             'posY': 0,
             'area': area_s1,
-            'energy' : energy
+            'energy': energy
         })
         assert resp
 
-        resp = requests.post(client1.url + 'getShipInfo', json = {
-                'token': client1.token
-            })
-        #print(resp.text)
+        resp = requests.post(client1.url + 'getShipInfo', json={
+            'token': client1.token
+        })
+        # print(resp.text)
 
         # Set second ship to desired location and setting its area via the test data
-        resp2 = requests.post(client2.url + 'sudo', json = {
+        resp2 = requests.post(client2.url + 'sudo', json={
             'token': client2.token,
             'posX': posX_s2,
             'posY': posY_s2,
@@ -431,10 +429,7 @@ def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, area_s2, a
         # Storing the results of scan
         scan_list = resp_scan.json()
 
-
-       # Checking if the outcome matches the expected output 
+       # Checking if the outcome matches the expected output
         found = any(scanned['id'] ==
-                   client2_id for scanned in scan_list['scanned'])
+                    client2_id for scanned in scan_list['scanned'])
         assert found == expected
-
-

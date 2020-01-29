@@ -814,9 +814,10 @@ namespace SGame
         /// <summary>
         /// A function that, when invoked, sets a certain parameter of `ship` to `value`.
         /// </summary>
+        /// <param name="api">The API instance.</param>
         /// <param name="ship">The ship to set the attribute on.</param>
         /// <param name="value">The new value of the parameter to set.</param>
-        private delegate void AttributeSetter(Spaceship ship, JToken value);
+        private delegate void AttributeSetter(Api api, Spaceship ship, JToken value);
 
         /// <summary>
         /// The map of `JSON key name -> AttributeSetter` used by `Sudo`.
@@ -827,15 +828,13 @@ namespace SGame
         /// </summary>
         private static readonly Dictionary<string, AttributeSetter> SUDO_SETTER_MAP = new Dictionary<string, AttributeSetter>
         {
-            { "area", (ship, value) => ship.Area = (double)value },
-            { "energy", (ship, energy) => ship.Energy = (double)energy },
-            { "posX", (ship, posX) => ship.Pos = new Vector2((float)posX, ship.Pos.Y) },
-            { "posY", (ship, posY) => ship.Pos = new Vector2(ship.Pos.X, (float)posY) },
-            { "velX", (ship, velX) => ship.Velocity = new Vector2((float)velX, ship.Velocity.Y) },
-            { "velY", (ship, velY) => ship.Velocity = new Vector2(ship.Velocity.X, (float)velY) },
-            { "shieldDir", (ship, shieldDir) => ship.ShieldDir = Deg2Rad((double)shieldDir) },
-            { "shieldWidth", (ship, shieldHW) => ship.ShieldWidth = Deg2Rad((double)shieldHW) },
-            { "time", (ship, timeMs) => ship.GameTime.SetElapsedMillisecondsManually((long)timeMs) }
+            { "area", (api, ship, value) => ship.Area = (double)value },
+            { "energy", (api, ship, energy) => ship.Energy = (double)energy },
+            { "posX", (api, ship, posX) => ship.Pos = new Vector2((float)posX, ship.Pos.Y) },
+            { "posY", (api, ship, posY) => ship.Pos = new Vector2(ship.Pos.X, (float)posY) },
+            { "velX", (api, ship, velX) => ship.Velocity = new Vector2((float)velX, ship.Velocity.Y) },
+            { "velY", (api, ship, velY) => ship.Velocity = new Vector2(ship.Velocity.X, (float)velY) },
+            { "time", (api, ship, timeMs) => api.gameTime.SetElapsedMillisecondsManually((long)timeMs) }
         };
 
         /// <summary>
@@ -844,19 +843,22 @@ namespace SGame
         /// <param name="data">The JSON payload of the request, containing the token of the ship.</param>
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("sudo")]
-        [ApiParam("token", typeof(string))]
-
+        [ApiParam("token", typeof(string), Optional = true)]
         public void Sudo(ApiResponse response, ApiData data)
         {
-            var id = GetSpaceshipId(data.Json);
-            if (id == null)
+            Spaceship ship = null;
+            if (data.Json.ContainsKey("token"))
             {
-                response.Data["error"] = "Could not find spaceship (did you pass a valid `token`?)";
-                response.Send(500);
-                return;
+                var shipId = GetSpaceshipId(data.Json);
+                if (shipId == null)
+                {
+                    response.Data["error"] = "Could not find spaceship (did you pass a valid `token`?)";
+                    response.Send(500);
+                    return;
+                }
+                ship = ships[shipId.Value];
             }
 
-            Spaceship ship = ships[id.Value];
             foreach (var kv in data.Json)
             {
                 if (kv.Key == "token") continue;
@@ -871,7 +873,7 @@ namespace SGame
 
                 try
                 {
-                    setter.Invoke(ship, kv.Value);
+                    setter.Invoke(this, ship, kv.Value);
                 }
                 catch (Exception exc)
                 {
