@@ -461,6 +461,10 @@ def test_combat_death(server, clients,client1_x, client1_y, client1_area, client
 
 def test_kill_reward(server, clients):
     with clients(2) as (client1, client2):
+
+        # Control time manually to get around LastCombat
+        reset_time(server, client1.token)
+
         # Setting up client 1
         resp = requests.post(client1.url + 'sudo', json={
             'token': client1.token,
@@ -480,6 +484,9 @@ def test_kill_reward(server, clients):
         })
         assert resp
 
+        # Moving forward, going over COMBAT_COOLDOWN
+        set_time(server, client1.token, 100000)
+
         # Shooting once
         resp = requests.post(client1.url + 'shoot', json={
             'token': client1.token,
@@ -497,19 +504,23 @@ def test_kill_reward(server, clients):
 
         resp_data = resp.json()
         # Checking the first ship gains the killreward
-        assert resp_data['area'] == 31 # should actually check area = ship 1 area + ship 2 area
-        # Is the kill reward supposed to be 1 ????
+        assert resp_data['area'] == 50
 
 
 # Test to check another ship can steal a kill
 def test_kill_steal(server, clients):
     with clients(3) as (client1, client2, client3):
+
+        reset_time(server, client1.token)
+        set_time(server, client1.token, 47)
+        
+
         # Setting up client 1
         resp = requests.post(client1.url + 'sudo', json={
             'token': client1.token,
             'posX': 0,
             'posY': 0,
-            'area': 30,
+            'area': 20,
             'energy': 200,
         })
         assert resp 
@@ -519,7 +530,7 @@ def test_kill_steal(server, clients):
             'token': client2.token,
             'posX': -200,
             'posY': 0,
-            'area': 30,
+            'area': 20,
             'energy': 200,
         })
         assert resp
@@ -532,6 +543,8 @@ def test_kill_steal(server, clients):
             'area': 100,
         })
         assert resp
+
+        set_time(server, client1.token, 200000)
 
 
         assert resp
@@ -577,7 +590,7 @@ def test_kill_steal(server, clients):
         assert resp
         resp_data = resp.json()
         # Client one doesnt gain the area
-        assert resp_data['area'] == 30
+        assert resp_data['area'] == 20
 
         # Checking client 2 gains client 3 area
         resp = requests.post(client2.url + 'getShipInfo', json={
@@ -587,7 +600,7 @@ def test_kill_steal(server, clients):
 
         resp_data = resp.json()
         # Kill reward does not add properly
-        assert resp_data['area'] == 31
+        assert resp_data['area'] == 120
 
         # Client 3 dies
         resp = requests.post(client3.url + 'getShipInfo', json={
@@ -599,7 +612,4 @@ def test_kill_steal(server, clients):
         assert resp_data['error'] == "Your spaceship has been killed. Please reconnect." 
         
        
-
-
-
 
