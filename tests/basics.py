@@ -486,6 +486,8 @@ def test_kill_steal(server, clients):
         })
         assert resp
 
+
+        assert resp
         # Shooting once and dealing damage of 98~ 
         resp = requests.post(client1.url + 'shoot', json={
             'token': client1.token,
@@ -495,6 +497,13 @@ def test_kill_steal(server, clients):
             'damage': 10,
         })
         assert resp
+
+        # Moving client 1 away
+        resp = requests.post(client1.url + 'sudo', json={
+            'token': client1.token,
+            'posX': -200,
+            'posY': -200,
+        })
 
         # client2 moved into combat
         resp = requests.post(client2.url + 'sudo', json={
@@ -513,24 +522,32 @@ def test_kill_steal(server, clients):
             'damage': 10,
         })
         assert resp
-        # This shot shoots twice???
 
+        # Checking client 1 gets the right area
+        resp = requests.post(client1.url + 'getShipInfo', json={
+            'token': client1.token,
+        })
+        assert resp
+        resp_data = resp.json()
+        # Client one doesnt gain the area
+        assert resp_data['area'] == 30
+
+        # Checking client 2 gains client 3 area
         resp = requests.post(client2.url + 'getShipInfo', json={
             'token': client2.token,
         })
         assert resp
 
         resp_data = resp.json()
-       # Area to be added 
-       # assert resp_data['area'] ==  
+        # Kill reward does not add properly
+        assert resp_data['area'] == 31
 
-        #WHY IS CLIENT 1 DYING?
-        resp = requests.post(client1.url + 'getShipInfo', json={
-            'token': client1.token,
+        # Client 3 dies
+        resp = requests.post(client3.url + 'getShipInfo', json={
+            'token': client3.token,
         })
         
         resp_data = resp.json()
-        # assert resp_data['area'] ==0
         assert 'error' in resp_data.keys()
         assert resp_data['error'] == "Your spaceship has been killed. Please reconnect." 
         
