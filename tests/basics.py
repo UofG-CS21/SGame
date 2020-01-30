@@ -740,3 +740,91 @@ def test_combat_battle(server, clients):
 
 
 
+def test_combat_scenario1(server, clients):
+    # Scenario 1 
+    # Areas: C1 = 20 , C2 = 12 , C3 = 4
+    # C1 shoots C2    (C2 area = area (12) - damage (3...))
+    # C2 kill C3      (C2 new area = C2 area (8~) + C3 area (4) )  
+    # C1 kills C2     (C1 new area = C1 area + C2 area)  == ~32    
+    reset_time(server)
+    with clients(3) as (client1, client2, client3):  
+        # Setting up client 1
+        resp = requests.post(client1.url + 'sudo', json={
+            'token': client1.token,
+            'posX': 0,
+            'posY': 30,
+            'energy': 100000,
+            'area': 20,
+        })
+        assert resp
+
+        # Setting up client 2
+        resp = requests.post(client2.url + 'sudo', json={
+            'token': client2.token,
+            'posX': 100,
+            'posY': 30,
+            'energy': 1000,
+            'area': 12,
+        })
+        assert resp
+        
+        # Client 1 shooting client 2 with damage 0f 3~
+        resp = requests.post(client1.url + 'shoot', json={
+            'token': client1.token,
+            'direction': 0,
+            'width': 10,
+            'energy': 10,
+            'damage': 4,
+        })
+        assert resp
+        
+        # Setting up client 3
+        resp = requests.post(client3.url + 'sudo', json={
+            'token': client3.token,
+            'posX': 150,
+            'posY': 30,
+            'area': 4,
+        })
+        assert resp
+
+        # Client 2 shooting client 3 with damage 0f 4~ and kills client 3
+        resp = requests.post(client2.url + 'shoot', json={
+            'token': client2.token,
+            'direction': 0,
+            'width': 30,
+            'energy': 40,
+            'damage': 30,
+        })
+        assert resp
+
+
+        # Checking the client 2 gains client 3 area
+        resp = requests.post(client2.url + 'getShipInfo', json={
+            'token': client2.token,
+        })
+        
+        resp_data = resp.json()
+        # Factoring in the previous loss of damage
+        assert resp_data['area'] == ((12 - 3.140369176864624) + 4)
+
+        set_time(server, 10000)
+ 
+        # Client 1 kills client 2 with a damage of 14~
+        resp = requests.post(client1.url + 'shoot', json={
+            'token': client1.token,
+            'direction': 0,
+            'width': 1,
+            'energy': 15,
+            'damage': 10,
+        })
+        assert resp
+
+        # Checking the client 1 gains client 2 area
+        resp = requests.post(client1.url + 'getShipInfo', json={
+            'token': client1.token,
+        })
+        
+        resp_data = resp.json()
+        # From the calculations it should be 32~
+        assert resp_data['area'] == 32.859630823135376
+
