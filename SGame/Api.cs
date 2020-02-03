@@ -346,10 +346,16 @@ namespace SGame
             var oc = rayOrigin - circleCenter;
             var rd = MathUtils.DirVec(rayDir);
 
-            double c1 = 2.0 * Vector2.Dot(rd, rd);
-            double c2 = 2.0 * (rd.X + rd.Y);
-            double c3 = Vector2.Dot(oc, oc) - circleRadius * circleRadius;
-            double delta = c2 * c2 - 2.0 * c1 * c3;
+            // You get a quadratic in the form c1 * t^2 + c2 * t + c3 = 0 where:
+            // c1 = dot(rayDir, rayDir)
+            // c2 = 2 * dot(O - C, rayDir)
+            // c3 = 2 * dot(O - C, O - C) - r^2
+            // and then calculate the delta:
+            // delta = c2^2 - 4 * c1 * c3
+            double c1 = Vector2.Dot(rd, rd);
+            double c2 = 2.0 * Vector2.Dot(oc, oc);
+            double c3 = 2.0 * Vector2.Dot(oc, oc) - circleRadius * circleRadius;
+            double delta = c2 * c2 - 4.0 * c1 * c3;
             switch (Math.Sign(delta))
             {
                 case 1:
