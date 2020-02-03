@@ -6,11 +6,11 @@ variables:
 
 stages:
     - build
-    - pytest
     - unitTest
+    - pytest
 
-# Build stage: build the C# SGame executable
-build:
+# Build stage: build the C# SGame and SArbiter
+build-SGame:
     stage: build
     before_script:
         # Before building: restore C# dependencies for SGame
@@ -18,16 +18,28 @@ build:
     script:
         - dotnet build SGame
 
+build-SArbiter:
+    stage: build
+    before_script:
+        # Before building: restore C# dependencies for SArbiter
+        - dotnet restore SArbiter
+    script:
+        - dotnet build SArbiter
 
-# unitTest stage: test the C# SGame 
-unitTest:
+# unitTest stage: test the C# SGame and SArbiter
+unitTest-SGame:
     stage: unitTest
     script:
         - cd ${CI_PROJECT_DIR}/SGame.Tests
         - dotnet test
-        
 
-# pytest stage: tests that the client can connect, run through all rest api commands and disconnect successfully
+unitTest-SArbiter:
+    stage: unitTest
+    script:
+        - cd ${CI_PROJECT_DIR}/SArbiter.Tests
+        - dotnet test
+
+# pytest stage (blackbox): tests that the client can connect, run through all rest api commands and disconnect successfully
 pytest:
     stage: pytest
     script:
