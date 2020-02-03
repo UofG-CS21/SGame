@@ -353,7 +353,7 @@ namespace SGame
             // and then calculate the delta:
             // delta = c2^2 - 4 * c1 * c3
             double c1 = Vector2.Dot(rd, rd);
-            double c2 = 2.0 * Vector2.Dot(oc, oc);
+            double c2 = 2.0 * Vector2.Dot(oc, rd);
             double c3 = 2.0 * Vector2.Dot(oc, oc) - circleRadius * circleRadius;
             double delta = c2 * c2 - 4.0 * c1 * c3;
             switch (Math.Sign(delta))
