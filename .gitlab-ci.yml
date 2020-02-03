@@ -5,25 +5,28 @@ variables:
     SGAME_PORT: "5000"
 
 stages:
-    - build
+    - buildAndStaticAnalysis
     - unitTest
     - pytest
 
 # Build stage: build the C# SGame and SArbiter
-build-SGame:
-    stage: build
+# >> FxCop runs static analysis automatically with the `dotnet build`! <<
+buildAndStaticAnalysis-SGame:
+    stage: buildAndStaticAnalysis
     before_script:
         # Before building: restore C# dependencies for SGame
         - dotnet restore SGame
     script:
+        # Build (& integrated FxCop analysis)
         - dotnet build SGame
 
-build-SArbiter:
-    stage: build
+buildAndStaticAnalysis-SArbiter:
+    stage: buildAndStaticAnalysis
     before_script:
         # Before building: restore C# dependencies for SArbiter
         - dotnet restore SArbiter
     script:
+        # Build (& integrated FxCop analysis)
         - dotnet build SArbiter
 
 # unitTest stage: test the C# SGame and SArbiter
