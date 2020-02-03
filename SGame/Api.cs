@@ -37,18 +37,35 @@ namespace SGame
         Dictionary<string, int> players = new Dictionary<string, int>();
 
         /// <summary>
+        /// The internal table of [spaceship ID -> spaceship token] for the compute node.
+        /// Used to remove killed ships from players.
+        /// </summary>
+        Dictionary<int, string> inversePlayers = new Dictionary<int, string>();
+
+
+        /// <summary>
         /// Internal game state of [spaceship ID -> Spaceship ] for the server.
         /// </summary>
         Dictionary<int, Spaceship> ships = new Dictionary<int, Spaceship>();
 
         /// <summary>
-        /// Takes data["token"] as spaceship token and looks up the spaceship ID in `players`, returning it.
-        /// Returns null if the token is not present or is not present in `players`.
+        /// The internal table of spaceship tokens, containing dead spaceships.
+        /// </summary>
+        HashSet<string> deadPlayers = new HashSet<string>();
+
+
         /// <summary>
-        Nullable<int> GetSpaceshipId(JObject data)
+        /// Takes data["token"] as spaceship token and looks up the spaceship ID in `players`, returning it.
+        /// If token is present and valid, returns the relevant player ID.
+        /// Otherwise, sends an error response, and returns null.
+        /// <summary>
+        Nullable<int> GetSpaceshipId(ApiResponse response, JObject data)
         {
+
             if (!data.ContainsKey("token"))
             {
+                response.Data["error"] = "Spaceship token not in sent data.";
+                response.Send(500);
                 return null;
             }
             var token = (string)data["token"];
@@ -57,6 +74,18 @@ namespace SGame
             {
                 return players[token];
             }
+
+            if (deadPlayers.Contains(token))
+            {
+
+                deadPlayers.Remove(token);
+                response.Data["error"] = "Your spaceship has been killed. Please reconnect.";
+                response.Send(500);
+                return null;
+            }
+
+            response.Data["error"] = "Ship not found for given token.";
+            response.Send(500);
             return null;
         }
 
@@ -71,8 +100,6 @@ namespace SGame
             }
         }
 
-
-
         /// <summary>
         /// Handles a "connect" REST request, connecting a player to the server.
         /// Responds with a fresh spaceship ID and player token for that spaceship.
@@ -85,6 +112,7 @@ namespace SGame
             freeID++;
             string playerToken = Guid.NewGuid().ToString();
             players[playerToken] = playerID;
+            inversePlayers[playerID] = playerToken;
             ships[playerID] = new Spaceship(playerID, gameTime);
 
             Console.WriteLine("Connected player " + playerID.ToString() + " with session token " + playerToken);
@@ -103,12 +131,9 @@ namespace SGame
         [ApiParam("token", typeof(string))]
         public void DisconnectPlayer(ApiResponse response, ApiData data)
         {
-            var maybeId = GetSpaceshipId(data.Json);
-            if (maybeId == null || !ships.ContainsKey(maybeId.Value))
+            var maybeId = GetSpaceshipId(response, data.Json);
+            if (maybeId == null)
             {
-                Console.WriteLine("Ship not found for given token");
-                response.Data["error"] = "Ship not found for given token";
-                response.Send(500);
                 return;
             }
             int id = maybeId.Value;
@@ -117,6 +142,7 @@ namespace SGame
             Console.WriteLine("Disconnecting player with id " + id);
             ships.Remove(id);
             players.Remove(token);
+            inversePlayers.Remove(id);
             response.Send(200);
         }
 
@@ -132,11 +158,9 @@ namespace SGame
         public void AcceleratePlayer(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeId = GetSpaceshipId(data.Json);
+            var maybeId = GetSpaceshipId(response, data.Json);
             if (maybeId == null)
             {
-                response.Data["error"] = "Ship not found for given token";
-                response.Send(500);
                 return;
             }
             int id = maybeId.Value;
@@ -164,11 +188,9 @@ namespace SGame
         public void GetShipInfo(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var id = GetSpaceshipId(data.Json);
+            var id = GetSpaceshipId(response, data.Json);
             if (id == null)
             {
-                response.Data["error"] = "Could not find spaceship for given token";
-                response.Send(500);
                 return;
             }
 
@@ -190,7 +212,8 @@ namespace SGame
         /// its area will be equal to SCAN_ENERGY_SCALING_FACTOR times the energy spent
         /// </summary>
 
-        private int SCAN_ENERGY_SCALING_FACTOR = 2000;
+        private const int SCAN_ENERGY_SCALING_FACTOR = 2000;
+
         public List<int> CircleSectorScan(Vector2 pos, double worldDeg, double scanWidth, int energySpent)
         {
             // The radius of the cone will be such that the area scanned is energySpent * SCAN_ENERGY_SCALING_FACTOR
@@ -241,11 +264,9 @@ namespace SGame
         public void Scan(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeId = GetSpaceshipId(data.Json);
+            var maybeId = GetSpaceshipId(response, data.Json);
             if (maybeId == null)
             {
-                response.Data["error"] = "Could not find spaceship for given token";
-                response.Send(500);
                 return;
             }
 
@@ -307,21 +328,23 @@ namespace SGame
             response.Send();
         }
 
+        private const double MINIMUM_AREA = 0.75;
         /// <summary>
         /// Handles a "Shoot" REST request, damaging all ships caught in its blast. pew pew.
         /// </summary>
-        /// <param name="data">The JSON payload of the request, containing the token of the ship, the angle to shoot at, the width of the shot, and the energy to expend on the shot.true </param>
+        /// <param name="data">The JSON payload of the request, containing the token of the ship, the angle to shoot at, the width of the shot, the energy to expend on the shot (determines distance), and damage (scaling) </param>
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("shoot")]
         [ApiParam("token", typeof(string))]
         [ApiParam("direction", typeof(float))]
         [ApiParam("width", typeof(float))]
         [ApiParam("energy", typeof(int))]
+        [ApiParam("damage", typeof(float))]
 
         public void Shoot(ApiResponse response, ApiData data)
         {
             //Check that the arguments for each parameter are valid
-            int id = IntersectionParamCheck(response, data);
+            int id = IntersectionParamCheck(response, data, true);
             if (id == -1)
             {
                 return;
@@ -329,11 +352,12 @@ namespace SGame
             Spaceship ship = ships[id];
             float width = (float)data.Json["width"];
             float direction = (float)data.Json["direction"];
+            float damageScaling = (float)data.Json["damage"];
 
-            int energy = (int)Math.Min((int)data.Json["energy"], Math.Floor(ship.Energy));
-            ships[id].Energy -= energy; //remove energy for the shot
+            int energy = (int)Math.Min((int)data.Json["energy"], Math.Floor(ship.Energy / damageScaling));
+            ships[id].Energy -= energy * damageScaling; //remove energy for the shot
 
-            Console.WriteLine("Shot by " + id + ", pos = " + ships[id].Pos.ToString() + " , direction = " + direction + ", width = " + width + ", energy spent = " + energy);
+            Console.WriteLine("Shot by " + id + ", pos = " + ships[id].Pos.ToString() + " , direction = " + direction + ", width = " + width + ", energy spent = " + energy + ", scaling = " + damageScaling);
 
             List<int> struck = CircleSectorScan(ship.Pos, direction, width, energy);
             JArray struckShips = new JArray();
@@ -343,17 +367,42 @@ namespace SGame
                 if (struckShipId == id)
                     continue;
 
-                ships[struckShipId].HitPoints -= ShotDamage(energy, width, DistanceBetweenShips(ship.Pos.X, ship.Pos.Y, ships[struckShipId].Pos.X, ships[struckShipId].Pos.Y));
-
                 //The api doesnt have a return value for shooting, but ive left this in for now for testing purposes.
                 JToken struckShipInfo = new JObject();
                 struckShipInfo["id"] = struckShipId;
                 struckShipInfo["area"] = ships[struckShipId].Area;
                 struckShipInfo["posX"] = ships[struckShipId].Pos.X;
                 struckShipInfo["posY"] = ships[struckShipId].Pos.Y;
-                struckShipInfo["hp"] = ships[struckShipId].HitPoints;
                 struckShips.Add(struckShipInfo);
+
+                double damage = ShotDamage(energy, width, damageScaling, Vector2.Subtract(ships[id].Pos, ships[struckShipId].Pos).Length());
+                // We have killed a ship, gain it's kill reward, and move struck ship to the graveyard
+                if (ships[struckShipId].Area - damage < MINIMUM_AREA)
+                {
+                    ships[id].Area += ships[struckShipId].KillReward;
+                    ships.Remove(struckShipId);
+                    players.Remove(inversePlayers[struckShipId]);
+                    deadPlayers.Add(inversePlayers[struckShipId]);
+                    inversePlayers.Remove(struckShipId);
+                }
+                else // Struck ship survived - note that it's in combat
+                {
+                    if (ships[struckShipId].LastUpdate - ships[struckShipId].LastCombat > Spaceship.COMBAT_COOLDOWN)
+                    {
+                        // Reset kill reward when hit ship was not in combat
+                        ships[struckShipId].KillReward = ships[struckShipId].Area;
+                    }
+                    ships[struckShipId].LastCombat = ships[struckShipId].LastUpdate;
+                    ships[struckShipId].Area -= damage;
+                }
             }
+
+            //Ship performed combat action, lock kill reward if not in combat from before
+            if (ships[id].LastUpdate - ships[id].LastCombat > Spaceship.COMBAT_COOLDOWN)
+            {
+                ships[id].KillReward = ships[id].Area;
+            }
+            ships[id].LastCombat = ships[id].LastUpdate;
 
             response.Data["struck"] = struckShips;
             response.Send();
@@ -363,22 +412,32 @@ namespace SGame
         /// <summary>
         /// Calculates the shotDamage applied to a ship. Shot damage drops off exponentially as distance increases, base =1.1
         /// </summary>
-        private int ShotDamage(int energy, float width, int distance)
+        private float ShotDamage(int energy, float width, float scaling, float distance)
         {
-            return (int)((energy) / ((width / 10) * Math.Pow(1.1, distance)));
+            distance = Math.Max(distance, 1);
+            width = (float)(Math.PI * width) / (float)180.0;
+            return (float)(energy * scaling) / (float)(Math.Max(1, Math.Pow(2, 2 * width)) * Math.Sqrt(distance));
+
+            /* 
+                A new ship shoots at another new ship, using all its 10 energy. It can oneshot the ship at
+                [angle width] -> [oneshot distance]
+                90  20
+                45  180
+                30  352
+                15  800
+                1   1500
+            */
         }
 
         /// <summary>
         /// Verifies the arguments passed in an intersection based request are appropriate.
         /// </summary>
-        private int IntersectionParamCheck(ApiResponse response, ApiData data)
+        private int IntersectionParamCheck(ApiResponse response, ApiData data, bool requireDamage = false)
         {
             UpdateGameState();
-            var maybeId = GetSpaceshipId(data.Json);
+            var maybeId = GetSpaceshipId(response, data.Json);
             if (maybeId == null)
             {
-                response.Data["error"] = "Could not find spaceship for given token";
-                response.Send(500);
                 return -1;
             }
 
@@ -413,6 +472,25 @@ namespace SGame
                 response.Send(500);
                 return -1;
             }
+
+            if (requireDamage)
+            {
+                if (data.Json["damage"] == null)
+                {
+                    response.Data["error"] = "Requires parameter: " + "damage";
+                    response.Send(500);
+                    return -1;
+                }
+
+                float damage = (float)data.Json["damage"];
+                if (damage <= 0)
+                {
+                    response.Data["error"] = "Damage scaling must be positive";
+                    response.Send(500);
+                    return -1;
+                }
+            }
+
             return id;
         }
 
@@ -458,17 +536,20 @@ namespace SGame
         public void Sudo(ApiResponse response, ApiData data)
         {
             Spaceship ship = null;
+
             if (data.Json.ContainsKey("token"))
             {
-                var shipId = GetSpaceshipId(data.Json);
-                if (shipId == null)
+                var token = (string)data.Json["token"];
+                if (players.ContainsKey(token))
+                    ship = ships[players[token]];
+                else
                 {
-                    response.Data["error"] = "Could not find spaceship (did you pass a valid `token`?)";
+                    response.Data["error"] = "Ship not found for given token.";
                     response.Send(500);
                     return;
                 }
-                ship = ships[shipId.Value];
             }
+
 
             foreach (var kv in data.Json)
             {
