@@ -79,7 +79,10 @@ namespace SGame
             Energy = Math.Min(Area * 10, Energy + elapsedSeconds * Area);
             LastUpdate = time;
             if (this.LastUpdate - this.LastCombat > COMBAT_COOLDOWN)
+            {
+                // Only reset kill reward after cooldown has expired 
                 this.KillReward = this.Area;
+            }
             else this.KillReward = System.Math.Max(this.KillReward, this.Area);
         }
 

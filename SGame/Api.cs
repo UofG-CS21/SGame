@@ -377,7 +377,6 @@ namespace SGame
                 struckShips.Add(struckShipInfo);
 
                 double damage = ShotDamage(energy, width, damageScaling, Vector2.Subtract(ships[id].Pos, ships[struckShipId].Pos).Length());
-
                 // We have killed a ship, gain it's kill reward, and move struck ship to the graveyard
                 if (ships[struckShipId].Area - damage < MINIMUM_AREA)
                 {
@@ -389,8 +388,9 @@ namespace SGame
                 }
                 else // Struck ship survived - note that it's in combat
                 {
-                    if (ships[struckShipId].LastCombat - ships[struckShipId].LastUpdate > Spaceship.COMBAT_COOLDOWN)
+                    if (ships[struckShipId].LastUpdate - ships[struckShipId].LastCombat > Spaceship.COMBAT_COOLDOWN)
                     {
+                        // Reset kill reward when hit ship was not in combat
                         ships[struckShipId].KillReward = ships[struckShipId].Area;
                     }
                     ships[struckShipId].LastCombat = ships[struckShipId].LastUpdate;
@@ -399,7 +399,7 @@ namespace SGame
             }
 
             //Ship performed combat action, lock kill reward if not in combat from before
-            if (ships[id].LastCombat - ships[id].LastUpdate > Spaceship.COMBAT_COOLDOWN)
+            if (ships[id].LastUpdate - ships[id].LastCombat > Spaceship.COMBAT_COOLDOWN)
             {
                 ships[id].KillReward = ships[id].Area;
             }
