@@ -79,7 +79,6 @@ namespace SGame
         /// </summary>
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("connect")]
-
         public void ConnectPlayer(ApiResponse response, ApiData data)
         {
             int playerID = freeID;
