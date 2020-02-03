@@ -41,12 +41,12 @@ namespace SGame
 
         /// Max hit points of the spaceship.
         /// </summary>
-        public int MaxHitPoints { get; set; }
+        public double LastUpdate { get; set; }
 
         /// <summary>
-        /// Hit points of the spaceship. Nothing happens when this hits zero atm.
+        /// Timestamp of last time the ship was in combat
         /// </summary>
-        public int HitPoints { get; set; }
+        public double LastCombat { get; set; }
 
         private double _shieldDir;
 
@@ -85,9 +85,14 @@ namespace SGame
             }
         }
         /// <summary>
-        /// Timestamp of last time the ship's state was updated
+        /// Reward received by opponent for killing this ship
         /// </summary>
-        public double LastUpdate { get; set; }
+        public double KillReward { get; set; }
+
+        /// <summary>
+        /// Number of milliseconds between combat actions that reset the kill reward
+        ///</summary>
+        public const double COMBAT_COOLDOWN = 60 * 1000; // one minute
 
         public Spaceship(int id, GameTime gameTime)
         {
@@ -98,8 +103,8 @@ namespace SGame
             this.Pos = new Vector2(0, 0);
             this.Velocity = new Vector2(0, 0);
             this.LastUpdate = gameTime.ElapsedMilliseconds;
-            this.MaxHitPoints = (int)(100 + (this.Area * this.Area * 0.2) + (this.Area));
-            this.HitPoints = this.MaxHitPoints;
+            this.LastCombat = this.LastUpdate;
+            this.KillReward = this.Area;
             this.ShieldDir = 0.0;
             this.ShieldWidth = 0.0;
         }
@@ -111,6 +116,12 @@ namespace SGame
             Pos += Vector2.Multiply(Velocity, (float)elapsedSeconds);
             Energy = Math.Min(Area * 10, Energy + elapsedSeconds * Area);
             LastUpdate = time;
+            if (this.LastUpdate - this.LastCombat > COMBAT_COOLDOWN)
+            {
+                // Only reset kill reward after cooldown has expired 
+                this.KillReward = this.Area;
+            }
+            else this.KillReward = System.Math.Max(this.KillReward, this.Area);
         }
 
         public double Radius()
