@@ -53,6 +53,11 @@ namespace SGame
                     continue;
                 }
 
+                if (apiRoutes.ContainsKey(apiRouteAttr.Route))
+                {
+                    throw new InvalidOperationException("A route at '" + apiRouteAttr.Route + "is already registered!");
+                }
+
                 var handler = method.CreateDelegate(typeof(ApiRouteDelegate), this.api) as ApiRouteDelegate;
                 apiRoutes[apiRouteAttr.Route] = handler;
             }
@@ -67,8 +72,22 @@ namespace SGame
                 response.Send(404);
                 return;
             }
-
-            handler.Invoke(response, data);
+            try
+            {
+                handler.Invoke(response, data);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            finally
+            {
+                if (!response.Sent)
+                {
+                    Console.WriteLine("Error: response was not sent");
+                    response.Send(500);
+                }
+            }
         }
     }
 }
