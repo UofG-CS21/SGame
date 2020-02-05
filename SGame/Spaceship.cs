@@ -1,4 +1,3 @@
-using System.Numerics;
 using System;
 
 namespace SGame
@@ -75,7 +74,7 @@ namespace SGame
         {
             long time = GameTime.ElapsedMilliseconds;
             double elapsedSeconds = (double)(time - LastUpdate) / 1000;
-            Pos += Vector2.Multiply(Velocity, (float)elapsedSeconds);
+            Pos += Vector2.Multiply(Velocity, (double)elapsedSeconds);
             Energy = Math.Min(Area * 10, Energy + elapsedSeconds * Area);
             LastUpdate = time;
             if (this.LastUpdate - this.LastCombat > COMBAT_COOLDOWN)

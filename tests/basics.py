@@ -380,7 +380,7 @@ def test_basic_combat(server, clients):
         # shot damage(10, 45, 1.5, (Magnitude of distance) 3.53...)
         # width = pi/4
         # damage = (10*1.5)/ (2.97.. * sqrt(3.53)) = 2.68...
-        assert client2_area == (client2_area_before - 2.685387372970581)
+        assert isClose(client2_area, client2_area_before - 2.685387372970581)
 
 
 # Dataset for death test
@@ -798,7 +798,7 @@ def test_combat_scenario1(server, clients):
         assert resp
         resp_data = resp.json()
         # Factoring in the previous loss of damage
-        assert resp_data['area'] == ((12 - 3.140369176864624) + 4)
+        assert isClose(resp_data['area'], ((12 - 3.140369176864624) + 4))
 
         set_time(server, 10000)
 
@@ -819,7 +819,7 @@ def test_combat_scenario1(server, clients):
         assert resp
         resp_data = resp.json()
         # From the calculations it should be > 32
-        assert resp_data['area'] == 32.859630823135376
+        assert isClose(resp_data['area'], 32.859630823135376)
 
 # Scenario 2 test
 def test_combat_scenario2(server, clients):
@@ -897,7 +897,7 @@ def test_combat_scenario2(server, clients):
 
         resp_data = resp.json()
         # Factoring in the previous loss of damage
-        assert resp_data['area'] == ((10 - 5.115637302398682) + 3)
+        assert isClose(resp.json()['area'], ((10 - 5.115637302398682) + 3) )
 
         # Moving client 1 closer for the kill shot
         resp = requests.post(client1.url + 'sudo', json={
@@ -1041,4 +1041,4 @@ def test_cool_down(server, clients):
         })
         assert resp
         resp_data = resp.json()
-        assert resp_data['area'] == client1_area_after_kill + client2_new_area
+        assert isClose(resp_data['area'], client1_area_after_kill + client2_new_area)
