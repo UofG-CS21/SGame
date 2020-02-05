@@ -4,7 +4,6 @@ using System.IO;
 using System.Net;
 using System.Collections.Generic;
 using System.Collections;
-using System.Numerics;
 using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -50,7 +49,7 @@ namespace SGame.Tests
 
         [Theory]
         [ClassData(typeof(CSITestData))]
-        public void CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth, bool expected)
+        public void CircleSegmentIntersection(Vector2 circleCenter, double circleRadius, Vector2 segmentCenter, double segmentRadius, double segmentAngle, double segmentWidth, bool expected)
         {
             bool actual = MathsUtil.CircleSegmentIntersection(circleCenter, circleRadius, segmentCenter, segmentRadius, segmentAngle, segmentWidth);
             Assert.Equal(expected, actual);
@@ -89,7 +88,7 @@ namespace SGame.Tests
             yield return new object[] { new Vector2(-2, -6), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
 
             //ship centre outside circle sector, special case, circle intersects segment. !!!This probably should pass as true!!!
-            yield return new object[] { new Vector2((float)(-1.2), 0), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
+            yield return new object[] { new Vector2(-1.2, 0), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
 
             //ship centre outside circle sector, special case, circle does not intersect segment
             yield return new object[] { new Vector2(-2, 0), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
@@ -97,7 +96,7 @@ namespace SGame.Tests
 
 
             //circle segment fully within ships radius, case 1: centre points differ
-            yield return new object[] { new Vector2((float)(-0.5), 0), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
+            yield return new object[] { new Vector2(-0.5, 0), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, false };
 
             //circle segment fully within ships radius, case 2: centre points same
             yield return new object[] { new Vector2(0, 0), 5, new Vector2(0, 0), 4, 0, Math.PI / 4, true };
