@@ -339,34 +339,61 @@ namespace SGame
         internal static bool RaycastCircle(Vector2 rayOrigin, double rayDir, Vector2 circleCenter, double circleRadius,
             out Vector2? inters1, out Vector2? inters2)
         {
+            Console.WriteLine("Raycast from O=" + rayOrigin + ", dir=" + rayDir + ", circleCenter=" + circleCenter + ", circleRadius=" + circleRadius);
+
+            inters1 = null;
+            inters2 = null;
+
             // ray: P = rayOrigin + [cos(rayDir), sin(rayDir)] * t, t >= 0
             // circle: dot(Q, Q) = circleRadius^2, where Q = P - circleCenter
-            // Let Q = rayOrigin + [cos(rayDir), sin(rayDir)] * t - circleCenter, t >= 0
-            // then solve for t
-            var oc = rayOrigin - circleCenter;
+            // Then let P = Q and solve for t
             var rd = MathUtils.DirVec(rayDir);
+            var q = rayOrigin - circleCenter;
 
             // You get a quadratic in the form c1 * t^2 + c2 * t + c3 = 0 where:
-            // c1 = dot(rayDir, rayDir)
-            // c2 = 2 * dot(O - C, rayDir)
-            // c3 = 2 * dot(O - C, O - C) - r^2
-            // and then calculate the delta:
-            // delta = c2^2 - 4 * c1 * c3
-            double c1 = Vector2.Dot(rd, rd);
-            double c2 = 2.0 * Vector2.Dot(oc, rd);
-            double c3 = 2.0 * Vector2.Dot(oc, oc) - circleRadius * circleRadius;
+            double c1 = 1.0; // = Vector2.Dot(rd, rd);
+            double c2 = 2.0 * Vector2.Dot(q, rd);
+            double c3 = Vector2.Dot(q, q) - circleRadius * circleRadius;
             double delta = c2 * c2 - 4.0 * c1 * c3;
+
+            // FIXME: Prevents issues with incorrect rounding
+            //        - this will have to be reimplemented with a double-based Vector2 to prevent rounding issues
+            if (MathUtils.ToleranceEquals(delta, 0.0, 0.1))
+            {
+                delta = Math.Abs(delta);
+            }
+
             switch (Math.Sign(delta))
             {
                 case 1:
                     double sqrtDelta = Math.Sqrt(delta);
-                    inters1 = rayOrigin + rd * (float)((-c2 - sqrtDelta) / c1);
-                    inters2 = rayOrigin + rd * (float)((-c2 + sqrtDelta) / c1);
-                    return true;
+
+                    float t1 = (float)((-c2 - sqrtDelta) / (2.0 * c1));
+                    inters1 = null;
+                    if (t1 >= 0.0f)
+                    {
+                        inters1 = rayOrigin + rd * t1;
+                    }
+
+                    float t2 = (float)((-c2 + sqrtDelta) / (2.0 * c1));
+                    inters2 = null;
+                    if (t2 >= 0.0f)
+                    {
+                        inters2 = rayOrigin + rd * t2;
+                    }
+
+                    return inters1 != null || inters2 != null;
+
                 case 0:
-                    inters1 = rayOrigin + rd * (float)(-c2 / c1);
+                    float t = (float)(-c2 / c1);
+                    inters1 = null;
+                    if (t >= 0)
+                    {
+                        inters1 = rayOrigin + rd * (float)(-c2 / (2.0 * c1));
+                    }
                     inters2 = null;
                     return true;
+
                 default: // -1
                     inters1 = null;
                     inters2 = null;
@@ -468,11 +495,19 @@ namespace SGame
         /// <summary>
         /// Returns the percentage (0.0 to 1.0) of damage covered by a ship's shield when it is being shot
         /// from `shotOrigin` with a cone of half-width `shotWidth` radians and length `shotRadius`.
+        /// WARNING: `width` and `shotDir` are in DEGREES!
         /// </summary>
         internal static double ShieldingAmount(Spaceship ship, Vector2 shotOrigin, double shotDir, double shotWidth, double shotRadius)
         {
-            shotWidth = Math.Abs(shotWidth); // Or things WILL break!!
             double shipR = ship.Radius();
+            if ((shotOrigin - ship.Pos).Length() <= shipR)
+            {
+                // No shielding if the shooter is shooting from INSIDE the other ship!
+                return 0.0;
+            }
+
+            shotWidth = Deg2Rad(shotWidth); // IMPORTANT - input values are in degrees!
+            shotDir = Deg2Rad(shotDir); // IMPORTANT - input values are in degrees!
 
             // Find the two tangent points from the origin of the shot to the ship
             Vector2 tgLeft, tgRight;
@@ -483,9 +518,12 @@ namespace SGame
             // "center axis" space (= reference is the line between the center of the ship and the shot origin)
             // to "shot cone" space (= reference is the center axis of the shot cone)
             // Mark them "left" and "right", where left <= right always - but note that they can both be positive and/or negative!
-            double shipCenterAngle = MathUtils.BetterArcTan(ship.Pos.Y, ship.Pos.X);
+            Vector2 shipCenterDelta = ship.Pos - shotOrigin;
+            double shipCenterAngle = Math.Atan2(shipCenterDelta.Y, shipCenterDelta.X);
             double CAS2SS = shipCenterAngle - shotDir;
+            Console.WriteLine("shot dir: " + shotDir + ", CAS2SS: " + CAS2SS + " tgangle: " + tgAngle);
             double tgLeftAngleSS = -tgAngle + CAS2SS, tgRightAngleSS = tgAngle + CAS2SS;
+            Console.WriteLine("LA " + tgLeftAngleSS + " RA " + tgRightAngleSS);
             if (tgLeftAngleSS > tgRightAngleSS)
             {
                 (tgLeftAngleSS, tgRightAngleSS) = (tgRightAngleSS, tgLeftAngleSS);
@@ -497,37 +535,37 @@ namespace SGame
             // - Calculate the world-space angles from the shot origin to each point
             // - Bring the angles to "shot cone" space (= reference is the center axis of the shot cone)
             // - Mark them "left" and "right", where left <= right always - but note that they can both be positive and/or negative!
-            Vector2? capHitLeft, capHitRight;
-            double leftCapAngleSS = Double.NegativeInfinity, rightCapAngleSS = Double.PositiveInfinity;
-            if (CircleCircleIntersection(shotOrigin, shotRadius, ship.Pos, shipR, out capHitLeft, out capHitRight))
-            {
-                // FIXME: Is the "only one point is tangent between the shot cap and the ship arc" edge case properly handled?
-                if (capHitRight == null) capHitRight = capHitLeft;
+            // FIXME Vector2? capHitLeft, capHitRight;
+            // FIXME double leftCapAngleSS = Double.NegativeInfinity, rightCapAngleSS = Double.PositiveInfinity;
+            // FIXME if (CircleCircleIntersection(shotOrigin, shotRadius, ship.Pos, shipR, out capHitLeft, out capHitRight))
+            // FIXME {
+            // FIXME     // FIXME: Is the "only one point is tangent between the shot cap and the ship arc" edge case properly handled?
+            // FIXME     if (capHitRight == null) capHitRight = capHitLeft;
 
-                // First put the intersection points so that the "left" cap hit point is nearest to the "left" tangent point,
-                // and the "right" cap point is nearest to the "right" tangent point;
+            // FIXME     // First put the intersection points so that the "left" cap hit point is nearest to the "left" tangent point,
+            // FIXME     // and the "right" cap point is nearest to the "right" tangent point;
 
-                double capDist1 = (capHitLeft.Value - tgLeft).Length(), capDist2 = (capHitRight.Value - tgLeft).Length();
-                if (capDist2 < capDist1)
-                {
-                    (capHitLeft, capHitRight) = (capHitRight, capHitLeft);
-                }
+            // FIXME     double capDist1 = (capHitLeft.Value - tgLeft).Length(), capDist2 = (capHitRight.Value - tgLeft).Length();
+            // FIXME     if (capDist2 < capDist1)
+            // FIXME     {
+            // FIXME         (capHitLeft, capHitRight) = (capHitRight, capHitLeft);
+            // FIXME     }
 
-                // Now calculate angles between the cap hits and the shot origin and bring them from world-space to shot-space
-                // **Only if the distance between the shot origin and the respective tangent point is greater than the distance
-                //   between the shot origin and the respective cap hit point the cap hit point angles are using during
-                //   raycast angle calculations!!** (draw a picture if this sentence is not clear)
-                Vector2 leftCapDelta = capHitLeft.Value - shotOrigin, rightCapDelta = capHitRight.Value - shotOrigin;
-                Vector2 leftTgDelta = tgLeft - shotOrigin, rightTgDelta = tgRight - shotOrigin;
-                if (leftCapDelta.LengthSquared() < leftTgDelta.LengthSquared())
-                {
-                    leftCapAngleSS = Math.Atan2(leftCapDelta.Y, leftCapDelta.X) - shotDir;
-                }
-                if (rightCapDelta.LengthSquared() < rightTgDelta.LengthSquared())
-                {
-                    rightCapAngleSS = Math.Atan2(rightCapDelta.Y, rightCapDelta.X) - shotDir;
-                }
-            }
+            // FIXME     // Now calculate angles between the cap hits and the shot origin and bring them from world-space to shot-space
+            // FIXME     // **Only if the distance between the shot origin and the respective tangent point is greater than the distance
+            // FIXME     //   between the shot origin and the respective cap hit point the cap hit point angles are using during
+            // FIXME     //   raycast angle calculations!!** (draw a picture if this sentence is not clear)
+            // FIXME     Vector2 leftCapDelta = capHitLeft.Value - shotOrigin, rightCapDelta = capHitRight.Value - shotOrigin;
+            // FIXME     Vector2 leftTgDelta = tgLeft - shotOrigin, rightTgDelta = tgRight - shotOrigin;
+            // FIXME     if (leftCapDelta.LengthSquared() < leftTgDelta.LengthSquared())
+            // FIXME     {
+            // FIXME         leftCapAngleSS = Math.Atan2(leftCapDelta.Y, leftCapDelta.X) - shotDir;
+            // FIXME     }
+            // FIXME     if (rightCapDelta.LengthSquared() < rightTgDelta.LengthSquared())
+            // FIXME     {
+            // FIXME         rightCapAngleSS = Math.Atan2(rightCapDelta.Y, rightCapDelta.X) - shotDir;
+            // FIXME     }
+            // FIXME }
             // else just ignore the cone cap -> the values being set to +/-infinity will do the trick
 
             // Now need to raycast from the shot origin to the ship.
@@ -537,12 +575,25 @@ namespace SGame
             //   - The tangent on that side; or
             //   - The intersection between the circle arc "cap" of the shoot cone and the circle of the ship
             // Note that "left" and "right" edges are specular in the direction they choose between the edge of the shot cone and the tangent on that side!
-            double leftRayAngleSS = Math.Max(Math.Max(-shotWidth, tgLeftAngleSS), leftCapAngleSS);
-            double rightRayAngleSS = Math.Min(Math.Min(tgRightAngleSS, shotWidth), rightCapAngleSS);
+            //double leftRayAngleSS = Math.Max(Math.Max(-shotWidth, tgLeftAngleSS), leftCapAngleSS);
+            //double rightRayAngleSS = Math.Min(Math.Min(tgRightAngleSS, shotWidth), rightCapAngleSS);
 
-            Vector2? leftHitNear, leftHitFar;
-            bool leftHit = RaycastCircle(shotOrigin, shotDir - leftRayAngleSS, ship.Pos, shipR, out leftHitNear, out leftHitFar);
-            Vector2? rightHitNear, rightHitFar;
+            // Normalize angles so that they are in the -180° to 180° range
+            if (tgLeftAngleSS > Math.PI)
+            {
+                tgLeftAngleSS -= 2.0 * Math.PI;
+            }
+            if (tgRightAngleSS > Math.PI)
+            {
+                tgRightAngleSS -= 2.0 * Math.PI;
+            }
+
+            double leftRayAngleSS = Math.Max(-shotWidth, tgLeftAngleSS);
+            double rightRayAngleSS = Math.Min(tgRightAngleSS, shotWidth);
+
+            Vector2? leftHitNear = null, leftHitFar = null;
+            bool leftHit = RaycastCircle(shotOrigin, shotDir + leftRayAngleSS, ship.Pos, shipR, out leftHitNear, out leftHitFar);
+            Vector2? rightHitNear = null, rightHitFar = null;
             bool rightHit = RaycastCircle(shotOrigin, shotDir + rightRayAngleSS, ship.Pos, shipR, out rightHitNear, out rightHitFar);
 
             if (!leftHit || !rightHit)
@@ -572,7 +623,7 @@ namespace SGame
             // TODO(?): Implement partial shielding - where a fraction 0 < x < 1 is returned for a partial cover
         }
 
-        private int SCAN_ENERGY_SCALING_FACTOR = 1000;
+        private int SCAN_ENERGY_SCALING_FACTOR = 2000;
 
         /// <summary>
         /// Returns a list of ID's of ships that lie within a triangle with one vertex at pos, the center of its opposite side
