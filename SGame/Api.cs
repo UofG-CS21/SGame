@@ -264,45 +264,13 @@ namespace SGame
         public void Scan(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeId = GetSpaceshipId(response, data.Json);
-            if (maybeId == null)
-            {
-                return;
-            }
 
-            int id = maybeId.Value;
-
-            String[] requiredParams = new String[3] { "direction", "width", "energy" };
-
-            for (int i = 0; i < requiredParams.Length; i++)
-            {
-                if (data.Json[requiredParams[i]] == null)
-                {
-                    response.Data["error"] = "Requires parameter: " + requiredParams[i];
-                    response.Send(500);
-                    return;
-                }
-            }
-
-            float direction = (float)data.Json["direction"];
-
-            float width = (float)data.Json["width"];
-            if (width <= 0 || width >= 90)
-            {
-                response.Data["error"] = "Width not in interval (0,90) degrees";
-                response.Send(500);
-                return;
-            }
-
-            int energy = (int)data.Json["energy"];
-            if (energy <= 0)
-            {
-                response.Data["error"] = "Energy spent must be positive";
-                response.Send(500);
-                return;
-            }
+            int id = IntersectionParamCheck(response, data);
 
             Spaceship ship = ships[id];
+            int energy = (int)data.Json["energy"];
+            float direction = (float)data.Json["direction"];
+            float width = (float)data.Json["width"];
             energy = (int)Math.Min(energy, Math.Floor(ship.Energy));
             ships[id].Energy -= energy;
 
