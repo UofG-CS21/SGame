@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Net;
 using System.Collections.Generic;
-using System.Numerics;
 using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -26,14 +25,14 @@ namespace SGame
             Vector2 lineVector = linePoint2 - linePoint1;
             Vector2 point1ToCircle = circleCenter - linePoint1;
 
-            float lengthAlongTriangleSide = Vector2.Dot(point1ToCircle, lineVector);
+            double lengthAlongTriangleSide = Vector2.Dot(point1ToCircle, lineVector);
 
             // If the length is negative, the cosine of the angle is negative, so it lies more than 90 degrees around linePoint 1
             // For that to intersect the triangle side, linePoint1 would already lie within the circle
             // But we have checked that in Case 1, so it must not lie. Therefore such circle does not intersect the triangle side
             if (lengthAlongTriangleSide > 0)
             {
-                float sideLenghtSquared = lineVector.LengthSquared();
+                double sideLenghtSquared = lineVector.LengthSquared();
 
                 // Since we want to keep using squared distances, instead of doing 
                 // lengthAlongTriangleSide /= sideLength, we do
@@ -99,7 +98,7 @@ namespace SGame
 
         // Return true iff the circle cenered at circleCenter with radius circleRadius intersects 
         // the segment of a circle centered at segmentRadius, with its midpoint in the direction segmentAngle, and its angular width 2*segmentWidth
-        public static bool CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth)
+        public static bool CircleSegmentIntersection(Vector2 circleCenter, double circleRadius, Vector2 segmentCenter, double segmentRadius, double segmentAngle, double segmentWidth)
         {
             // If the centers of the segment-circle and the ship circle are further appart than the sum of their radii, 
             if (circleRadius + segmentRadius < Vector2.Subtract(segmentCenter, circleCenter).Length())
@@ -116,22 +115,22 @@ namespace SGame
             // The difference between the angle formed by the circleCenter, and both the circular sector's angles, must be smaller than the difference
             // between the circular sector's angles (i.e. the angle of circleCenter is closer to both edges of the circular sector, than they are to each other)
 
-            float circularSectorEdgeAngleDistance = segmentWidth * 2;
+            double circularSectorEdgeAngleDistance = segmentWidth * 2;
 
             Vector2 segmentCenterToCircleCenter = circleCenter - segmentCenter;
 
-            float circleCenterAngle = (float)Math.Atan2(segmentCenterToCircleCenter.Y, segmentCenterToCircleCenter.X);
+            double circleCenterAngle = (double)Math.Atan2(segmentCenterToCircleCenter.Y, segmentCenterToCircleCenter.X);
 
-            float distance1 = Math.Abs((segmentAngle - segmentWidth) - circleCenterAngle);
+            double distance1 = Math.Abs((segmentAngle - segmentWidth) - circleCenterAngle);
             if (distance1 > Math.PI)
-                distance1 = 2 * (float)Math.PI - distance1;
+                distance1 = 2 * (double)Math.PI - distance1;
 
             if (distance1 > circularSectorEdgeAngleDistance)
                 return false;
 
-            float distance2 = Math.Abs((segmentAngle + segmentWidth) - circleCenterAngle);
+            double distance2 = Math.Abs((segmentAngle + segmentWidth) - circleCenterAngle);
             if (distance2 > Math.PI)
-                distance2 = 2 * (float)Math.PI - distance2;
+                distance2 = 2 * (double)Math.PI - distance2;
 
             if (distance2 > circularSectorEdgeAngleDistance)
                 return false;
