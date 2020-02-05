@@ -534,38 +534,45 @@ namespace SGame
             // - Calculate the world-space angles from the shot origin to each point
             // - Bring the angles to "shot cone" space (= reference is the center axis of the shot cone)
             // - Mark them "left" and "right", where left <= right always - but note that they can both be positive and/or negative!
-            // FIXME Vector2? capHitLeft, capHitRight;
-            // FIXME double leftCapAngleSS = Double.NegativeInfinity, rightCapAngleSS = Double.PositiveInfinity;
-            // FIXME if (CircleCircleIntersection(shotOrigin, shotRadius, ship.Pos, shipR, out capHitLeft, out capHitRight))
-            // FIXME {
-            // FIXME     // FIXME: Is the "only one point is tangent between the shot cap and the ship arc" edge case properly handled?
-            // FIXME     if (capHitRight == null) capHitRight = capHitLeft;
+            Vector2? capHitLeft, capHitRight;
+            double leftCapAngleSS = Double.NegativeInfinity, rightCapAngleSS = Double.PositiveInfinity;
+            if (CircleCircleIntersection(shotOrigin, shotRadius, ship.Pos, shipR, out capHitLeft, out capHitRight))
+            {
+                // FIXME: Is the "only one point is tangent between the shot cap and the ship arc" edge case properly handled?
+                if (capHitRight == null) capHitRight = capHitLeft;
 
-            // FIXME     // First put the intersection points so that the "left" cap hit point is nearest to the "left" tangent point,
-            // FIXME     // and the "right" cap point is nearest to the "right" tangent point;
+                // First put the intersection points so that the "left" cap hit point is nearest to the "left" tangent point,
+                // and the "right" cap point is nearest to the "right" tangent point;
 
-            // FIXME     double capDist1 = (capHitLeft.Value - tgLeft).Length(), capDist2 = (capHitRight.Value - tgLeft).Length();
-            // FIXME     if (capDist2 < capDist1)
-            // FIXME     {
-            // FIXME         (capHitLeft, capHitRight) = (capHitRight, capHitLeft);
-            // FIXME     }
+                double capDist1 = (capHitLeft.Value - tgLeft).Length(), capDist2 = (capHitRight.Value - tgLeft).Length();
+                if (capDist2 < capDist1)
+                {
+                    (capHitLeft, capHitRight) = (capHitRight, capHitLeft);
+                }
 
-            // FIXME     // Now calculate angles between the cap hits and the shot origin and bring them from world-space to shot-space
-            // FIXME     // **Only if the distance between the shot origin and the respective tangent point is greater than the distance
-            // FIXME     //   between the shot origin and the respective cap hit point the cap hit point angles are using during
-            // FIXME     //   raycast angle calculations!!** (draw a picture if this sentence is not clear)
-            // FIXME     Vector2 leftCapDelta = capHitLeft.Value - shotOrigin, rightCapDelta = capHitRight.Value - shotOrigin;
-            // FIXME     Vector2 leftTgDelta = tgLeft - shotOrigin, rightTgDelta = tgRight - shotOrigin;
-            // FIXME     if (leftCapDelta.LengthSquared() < leftTgDelta.LengthSquared())
-            // FIXME     {
-            // FIXME         leftCapAngleSS = Math.Atan2(leftCapDelta.Y, leftCapDelta.X) - shotDir;
-            // FIXME     }
-            // FIXME     if (rightCapDelta.LengthSquared() < rightTgDelta.LengthSquared())
-            // FIXME     {
-            // FIXME         rightCapAngleSS = Math.Atan2(rightCapDelta.Y, rightCapDelta.X) - shotDir;
-            // FIXME     }
-            // FIXME }
+                // Now calculate angles between the cap hits and the shot origin and bring them from world-space to shot-space
+                // **Only if the distance between the shot origin and the respective tangent point is greater than the distance
+                //   between the shot origin and the respective cap hit point the cap hit point angles are using during
+                //   raycast angle calculations!!** (draw a picture if this sentence is not clear)
+                Vector2 leftCapDelta = capHitLeft.Value - shotOrigin, rightCapDelta = capHitRight.Value - shotOrigin;
+                Vector2 leftTgDelta = tgLeft - shotOrigin, rightTgDelta = tgRight - shotOrigin;
+                if (leftCapDelta.LengthSquared() < leftTgDelta.LengthSquared())
+                {
+                    leftCapAngleSS = Math.Atan2(leftCapDelta.Y, leftCapDelta.X) - shotDir;
+                }
+                if (rightCapDelta.LengthSquared() < rightTgDelta.LengthSquared())
+                {
+                    rightCapAngleSS = Math.Atan2(rightCapDelta.Y, rightCapDelta.X) - shotDir;
+                }
+            }
             // else just ignore the cone cap -> the values being set to +/-infinity will do the trick
+
+            // Normalize angles so that they are in the -180° to 180° range
+            // (This is to make sure the Min/Max comparisons below work)
+            tgLeftAngleSS = MathUtils.NormalizeAngle(tgLeftAngleSS);
+            tgRightAngleSS = MathUtils.NormalizeAngle(tgRightAngleSS);
+            if (!Double.IsNegativeInfinity(leftCapAngleSS)) leftCapAngleSS = MathUtils.NormalizeAngle(leftCapAngleSS);
+            if (!Double.IsPositiveInfinity(rightCapAngleSS)) rightCapAngleSS = MathUtils.NormalizeAngle(leftCapAngleSS);
 
             // Now need to raycast from the shot origin to the ship.
             // - Everything "behind" the tangent points is covered by the rest of the ship.
@@ -574,16 +581,8 @@ namespace SGame
             //   - The tangent on that side; or
             //   - The intersection between the circle arc "cap" of the shoot cone and the circle of the ship
             // Note that "left" and "right" edges are specular in the direction they choose between the edge of the shot cone and the tangent on that side!
-            //double leftRayAngleSS = Math.Max(Math.Max(-shotWidth, tgLeftAngleSS), leftCapAngleSS);
-            //double rightRayAngleSS = Math.Min(Math.Min(tgRightAngleSS, shotWidth), rightCapAngleSS);
-
-            // Normalize angles so that they are in the -180° to 180° range
-            // (This is to make sure the Min/Max comparisons below work)
-            tgLeftAngleSS = MathUtils.NormalizeAngle(tgLeftAngleSS);
-            tgRightAngleSS = MathUtils.NormalizeAngle(tgRightAngleSS);
-
-            double leftRayAngleSS = Math.Max(-shotWidth, tgLeftAngleSS);
-            double rightRayAngleSS = Math.Min(tgRightAngleSS, shotWidth);
+            double leftRayAngleSS = Math.Max(Math.Max(-shotWidth, tgLeftAngleSS), leftCapAngleSS);
+            double rightRayAngleSS = Math.Min(Math.Min(tgRightAngleSS, shotWidth), rightCapAngleSS);
 
             Vector2? leftHitNear = null, leftHitFar = null;
             bool leftHit = RaycastCircle(shotOrigin, shotDir + leftRayAngleSS, ship.Pos, shipR, out leftHitNear, out leftHitFar);
