@@ -2,7 +2,6 @@
 using System.IO;
 using System.Net;
 using System.Collections.Generic;
-using System.Numerics;
 using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -152,8 +151,8 @@ namespace SGame
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("accelerate")]
         [ApiParam("token", typeof(string))]
-        [ApiParam("x", typeof(float))]
-        [ApiParam("y", typeof(float))]
+        [ApiParam("x", typeof(double))]
+        [ApiParam("y", typeof(double))]
         public void AcceleratePlayer(ApiResponse response, ApiData data)
         {
             UpdateGameState();
@@ -163,13 +162,13 @@ namespace SGame
                 return;
             }
             int id = maybeId.Value;
-            float x = (float)data.Json["x"];
-            float y = (float)data.Json["y"];
+            double x = (double)data.Json["x"];
+            double y = (double)data.Json["y"];
 
             int energyRequired = (int)Math.Ceiling(ships[id].Area * (Math.Abs(x) + Math.Abs(y)));
             int energySpent = Math.Min(energyRequired, (int)Math.Floor(ships[id].Energy));
             ships[id].Energy -= energySpent;
-            float accelerationApplied = (float)energySpent / (float)energyRequired;
+            double accelerationApplied = (double)energySpent / (double)energyRequired;
 
             ships[id].Velocity += Vector2.Multiply(new Vector2(x, y), accelerationApplied);
             response.Send(200);
@@ -640,13 +639,13 @@ namespace SGame
             scanWidth = (Math.PI * scanWidth) / 180.0;
 
             // We want the radius of the circle, such that a sercular sector of angle 2*scanwidth has area areaScanned
-            float radius = (float)Math.Sqrt(areaScanned / (2 * scanWidth));
+            double radius = (double)Math.Sqrt(areaScanned / (2 * scanWidth));
 
             // The circular sector is a triangle whose vertices are pos, and the points at an angle (worldDeg +- scanWidth) and distance radius
             // And a segment between those points on the circle centered at pos with that radius
 
-            Vector2 leftPoint = new Vector2(radius * (float)Math.Cos(worldDeg + scanWidth), radius * (float)Math.Sin(worldDeg + scanWidth));
-            Vector2 rightPoint = new Vector2(radius * (float)Math.Cos(worldDeg - scanWidth), radius * (float)Math.Sin(worldDeg - scanWidth));
+            Vector2 leftPoint = new Vector2(radius * Math.Cos(worldDeg + scanWidth), radius * Math.Sin(worldDeg + scanWidth));
+            Vector2 rightPoint = new Vector2(radius * Math.Cos(worldDeg - scanWidth), radius * Math.Sin(worldDeg - scanWidth));
 
             Console.WriteLine("Scanning with radius " + radius + "; In triangle " + pos.ToString() + "," + leftPoint.ToString() + "," + rightPoint.ToString());
 
@@ -655,7 +654,7 @@ namespace SGame
             // Go through all spaceships and add those that intersect with our triangle
             foreach (int id in ships.Keys)
             {
-                if (MathUtils.CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint) || MathUtils.CircleSegmentIntersection(ships[id].Pos, (float)ships[id].Radius(), pos, radius, (float)worldDeg, (float)scanWidth))
+                if (MathsUtil.CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint) || MathsUtil.CircleSegmentIntersection(ships[id].Pos, ships[id].Radius(), pos, radius, worldDeg, scanWidth))
                 {
                     //Console.WriteLine("Intersected");
                     result.Add(id);
@@ -689,51 +688,19 @@ namespace SGame
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("scan")]
         [ApiParam("token", typeof(string))]
-        [ApiParam("direction", typeof(float))]
-        [ApiParam("width", typeof(float))]
+        [ApiParam("direction", typeof(double))]
+        [ApiParam("width", typeof(double))]
         [ApiParam("energy", typeof(int))]
         public void Scan(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeId = GetSpaceshipId(response, data.Json);
-            if (maybeId == null)
-            {
-                return;
-            }
 
-            int id = maybeId.Value;
-
-            String[] requiredParams = new String[3] { "direction", "width", "energy" };
-
-            for (int i = 0; i < requiredParams.Length; i++)
-            {
-                if (data.Json[requiredParams[i]] == null)
-                {
-                    response.Data["error"] = "Requires parameter: " + requiredParams[i];
-                    response.Send(500);
-                    return;
-                }
-            }
-
-            float direction = (float)data.Json["direction"];
-
-            float width = (float)data.Json["width"];
-            if (width <= 0 || width >= 90)
-            {
-                response.Data["error"] = "Width not in interval (0,90) degrees";
-                response.Send(500);
-                return;
-            }
-
-            int energy = (int)data.Json["energy"];
-            if (energy <= 0)
-            {
-                response.Data["error"] = "Energy spent must be positive";
-                response.Send(500);
-                return;
-            }
+            int id = IntersectionParamCheck(response, data);
 
             Spaceship ship = ships[id];
+            int energy = (int)data.Json["energy"];
+            double direction = (double)data.Json["direction"];
+            double width = (double)data.Json["width"];
             energy = (int)Math.Min(energy, Math.Floor(ship.Energy));
             ships[id].Energy -= energy;
 
@@ -771,10 +738,11 @@ namespace SGame
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("shoot")]
         [ApiParam("token", typeof(string))]
-        [ApiParam("direction", typeof(float))]
-        [ApiParam("width", typeof(float))]
+        [ApiParam("direction", typeof(double))]
+        [ApiParam("width", typeof(double))]
         [ApiParam("energy", typeof(int))]
-        [ApiParam("damage", typeof(float))]
+        [ApiParam("damage", typeof(double))]
+
         public void Shoot(ApiResponse response, ApiData data)
         {
             //Check that the arguments for each parameter are valid
@@ -784,9 +752,9 @@ namespace SGame
                 return;
             }
             Spaceship ship = ships[id];
-            float width = (float)data.Json["width"];
-            float direction = (float)data.Json["direction"];
-            float damageScaling = (float)data.Json["damage"];
+            double width = (double)data.Json["width"];
+            double direction = (double)data.Json["direction"];
+            double damageScaling = (double)data.Json["damage"];
 
             int energy = (int)Math.Min((int)data.Json["energy"], Math.Floor(ship.Energy / damageScaling));
             ships[id].Energy -= energy * damageScaling; //remove energy for the shot
@@ -883,11 +851,11 @@ namespace SGame
         /// <summary>
         /// Calculates the shotDamage applied to a ship. Shot damage drops off exponentially as distance increases, base =1.1
         /// </summary>
-        private static float ShotDamage(int energy, float width, float scaling, float distance)
+        private double ShotDamage(int energy, double width, double scaling, double distance)
         {
             distance = Math.Max(distance, 1);
-            width = (float)(Math.PI * width) / (float)180.0;
-            return (float)(energy * scaling) / (float)(Math.Max(1, Math.Pow(2, 2 * width)) * Math.Sqrt(distance));
+            width = (double)(Math.PI * width) / 180.0;
+            return (double)(energy * scaling) / (Math.Max(1, Math.Pow(2, 2 * width)) * Math.Sqrt(distance));
 
             /* 
                 A new ship shoots at another new ship, using all its 10 energy. It can oneshot the ship at
@@ -912,9 +880,22 @@ namespace SGame
                 return -1;
             }
             int id = maybeId.Value;
-            float direction = (float)data.Json["direction"];
 
-            float width = (float)data.Json["width"];
+            String[] requiredParams = new String[3] { "direction", "width", "energy" };
+
+            for (int i = 0; i < requiredParams.Length; i++)
+            {
+                if (data.Json[requiredParams[i]] == null)
+                {
+                    response.Data["error"] = "Requires parameter: " + requiredParams[i];
+                    response.Send(500);
+                    return -1;
+                }
+            }
+
+            double direction = (double)data.Json["direction"];
+
+            double width = (double)data.Json["width"];
             if (width <= 0 || width >= 90)
             {
                 response.Data["error"] = "Width not in interval (0,90) degrees";
@@ -939,7 +920,7 @@ namespace SGame
                     return -1;
                 }
 
-                float damage = (float)data.Json["damage"];
+                double damage = (double)data.Json["damage"];
                 if (damage <= 0)
                 {
                     response.Data["error"] = "Damage scaling must be positive";
@@ -971,10 +952,10 @@ namespace SGame
         {
             { "area", (api, ship, value) => ship.Area = (double)value },
             { "energy", (api, ship, energy) => ship.Energy = (double)energy },
-            { "posX", (api, ship, posX) => ship.Pos = new Vector2((float)posX, ship.Pos.Y) },
-            { "posY", (api, ship, posY) => ship.Pos = new Vector2(ship.Pos.X, (float)posY) },
-            { "velX", (api, ship, velX) => ship.Velocity = new Vector2((float)velX, ship.Velocity.Y) },
-            { "velY", (api, ship, velY) => ship.Velocity = new Vector2(ship.Velocity.X, (float)velY) },
+            { "posX", (api, ship, posX) => ship.Pos = new Vector2((double)posX, ship.Pos.Y) },
+            { "posY", (api, ship, posY) => ship.Pos = new Vector2(ship.Pos.X, (double)posY) },
+            { "velX", (api, ship, velX) => ship.Velocity = new Vector2((double)velX, ship.Velocity.Y) },
+            { "velY", (api, ship, velY) => ship.Velocity = new Vector2(ship.Velocity.X, (double)velY) },
             { "time", (api, ship, timeMs) => api.gameTime.SetElapsedMillisecondsManually((long)timeMs) }
         };
 
