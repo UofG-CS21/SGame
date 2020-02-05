@@ -1,24 +1,14 @@
 
 using System;
-using System.IO;
-using System.Net;
 using System.Collections.Generic;
 using System.Collections;
-using System.Numerics;
-using System.Diagnostics;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using SGame;
 using Xunit;
 
 namespace SGame.Tests
 {
-
     public class SGame_ShieldTests
     {
-
-
-
         [Theory]
         [ClassData(typeof(IPOATestData))]
         public void IsPointOnArcTest(Vector2 point, Vector2 arcCenter, double arcDir, double arcWidth, double arcRadius, bool expected)
@@ -27,16 +17,12 @@ namespace SGame.Tests
             double onArcAngle = double.MaxValue;
             bool actual = Api.IsPointOnArc(point, arcCenter, Api.Deg2Rad(arcDir), Api.Deg2Rad(arcWidth), arcRadius, out onArcAngle);
             Assert.Equal(expected, actual);
-
-
-
         }
 
         [Theory]
         [ClassData(typeof(CircleTangentsTestData))]
         public void CircleTangentsTest(Vector2 circleCenter, double circleRadius, Vector2 point, Vector2 expectedTangent1, Vector2 expectedTangent2, double expectedAngle)
         {
-
             Vector2 tg1, tg2;
             double bisectAngle;
             expectedAngle = Math.Round(Api.Deg2Rad(expectedAngle), 6);
@@ -47,12 +33,7 @@ namespace SGame.Tests
             double[] expectedVectorValues = new double[] { Math.Round((expectedTangent1).X, 6), Math.Round((expectedTangent1).Y, 6), Math.Round((expectedTangent2).X, 6), Math.Round((expectedTangent2).Y, 6) };
             Assert.Equal(expectedVectorValues, actualVectorValues);
             Assert.Equal(expectedAngle, Math.Round(bisectAngle, 6));
-
-
         }
-
-
-
     }
 
     public class CircleTangentsTestData : IEnumerable<object[]>
@@ -142,8 +123,6 @@ public class IPOATestData : IEnumerable<object[]>
         {
             yield return new object[] { points[j], new Vector2(0, 0), 0, 180, 4, expected[j] };
         }
-
     }
-
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

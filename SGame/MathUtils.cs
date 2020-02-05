@@ -145,10 +145,22 @@ namespace SGame
         /// <summary>
         /// Normalizes an angle in radians, i.e. makes it positive and between 0 and `clampValue`.
         /// </summary>
-        public static double NormalizeAngle(double angle, double clampValue = 2.0 * Math.PI)
+        public static double ClampAngle(double angle, double clampValue = 2.0 * Math.PI)
         {
             angle = angle % clampValue;
             if (angle < 0.0) angle = (2.0 * Math.PI) - angle;
+            return angle;
+        }
+
+        /// <summary>
+        /// Clamps an angle in radians to the -PI to PI range.
+        /// </summary>
+        public static double NormalizeAngle(double angle)
+        {
+            if (angle > Math.PI)
+            {
+                angle -= 2.0 * Math.PI;
+            }
             return angle;
         }
 

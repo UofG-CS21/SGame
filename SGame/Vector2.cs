@@ -24,11 +24,6 @@ namespace SGame
         }
 
         /// <summary>
-        /// Multiplies a vector by a scalar.
-        /// </summary>
-        public static Vector2 Multiply(Vector2 vec, double scalar) => new Vector2(vec.X * scalar, vec.Y * scalar);
-
-        /// <summary>
         /// Calculates the dot product between two vectors.
         /// </summary>
         public static double Dot(Vector2 vec1, Vector2 vec2) => vec1.X * vec2.X + vec1.Y * vec2.Y;
@@ -49,6 +44,11 @@ namespace SGame
         public static Vector2 operator +(Vector2 vec1, Vector2 vec2) => new Vector2(vec1.X + vec2.X, vec1.Y + vec2.Y);
 
         /// <summary>
+        /// Calculates the component-wise sum of two vectors.
+        /// </summary>
+        public static Vector2 Add(Vector2 vec1, Vector2 vec2) => new Vector2(vec1.X + vec2.X, vec1.Y + vec2.Y);
+
+        /// <summary>
         /// Calculates the component-wise difference of two vectors.
         /// </summary>
         public static Vector2 operator -(Vector2 vec1, Vector2 vec2) => new Vector2(vec1.X - vec2.X, vec1.Y - vec2.Y);
@@ -57,6 +57,16 @@ namespace SGame
         /// Calculates the component-wise difference of two vectors.
         /// </summary>
         public static Vector2 Subtract(Vector2 vec1, Vector2 vec2) => new Vector2(vec1.X - vec2.X, vec1.Y - vec2.Y);
+
+        /// <summary>
+        /// Multiplies a vector by a scalar.
+        /// </summary>
+        public static Vector2 operator *(Vector2 vec, double scalar) => new Vector2(vec.X * scalar, vec.Y * scalar);
+
+        /// <summary>
+        /// Multiplies a vector by a scalar.
+        /// </summary>
+        public static Vector2 Multiply(Vector2 vec, double scalar) => new Vector2(vec.X * scalar, vec.Y * scalar);
 
         /// <summary>
         /// Negates a vector component-wise.

@@ -217,14 +217,14 @@ namespace SGame
             Vector2 lineVector = linePoint2 - linePoint1;
             Vector2 point1ToCircle = circleCenter - linePoint1;
 
-            float lengthAlongTriangleSide = Vector2.Dot(point1ToCircle, lineVector);
+            double lengthAlongTriangleSide = Vector2.Dot(point1ToCircle, lineVector);
 
             // If the lenght is negative, the cosine of the angle is negative, so it lies more than 90 degrees around linePoint 1
             // For that to intersect the triangle side, linePoint1 would already lie within the circle
             // But we have checked that in Case 1, so it must not lie. Therefore such circle does not intersect the triangle side
             if (lengthAlongTriangleSide > 0)
             {
-                float sideLenghtSquared = lineVector.LengthSquared();
+                double sideLenghtSquared = lineVector.LengthSquared();
 
                 // Since we want to keep using squared distances, instead of doing 
                 // lengthAlongTriangleSide /= sideLength, we do
@@ -578,14 +578,9 @@ namespace SGame
             //double rightRayAngleSS = Math.Min(Math.Min(tgRightAngleSS, shotWidth), rightCapAngleSS);
 
             // Normalize angles so that they are in the -180° to 180° range
-            if (tgLeftAngleSS > Math.PI)
-            {
-                tgLeftAngleSS -= 2.0 * Math.PI;
-            }
-            if (tgRightAngleSS > Math.PI)
-            {
-                tgRightAngleSS -= 2.0 * Math.PI;
-            }
+            // (This is to make sure the Min/Max comparisons below work)
+            tgLeftAngleSS = MathUtils.NormalizeAngle(tgLeftAngleSS);
+            tgRightAngleSS = MathUtils.NormalizeAngle(tgRightAngleSS);
 
             double leftRayAngleSS = Math.Max(-shotWidth, tgLeftAngleSS);
             double rightRayAngleSS = Math.Min(tgRightAngleSS, shotWidth);
@@ -654,7 +649,7 @@ namespace SGame
             // Go through all spaceships and add those that intersect with our triangle
             foreach (int id in ships.Keys)
             {
-                if (MathsUtil.CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint) || MathsUtil.CircleSegmentIntersection(ships[id].Pos, ships[id].Radius(), pos, radius, worldDeg, scanWidth))
+                if (MathUtils.CircleTriangleIntersection(ships[id].Pos, ships[id].Radius(), pos, leftPoint, rightPoint) || MathUtils.CircleSegmentIntersection(ships[id].Pos, ships[id].Radius(), pos, radius, worldDeg, scanWidth))
                 {
                     //Console.WriteLine("Intersected");
                     result.Add(id);
