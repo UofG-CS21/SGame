@@ -227,7 +227,7 @@ namespace SGame
         /// </summary>
         public static Vector2 DirVec(double direction)
         {
-            return new Vector2((float)Math.Cos(direction), (float)Math.Sin(direction));
+            return new Vector2((double)Math.Cos(direction), (double)Math.Sin(direction));
         }
     }
 }
