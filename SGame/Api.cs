@@ -290,7 +290,7 @@ namespace SGame
 
         // Return true iff the circle cenered at circleCenter with radius circleRadius intersects 
         // the segment of a circle centered at segmentRadius, with its midpoint in the direction segmentAngle, and its angular width 2*segmentWidth
-        internal bool CircleSegmentIntersection(Vector2 circleCenter, float circleRadius, Vector2 segmentCenter, float segmentRadius, float segmentAngle, float segmentWidth)
+        internal bool CircleSegmentIntersection(Vector2 circleCenter, double circleRadius, Vector2 segmentCenter, double segmentRadius, double segmentAngle, double segmentWidth)
         {
             // If the centers of the segment-circle and the ship circle are further appart than the sum of their radii, 
             if (circleRadius + segmentRadius < Vector2.Subtract(segmentCenter, circleCenter).Length())
@@ -307,22 +307,22 @@ namespace SGame
             // The difference between the angle formed by the circleCenter, and both the circular sector's angles, must be smaller than the difference
             // between the circular sector's angles (i.e. the angle of circleCenter is closer to both edges of the circular sector, than they are to each other)
 
-            float circularSectorEdgeAngleDistance = segmentWidth * 2;
+            double circularSectorEdgeAngleDistance = segmentWidth * 2;
 
             Vector2 segmentCenterToCircleCenter = circleCenter - segmentCenter;
 
-            float circleCenterAngle = (float)Math.Atan2(segmentCenterToCircleCenter.Y, segmentCenterToCircleCenter.X);
+            double circleCenterAngle = (double)Math.Atan2(segmentCenterToCircleCenter.Y, segmentCenterToCircleCenter.X);
 
-            float distance1 = Math.Abs((segmentAngle - segmentWidth) - circleCenterAngle);
+            double distance1 = Math.Abs((segmentAngle - segmentWidth) - circleCenterAngle);
             if (distance1 > Math.PI)
-                distance1 = 2 * (float)Math.PI - distance1;
+                distance1 = 2 * (double)Math.PI - distance1;
 
             if (distance1 > circularSectorEdgeAngleDistance)
                 return false;
 
-            float distance2 = Math.Abs((segmentAngle + segmentWidth) - circleCenterAngle);
+            double distance2 = Math.Abs((segmentAngle + segmentWidth) - circleCenterAngle);
             if (distance2 > Math.PI)
-                distance2 = 2 * (float)Math.PI - distance2;
+                distance2 = 2 * (double)Math.PI - distance2;
 
             if (distance2 > circularSectorEdgeAngleDistance)
                 return false;
@@ -357,24 +357,25 @@ namespace SGame
 
             // FIXME: Prevents issues with incorrect rounding
             //        - this will have to be reimplemented with a double-based Vector2 to prevent rounding issues
-            if (MathUtils.ToleranceEquals(delta, 0.0, 0.1))
-            {
-                delta = Math.Abs(delta);
-            }
+            // if (MathUtils.ToleranceEquals(delta, 0.0, 0.1))
+            // {
+            //     Console.WriteLine(delta);
+            //     delta = Math.Abs(delta);
+            // }
 
             switch (Math.Sign(delta))
             {
                 case 1:
                     double sqrtDelta = Math.Sqrt(delta);
 
-                    float t1 = (float)((-c2 - sqrtDelta) / (2.0 * c1));
+                    double t1 = (double)((-c2 - sqrtDelta) / (2.0 * c1));
                     inters1 = null;
                     if (t1 >= 0.0f)
                     {
                         inters1 = rayOrigin + rd * t1;
                     }
 
-                    float t2 = (float)((-c2 + sqrtDelta) / (2.0 * c1));
+                    double t2 = (double)((-c2 + sqrtDelta) / (2.0 * c1));
                     inters2 = null;
                     if (t2 >= 0.0f)
                     {
@@ -384,11 +385,11 @@ namespace SGame
                     return inters1 != null || inters2 != null;
 
                 case 0:
-                    float t = (float)(-c2 / c1);
+                    double t = (double)(-c2 / c1);
                     inters1 = null;
                     if (t >= 0)
                     {
-                        inters1 = rayOrigin + rd * (float)(-c2 / (2.0 * c1));
+                        inters1 = rayOrigin + rd * (double)(-c2 / (2.0 * c1));
                     }
                     inters2 = null;
                     return true;
@@ -422,7 +423,7 @@ namespace SGame
                 double rDistSq = rDist * rDist;
                 double c1 = r1r2Sq / (2.0 * rDistSq);
                 Vector2 k1 = Vector2.Multiply(center1 + center2, 0.5f)
-                             + Vector2.Multiply(center2 - center1, (float)c1);
+                             + Vector2.Multiply(center2 - center1, (double)c1);
                 if (distSign == 0)
                 {
                     inters1 = k1;
@@ -431,7 +432,7 @@ namespace SGame
                 else
                 {
                     double c2 = 0.5 * Math.Sqrt(2.0 * (radius1 * radius1 + radius2 * radius2) / rDistSq - (r1r2Sq * r1r2Sq) / (rDistSq * rDistSq) - 1.0);
-                    Vector2 k2 = Vector2.Multiply(new Vector2(center2.Y - center1.Y, center1.X - center2.X), (float)c2);
+                    Vector2 k2 = Vector2.Multiply(new Vector2(center2.Y - center1.Y, center1.X - center2.X), (double)c2);
                     inters1 = k1 - k2;
                     inters2 = k1 + k2;
                 }
@@ -456,8 +457,8 @@ namespace SGame
 
             //Internal is the third angle in the rightangled triangle which connects the tangent point, circle centre and point.
             double internalAngle = Math.PI / 2 - bisectAngle;
-            tg1 = circleCenter - MathUtils.DirVec(centerAngle - internalAngle) * (float)circleRadius;
-            tg2 = circleCenter - MathUtils.DirVec(centerAngle + internalAngle) * (float)circleRadius;
+            tg1 = circleCenter - MathUtils.DirVec(centerAngle - internalAngle) * (double)circleRadius;
+            tg2 = circleCenter - MathUtils.DirVec(centerAngle + internalAngle) * (double)circleRadius;
         }
 
         /// <summary>
@@ -468,17 +469,27 @@ namespace SGame
         {
             // arc: P = arcCenter + arcRadius * [cos(alpha), sin(alpha)], where alpha = arcDir + arcWidth * t, where -1 <= t <= 1
             // let point = P...
-            Vector2 dirVec = (point - arcCenter) * (float)(1.0 / arcRadius);
+            Vector2 dirVec = (point - arcCenter) * (double)(1.0 / arcRadius);
             if (!MathUtils.ToleranceEquals(dirVec.Length(), 1.0, 0.001))
             {
                 // Can't be a valid direction vector
                 onArcAngle = double.NaN;
                 return false;
+
             }
 
-            onArcAngle = MathUtils.BetterArcTan(dirVec.Y, dirVec.X) - arcDir;
+            onArcAngle = Math.Atan2(dirVec.Y, dirVec.X) - arcDir;
+            if (onArcAngle > Math.PI)
+            {
+                onArcAngle -= Math.PI * 2;
+            }
+            else if (onArcAngle < -Math.PI)
+            {
+                onArcAngle += Math.PI * 2;
+            }
 
-            //Since vectors have to be floats, There is some uncertainty introuduced when double angles are converted. So i added a tolerance.
+
+            //Since vectors have to be doubles, There is some uncertainty introuduced when double angles are converted. So i added a tolerance.
             return (-arcWidth <= onArcAngle && onArcAngle <= arcWidth) || (MathUtils.ToleranceEquals(Rad2Deg(-arcWidth), Rad2Deg(onArcAngle), 0.000001)) || (MathUtils.ToleranceEquals(Rad2Deg(arcWidth), Rad2Deg(onArcAngle), 0.000001));
         }
 
@@ -606,7 +617,7 @@ namespace SGame
             Vector2 leftHitShipPos = leftHitNear.Value - ship.Pos, rightHitShipPos = rightHitNear.Value - ship.Pos;
             double leftHitShipAngle = Math.Atan2(leftHitShipPos.Y, leftHitShipPos.X), rightHitShipAngle = Math.Atan2(rightHitShipPos.Y, rightHitShipPos.X);
             double midHitShipAngle = (leftHitShipAngle + rightHitShipAngle) / 2;
-            Vector2 midHitPoint = ship.Pos + Vector2.Multiply(MathUtils.DirVec(midHitShipAngle), (float)shipR);
+            Vector2 midHitPoint = ship.Pos + Vector2.Multiply(MathUtils.DirVec(midHitShipAngle), (double)shipR);
 
             bool shielded = IsPointOnShield(ship, leftHitNear.Value)
                 && IsPointOnShield(ship, rightHitNear.Value)
