@@ -30,21 +30,32 @@ buildAndStaticAnalysis-SArbiter:
         - dotnet build SArbiter
 
 # unitTest stage: test the C# SGame and SArbiter
+# (only on merges to devel/ and from devel/ -> master/)
 unitTest-SGame:
     stage: unitTest
+    only:
+        - devel
+        - master
     script:
         - cd ${CI_PROJECT_DIR}/SGame.Tests
         - dotnet test
 
 unitTest-SArbiter:
     stage: unitTest
+    only:
+        - devel
+        - master
     script:
         - cd ${CI_PROJECT_DIR}/SArbiter.Tests
         - dotnet test
 
 # pytest stage (blackbox): tests that the client can connect, run through all rest api commands and disconnect successfully
+# (only on merges to devel/ and from devel/ -> master/)
 pytest:
     stage: pytest
+    only:
+        - devel
+        - master
     script:
         # Run automated tests via pytest
         # (See issue #33 for why this in its own script; otherwise, GitLab will
