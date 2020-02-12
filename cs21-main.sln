@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SArbiter", "SArbiter\SArbit
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SArbiter.Tests", "SArbiter.Tests\SArbiter.Tests.csproj", "{223588A1-8F67-4C28-9440-DBDA1812EF7F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SShared", "SShared\SShared.csproj", "{32DDC903-73D8-4AFB-B593-FFADFA95DE56}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -72,5 +74,17 @@ Global
 		{223588A1-8F67-4C28-9440-DBDA1812EF7F}.Release|x64.Build.0 = Release|Any CPU
 		{223588A1-8F67-4C28-9440-DBDA1812EF7F}.Release|x86.ActiveCfg = Release|Any CPU
 		{223588A1-8F67-4C28-9440-DBDA1812EF7F}.Release|x86.Build.0 = Release|Any CPU
+		{32DDC903-73D8-4AFB-B593-FFADFA95DE56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32DDC903-73D8-4AFB-B593-FFADFA95DE56}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{32DDC903-73D8-4AFB-B593-FFADFA95DE56}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{32DDC903-73D8-4AFB-B593-FFADFA95DE56}.Debug|x64.Build.0 = Debug|Any CPU
+		{32DDC903-73D8-4AFB-B593-FFADFA95DE56}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{32DDC903-73D8-4AFB-B593-FFADFA95DE56}.Debug|x86.Build.0 = Debug|Any CPU
+		{32DDC903-73D8-4AFB-B593-FFADFA95DE56}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{32DDC903-73D8-4AFB-B593-FFADFA95DE56}.Release|Any CPU.Build.0 = Release|Any CPU
+		{32DDC903-73D8-4AFB-B593-FFADFA95DE56}.Release|x64.ActiveCfg = Release|Any CPU
+		{32DDC903-73D8-4AFB-B593-FFADFA95DE56}.Release|x64.Build.0 = Release|Any CPU
+		{32DDC903-73D8-4AFB-B593-FFADFA95DE56}.Release|x86.ActiveCfg = Release|Any CPU
+		{32DDC903-73D8-4AFB-B593-FFADFA95DE56}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
