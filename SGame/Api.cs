@@ -357,7 +357,7 @@ namespace SGame
 
             // FIXME: Prevents issues with incorrect rounding
             //        - this will have to be reimplemented with a double-based Vector2 to prevent rounding issues
-            if (MathUtils.ToleranceEquals(delta, 0.0, 0.1))
+            if (MathUtils.ToleranceEquals(delta, 0.0, 0.001))
             {
                 Console.WriteLine(delta);
                 delta = Math.Abs(delta);

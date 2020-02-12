@@ -51,7 +51,7 @@ namespace SGame.Tests
 
             //Gotta make sure vector is null or not to perform correct comparison.
             //Round to account for geogebra rounding.
-            if (inters1 == null)
+            if (inters1 == null || expectedInters1 == null)
             {
                 Assert.Equal(expectedInters1, inters1);
                 Assert.Equal(expectedInters2, inters2);
@@ -69,6 +69,7 @@ namespace SGame.Tests
                 //So, if both the vectors are basically the same value, we let it slide.
                 if (expectedInters2 == null)
                 {
+                    Console.WriteLine("HAAAAAAAAAAAA    " + inters1 + "  OAAAAAAAA   " + inters2);
                     if (MathUtils.ToleranceEquals(((Vector2)inters1).X, ((Vector2)inters2).X, 0.000001) && MathUtils.ToleranceEquals(((Vector2)inters1).Y, ((Vector2)inters2).Y, 0.000001))
                     {
                         expectedInters2 = inters2;
