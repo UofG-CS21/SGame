@@ -39,6 +39,11 @@ namespace SGame
         public double Length() => Math.Sqrt(X * X + Y * Y);
 
         /// <summary>
+        /// Returns a normalized version of this vector.
+        /// </summary>
+        public Vector2 Normalized() => Vector2.Multiply(this, 1.0 / Length());
+
+        /// <summary>
         /// Calculates the component-wise sum of two vectors.
         /// </summary>
         public static Vector2 operator +(Vector2 vec1, Vector2 vec2) => new Vector2(vec1.X + vec2.X, vec1.Y + vec2.Y);

@@ -338,6 +338,17 @@ namespace SGame
         internal static bool RaycastCircle(Vector2 rayOrigin, double rayDir, Vector2 circleCenter, double circleRadius,
             out Vector2? inters1, out Vector2? inters2)
         {
+            return RaycastCircle(rayOrigin, MathUtils.DirVec(rayDir), circleCenter, circleRadius, out inters1, out inters2);
+        }
+
+        /// <summary>
+        /// Casts a ray to a circle, checking for the intersection points.
+        /// Returns true if any intersection is found, setting `inters1` or both `inters1` and `inters2` appropriately.
+        /// If both `inters1` and `inters2` are outputted, `inters1` is the intersection point nearest to `rayOrigin`.
+        /// </summary>
+        internal static bool RaycastCircle(Vector2 rayOrigin, Vector2 rayDir, Vector2 circleCenter, double circleRadius,
+            out Vector2? inters1, out Vector2? inters2)
+        {
             Console.WriteLine("Raycast from O=" + rayOrigin + ", dir=" + rayDir + ", circleCenter=" + circleCenter + ", circleRadius=" + circleRadius);
 
             inters1 = null;
@@ -346,17 +357,15 @@ namespace SGame
             // ray: P = rayOrigin + [cos(rayDir), sin(rayDir)] * t, t >= 0
             // circle: dot(Q, Q) = circleRadius^2, where Q = P - circleCenter
             // Then let P = Q and solve for t
-            var rd = MathUtils.DirVec(rayDir);
             var q = rayOrigin - circleCenter;
 
             // You get a quadratic in the form c1 * t^2 + c2 * t + c3 = 0 where:
             double c1 = 1.0; // = Vector2.Dot(rd, rd);
-            double c2 = 2.0 * Vector2.Dot(q, rd);
+            double c2 = 2.0 * Vector2.Dot(q, rayDir);
             double c3 = Vector2.Dot(q, q) - circleRadius * circleRadius;
             double delta = c2 * c2 - 4.0 * c1 * c3;
 
             // FIXME: Prevents issues with incorrect rounding
-            //        - this will have to be reimplemented with a double-based Vector2 to prevent rounding issues
             if (MathUtils.ToleranceEquals(delta, 0.0, 0.001))
             {
                 Console.WriteLine(delta);
@@ -372,14 +381,14 @@ namespace SGame
                     inters1 = null;
                     if (t1 >= 0.0f)
                     {
-                        inters1 = rayOrigin + rd * t1;
+                        inters1 = rayOrigin + rayDir * t1;
                     }
 
                     double t2 = (double)((-c2 + sqrtDelta) / (2.0 * c1));
                     inters2 = null;
                     if (t2 >= 0.0f)
                     {
-                        inters2 = rayOrigin + rd * t2;
+                        inters2 = rayOrigin + rayDir * t2;
                     }
 
                     return inters1 != null || inters2 != null;
@@ -389,7 +398,7 @@ namespace SGame
                     inters1 = null;
                     if (t >= 0)
                     {
-                        inters1 = rayOrigin + rd * (double)(-c2 / (2.0 * c1));
+                        inters1 = rayOrigin + rayDir * (double)(-c2 / (2.0 * c1));
                     }
                     inters2 = null;
                     return true;
@@ -503,6 +512,13 @@ namespace SGame
         }
 
         /// <summary>
+        /// The number of raycasts to perform towards the shields of a ship (not including the outermost "left" and "right"
+        /// rays) to determine the shielding amount:
+        /// shielding amount = (# raycasts that hit the shield / total # of rays)
+        /// </summary>
+        public const int N_SHIELD_RAYCASTS = 3;
+
+        /// <summary>
         /// Returns the percentage (0.0 to 1.0) of damage covered by a ship's shield when it is being shot
         /// from `shotOrigin` with a cone of half-width `shotWidth` radians and length `shotRadius`.
         /// WARNING: `width` and `shotDir` are in DEGREES!
@@ -513,6 +529,12 @@ namespace SGame
             if ((shotOrigin - ship.Pos).Length() <= shipR)
             {
                 // No shielding if the shooter is shooting from INSIDE the other ship!
+                return 0.0;
+            }
+
+            if (ship.ShieldWidth < 0.001)
+            {
+                // Fast-track
                 return 0.0;
             }
 
@@ -613,25 +635,27 @@ namespace SGame
                 throw new InvalidOperationException("Raycast missed during shield calculation!");
             }
 
-            // Now consider the ray hits. We only care about the hits nearest to the shot origin
-            // (that's where the shot would hit!); need to check if the points there would be shielded or not
-            // Only if:
-            // - *Both* points are shielded
-            // - The point on the ship circle exactly in the middle between the two raycasted points is shielded.
-            //   (why? Consider the case where the two side points are shielded, but the shield is facing the opposite direction!)
+            // Now sweep some raycasts inbetween the "leftmost" ray and the "rightmost" ray that have been casted above.
+            // Use the number of these rays that hit the shield (vs. the total amount of rays casted) to determine the shielding amount for the shot.
             //
-            // then the shield fully absorbed the impact.
-            Vector2 leftHitShipPos = leftHitNear.Value - ship.Pos, rightHitShipPos = rightHitNear.Value - ship.Pos;
-            double leftHitShipAngle = Math.Atan2(leftHitShipPos.Y, leftHitShipPos.X), rightHitShipAngle = Math.Atan2(rightHitShipPos.Y, rightHitShipPos.X);
-            double midHitShipAngle = (leftHitShipAngle + rightHitShipAngle) / 2;
-            Vector2 midHitPoint = ship.Pos + Vector2.Multiply(MathUtils.DirVec(midHitShipAngle), (double)shipR);
+            // TODO: Use heuristics to dynamically determine a suitable number of rays to shoot
+            // (the wider the impact area, the more rays!)
+            Vector2 leftRayDir = (leftHitNear.Value - shotOrigin).Normalized(), rightRayDir = (rightHitNear.Value - shotOrigin).Normalized();
 
-            bool shielded = IsPointOnShield(ship, leftHitNear.Value)
-                && IsPointOnShield(ship, rightHitNear.Value)
-                && IsPointOnShield(ship, midHitPoint);
-            return shielded ? 1.0 : 0.0;
+            double nRayHits = 0.0;
+            double iDiv = N_SHIELD_RAYCASTS + 1; // (+ 1 'cause the rightmost ray is not included; i starts from 1 not to include the leftmost ray)
+            for (int i = 1; i <= N_SHIELD_RAYCASTS; i++)
+            {
+                Vector2 iRayDir = MathUtils.Slerp(leftRayDir, rightRayDir, i / iDiv);
+                Vector2? iNearHit, iFarHit;
+                if (RaycastCircle(shotOrigin, iRayDir, ship.Pos, shipR, out iNearHit, out iFarHit)
+                    && IsPointOnShield(ship, iNearHit.Value))
+                {
+                    nRayHits += 1;
+                }
+            }
 
-            // TODO(?): Implement partial shielding - where a fraction 0 < x < 1 is returned for a partial cover
+            return nRayHits / N_SHIELD_RAYCASTS;
         }
 
         private int SCAN_ENERGY_SCALING_FACTOR = 2000;

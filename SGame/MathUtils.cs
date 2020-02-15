@@ -173,6 +173,18 @@ namespace SGame
         }
 
         /// <summary>
+        /// Performs spherical linear interpolation (slerp) between two vectors.
+        /// </summary>
+        public static Vector2 Slerp(Vector2 a, Vector2 b, double t)
+        {
+            // See: https://keithmaggio.wordpress.com/2011/02/15/math-magician-lerp-slerp-and-nlerp/
+            double aDotB = Vector2.Dot(a, b);
+            double angle = Math.Acos(aDotB) * t;
+            Vector2 delta = (b - a * aDotB).Normalized();
+            return a * Math.Cos(angle) + delta * Math.Sin(angle);
+        }
+
+        /// <summary>
         /// Improved version of Math.Atan2. Gives actual result based on unit circle.
         /// </summary>
         public static double BetterArcTan(double y, double x)
@@ -211,11 +223,6 @@ namespace SGame
             {
                 result = Api.Deg2Rad((x >= 0 ? 0 : 180));
             }
-
-
-
-
-
 
             return result;
         }

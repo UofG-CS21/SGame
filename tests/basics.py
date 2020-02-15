@@ -1182,7 +1182,7 @@ shield_full_data = [
     # now up
     ( {'posX':-50,'posY':-50,'area':30,'energy':300}, {'posX':-50, 'posY':50, 'area':30, 'energy':300}, {'direction':270,'width':90},{'direction':-270,'width':30,'energy':200,'damage':1} ),
     # now left
-    ( {'posX':-50,'posY':-50,'area':30,'energy':300}, {'posX':-100, 'posY':-50, 'area':30, 'energy':300}, {'direction':-180,'width':90},{'direction':180,'width':30,'energy':200,'damage':1} ),
+    ( {'posX':-50,'posY':-50,'area':30,'energy':300}, {'posX':-100, 'posY':-50, 'area':30, 'energy':300}, {'direction':0,'width':90},{'direction':180,'width':30,'energy':200,'damage':1} ),
     
 ]
 
