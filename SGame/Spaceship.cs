@@ -70,7 +70,7 @@ namespace SGame
 
         /// <summary>
         /// The shield half extents, in radians (see `ShieldDir`'s documentation).
-        /// Automatically clamped to 0..pi when setting it.
+        /// WARNING: NOT automatically adjusted in the 0..pi range!
         /// </summary>
         public double ShieldWidth
         {
@@ -80,7 +80,7 @@ namespace SGame
             }
             set
             {
-                _shieldWidth = MathUtils.ClampAngle(value, Math.PI);
+                _shieldWidth = value;
             }
         }
         /// <summary>

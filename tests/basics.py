@@ -1126,6 +1126,7 @@ def test_shield_miss(server, clients, shooter, shielder, shield, shoot):
 
         # shoot, ensure that victim was struck
         resp = requests.post(attacker.url + 'shoot',json=shoot)
+        print(resp.json())
         assert resp 
         data = resp.json()
         assert len(data['struck']) == 1

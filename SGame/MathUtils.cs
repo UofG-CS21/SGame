@@ -148,7 +148,7 @@ namespace SGame
         public static double ClampAngle(double angle, double clampValue = 2.0 * Math.PI)
         {
             angle = angle % clampValue;
-            if (angle < 0.0) angle = (2.0 * Math.PI) - angle;
+            if (angle < 0.0) angle = (2.0 * Math.PI) + angle;
             return angle;
         }
 
