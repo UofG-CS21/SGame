@@ -23,7 +23,7 @@ namespace SShared
             Y2 = centrey + radius;
         }
 
-        /// PROPERTIES 
+        /// Properties
 
         /// <summary>
         /// centre of rectangle on x-axis.
@@ -63,7 +63,7 @@ namespace SShared
         public float Y2 { get; private set; }
 
 
-        /// METHODS
+        /// methods
 
         /// <summary>
         /// Checks the rectangle contains another rectangle
