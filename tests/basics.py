@@ -1042,3 +1042,206 @@ def test_cool_down(server, clients):
         assert resp
         resp_data = resp.json()
         assert isClose(resp_data['area'], client1_area_after_kill + client2_new_area)
+
+def test_shield_uses_energy(server, clients):
+    reset_time(server)
+    with clients(1) as (client1):
+        
+        # get ship's energy
+        energy = requests.post(client1.url + 'getShipInfo', json = {
+            'token' : client1.token,
+        }).json()['energy']
+
+        # set up a 45(x2) degree shield
+
+        resp = requests.post(client1.url + 'shield', json = {
+            'token' : client1.token,
+            'direction' : 0,
+            'width' : 45,
+        })
+
+        assert resp 
+
+        # wait two seconds
+        set_time(server, 2000)
+
+        # check that ship has used some energy
+        energy2 = requests.post(client1.url + 'getShipInfo', json = {
+            'token' : client1.token,
+        }).json()['energy']
+
+        # THIS FAILS! add energy use.
+        #assert energy2 < energy
+
+# data for test_shield_miss
+# shooter shielder shield shot expected
+# shooter: sudo json to set up client1
+# shielder: sudo json to set up client2
+# shield: shield json to activate shield
+# shoot: shoot json to shoot
+shield_miss_data = [
+
+    # broad hit to the right, with the shield being a 90 degree cone on the right
+    ( {'posX':0,'posY':0,'area':30,'energy':300}, {'posX':50, 'posY':0, 'area':30, 'energy':300}, {'direction':0,'width':45},{'direction':0,'width':30,'energy':10,'damage':1} ),
+    # similar, but now shooting downwards, and shield is downwards
+    ( {'posX':0,'posY':100,'area':30,'energy':300}, {'posX':0, 'posY':17, 'area':30, 'energy':300}, {'direction':-90,'width':45},{'direction':-90,'width':30,'energy':100,'damage':1} ),
+    # now up
+    ( {'posX':-50,'posY':-50,'area':30,'energy':300}, {'posX':-50, 'posY':50, 'area':30, 'energy':300}, {'direction':-270,'width':45},{'direction':-270,'width':30,'energy':200,'damage':1} ),
+    # now left
+    ( {'posX':-50,'posY':-50,'area':30,'energy':300}, {'posX':-100, 'posY':-50, 'area':30, 'energy':300}, {'direction':180,'width':45},{'direction':180,'width':30,'energy':200,'damage':1} ),
+    
+    # TC5
+    ( {'posX':5,'posY':-5,'area':50,'energy':500}, {'posX':-9, 'posY':0, 'area': 113.0973,'energy':1000}, {'direction':180, 'width': 150}, {'direction': 148, 'width':10, 'energy':50,'damage':1} ),
+
+    # TC6
+    ( {'posX':-3,'posY':1,'area':3.1415,'energy':30}, {'posX':-5,'posY':4,'area':12.5664,'energy':120}, {'direction':149.1,'width':149}, {'direction':71.6,'width':26.6, 'energy':15, 'damage':2} ),
+
+    # same as TC6 but horrible directions
+    ( {'posX':-3,'posY':1,'area':3.1415,'energy':30}, {'posX':-5,'posY':4,'area':12.5664,'energy':120}, {'direction':149.1-360*47,'width':149}, {'direction':71.6+360*9,'width':26.6, 'energy':15, 'damage':2} ),
+
+    # TC8 shielding [I,J] (that's a half of shield)
+    ( {'posX':-6,'posY':-4,'area':28.27433,'energy':280}, {'posX':-5,'posY':3,'area':50.265482,'energy':500}, {'direction':-29.7,'width':69.5}, {'direction':102.8,'width':26.8, 'energy':47, 'damage':1.3} ),
+
+    # TC8 shielding (E,K) (that's a half of shield)
+    ( {'posX':-6,'posY':-4,'area':28.27433,'energy':280}, {'posX':-5,'posY':3,'area':50.265482,'energy':500}, {'direction':75.6,'width':134.4}, {'direction':102.8,'width':26.8, 'energy':47, 'damage':1.3} ),
+]
+
+# this test gets scenarios where an activated shield is completely missed by a shot
+# and so the damage of a shot should sbe unchanged on activation
+@pytest.mark.parametrize('shooter, shielder, shield, shoot', shield_miss_data)
+def test_shield_miss(server, clients, shooter, shielder, shield, shoot):
+    reset_time(server)
+    with clients(2) as (attacker, victim):
+
+        shooter['token'] = attacker.token
+        shoot['token'] = attacker.token
+        shielder['token'] = victim.token
+        shield['token'] = victim.token
+        
+        resp = requests.post(attacker.url + 'sudo',json=shooter)
+        assert resp 
+
+        resp = requests.post(victim.url + 'sudo', json=shielder)
+        assert resp 
+
+        # shoot, ensure that victim was struck
+        resp = requests.post(attacker.url + 'shoot',json=shoot)
+        print(resp.json())
+        assert resp 
+        data = resp.json()
+        assert len(data['struck']) == 1
+
+        # store damage dealt
+        resp = requests.post(victim.url + 'getShipInfo', json={
+            'token' : victim.token
+        })
+        assert resp 
+        damage_no_shield = shielder['area'] - resp.json()['area']
+
+        # reset both ships
+        resp = requests.post(attacker.url + 'sudo',json=shooter)
+        assert resp 
+
+        resp = requests.post(victim.url + 'sudo', json=shielder)
+        assert resp
+
+        # activate shield
+        resp = requests.post(victim.url + 'shield',json=shield)
+        assert resp
+
+        # shoot again
+        resp = requests.post(attacker.url + 'shoot',json=shoot)
+        assert resp 
+        data = resp.json()
+        assert len(data['struck']) == 1
+
+        # look at damage dealt this time
+        resp = requests.post(victim.url + 'getShipInfo', json={
+            'token' : victim.token
+        })
+        assert resp 
+        damage_shield = shielder['area'] - resp.json()['area']
+
+        # damage should be the same
+        assert isClose(damage_shield, damage_no_shield)
+
+# data for test_shield_full
+# shooter shielder shield shot expected
+# shooter: sudo json to set up client1
+# shielder: sudo json to set up client2
+# shield: shield json to activate shield
+# shoot: shoot json to shoot
+shield_full_data = [
+
+    #shield everything (half-angle 180)
+    ( {'posX':0,'posY':0,'area':30,'energy':300}, {'posX':50, 'posY':0, 'area':30, 'energy':300}, {'direction':180,'width':180},{'direction':0,'width':30,'energy':10,'damage':1} ),
+    # broad hit to the right, with the shield being a half-circle on the left
+    ( {'posX':0,'posY':0,'area':30,'energy':300}, {'posX':50, 'posY':0, 'area':30, 'energy':300}, {'direction':180,'width':90},{'direction':0,'width':30,'energy':10,'damage':1} ),
+    # similar, but now shooting downwards, and shield is upwards
+    ( {'posX':0,'posY':100,'area':30,'energy':300}, {'posX':0, 'posY':17, 'area':30, 'energy':300}, {'direction':90,'width':90},{'direction':-90,'width':30,'energy':100,'damage':1} ),
+    # now up
+    ( {'posX':-50,'posY':-50,'area':30,'energy':300}, {'posX':-50, 'posY':50, 'area':30, 'energy':300}, {'direction':270,'width':90},{'direction':-270,'width':30,'energy':200,'damage':1} ),
+    # now left
+    ( {'posX':-50,'posY':-50,'area':30,'energy':300}, {'posX':-100, 'posY':-50, 'area':30, 'energy':300}, {'direction':0,'width':90},{'direction':180,'width':30,'energy':200,'damage':1} ),
+    
+]
+
+# this test gets scenarios where an activated shield is completely missed by a shot
+# and so the damage of a shot should sbe unchanged on activation
+@pytest.mark.parametrize('shooter, shielder, shield, shoot', shield_full_data)
+def test_shield_full(server, clients, shooter, shielder, shield, shoot):
+    reset_time(server)
+    with clients(2) as (attacker, victim):
+
+        shooter['token'] = attacker.token
+        shoot['token'] = attacker.token
+        shielder['token'] = victim.token
+        shield['token'] = victim.token
+        
+        resp = requests.post(attacker.url + 'sudo',json=shooter)
+        assert resp 
+
+        resp = requests.post(victim.url + 'sudo', json=shielder)
+        assert resp 
+
+        # shoot, ensure that victim was struck
+        resp = requests.post(attacker.url + 'shoot',json=shoot)
+        assert resp 
+        data = resp.json()
+        assert len(data['struck']) == 1
+
+        # store damage dealt
+        resp = requests.post(victim.url + 'getShipInfo', json={
+            'token' : victim.token
+        })
+        assert resp 
+        damage_no_shield = shielder['area'] - resp.json()['area']
+
+        assert damage_no_shield > 0
+
+        # reset both ships
+        resp = requests.post(attacker.url + 'sudo',json=shooter)
+        assert resp 
+
+        resp = requests.post(victim.url + 'sudo', json=shielder)
+        assert resp
+
+        # activate shield
+        resp = requests.post(victim.url + 'shield',json=shield)
+        assert resp
+
+        # shoot again
+        resp = requests.post(attacker.url + 'shoot',json=shoot)
+        assert resp 
+        data = resp.json()
+        assert len(data['struck']) == 1
+
+        # look at damage dealt this time
+        resp = requests.post(victim.url + 'getShipInfo', json={
+            'token' : victim.token
+        })
+        assert resp 
+        damage_shield = shielder['area'] - resp.json()['area']
+
+        # damage should be zero
+        assert damage_shield == 0

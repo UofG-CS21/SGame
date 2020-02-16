@@ -47,6 +47,42 @@ namespace SGame
         /// </summary>
         public double LastCombat { get; set; }
 
+        private double _shieldDir;
+
+        /// <summary>
+        /// Direction towards which to shield, in radians relative to world coordinates.
+        /// The shield extends for `ShieldWidth` radians clockwise + `ShieldWidth` radians counterclockwise.
+        /// Automatically clamped to 0..2pi when setting it.
+        /// </summary>
+        public double ShieldDir
+        {
+            get
+            {
+                return _shieldDir;
+            }
+            set
+            {
+                _shieldDir = MathUtils.ClampAngle(value, 2.0 * Math.PI);
+            }
+        }
+
+        private double _shieldWidth;
+
+        /// <summary>
+        /// The shield half extents, in radians (see `ShieldDir`'s documentation).
+        /// WARNING: NOT automatically adjusted in the 0..pi range!
+        /// </summary>
+        public double ShieldWidth
+        {
+            get
+            {
+                return _shieldWidth;
+            }
+            set
+            {
+                _shieldWidth = value;
+            }
+        }
         /// <summary>
         /// Reward received by opponent for killing this ship
         /// </summary>
@@ -68,6 +104,8 @@ namespace SGame
             this.LastUpdate = gameTime.ElapsedMilliseconds;
             this.LastCombat = this.LastUpdate;
             this.KillReward = this.Area;
+            this.ShieldDir = 0.0;
+            this.ShieldWidth = 0.0;
         }
 
         public void UpdateState()
