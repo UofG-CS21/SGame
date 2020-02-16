@@ -19,6 +19,10 @@ namespace SShared
     /// </summary>
     public class QuadTree<T> where T : INeedsRectangle
     {
+        /// <summary>
+        /// The maximum number of quadtree subdivisions (= the maximum depth of a leaf node).
+        /// </summary>
+        public readonly uint MaxDepth = 16;
 
         // attributes
 
@@ -31,28 +35,24 @@ namespace SShared
         /// <summary>The bounding box of this qaudtree</summary>
         private readonly Rectangle _rect;
 
-        /// <summary>The size of the smallest area i.e the maximum depth</summary>
-        private readonly double _maximumDepth;
-
         // Constructor
-        public QuadTree(Rectangle rectangle, int capacity, double maximumDepth)
+        public QuadTree(Rectangle rectangle, int capacity, uint depth)
         {
             _rect = rectangle;
-            _maximumDepth = maximumDepth;
+            Depth = depth;
             _ships = new List<T>(capacity);
             _children = null;
         }
 
         // properties
 
-
-
         /// <summary>
         /// gets the bounding area 
         /// </summary>
         public Rectangle Rectangle { get { return _rect; } }
 
-
+        /// <summary>The depth of this quadtree node (root has Depth=0).</summary>
+        public uint Depth { get; private set; }
 
         // methods
 
@@ -97,24 +97,25 @@ namespace SShared
 
 
         /// <summary>
-        /// creates 4 children that divides the quad into 4 quads (of equa length)
+        /// Creates 4 children, dividing this quad into 4 quads of equal area.
+        /// Returns `false` on failure (maximum depth reached -> can't subdivide any further).
         /// </summary>
-        public void Subdivide()
+        public bool Subdivide()
         {
-
-            // the smallest subnode has one area
-            if (!(_maximumDepth > 4 * _rect.Radius * _rect.Radius))
+            if (Depth >= MaxDepth)
             {
-
-                _children = new QuadTree<T>[4];
-
-                double halfRadius = 0.5f * _rect.Radius;
-
-                _children[0] = new QuadTree<T>(new Rectangle(_rect.CentreX - halfRadius, _rect.CentreY - halfRadius, halfRadius), _ships.Capacity, _maximumDepth);
-                _children[1] = new QuadTree<T>(new Rectangle(_rect.CentreX + halfRadius, _rect.CentreY - halfRadius, halfRadius), _ships.Capacity, _maximumDepth);
-                _children[2] = new QuadTree<T>(new Rectangle(_rect.CentreX - halfRadius, _rect.CentreY + halfRadius, halfRadius), _ships.Capacity, _maximumDepth);
-                _children[3] = new QuadTree<T>(new Rectangle(_rect.CentreX + halfRadius, _rect.CentreY + halfRadius, halfRadius), _ships.Capacity, _maximumDepth);
+                return false;
             }
+
+            _children = new QuadTree<T>[4];
+
+            double halfRadius = 0.5 * _rect.Radius;
+            _children[0] = new QuadTree<T>(new Rectangle(_rect.CentreX - halfRadius, _rect.CentreY - halfRadius, halfRadius), _ships.Capacity, Depth + 1);
+            _children[1] = new QuadTree<T>(new Rectangle(_rect.CentreX + halfRadius, _rect.CentreY - halfRadius, halfRadius), _ships.Capacity, Depth + 1);
+            _children[2] = new QuadTree<T>(new Rectangle(_rect.CentreX - halfRadius, _rect.CentreY + halfRadius, halfRadius), _ships.Capacity, Depth + 1);
+            _children[3] = new QuadTree<T>(new Rectangle(_rect.CentreX + halfRadius, _rect.CentreY + halfRadius, halfRadius), _ships.Capacity, Depth + 1);
+
+            return true;
         }
 
         /// <summary>
