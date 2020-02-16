@@ -1,7 +1,5 @@
-
 using System;
 using System.Diagnostics;
-
 
 namespace SShared
 {
@@ -11,7 +9,7 @@ namespace SShared
     public struct Rectangle
     {
 
-        public Rectangle(float centrex, float centrey, float radius)
+        public Rectangle(double centrex, double centrey, double radius)
         {
             CentreX = centrex;
             CentreY = centrey;
@@ -28,39 +26,39 @@ namespace SShared
         /// <summary>
         /// centre of rectangle on x-axis.
         /// </summary>
-        public float CentreX { get; private set; }
+        public double CentreX { get; private set; }
 
 
         /// <summary>
         /// centre of rectangle on y-axis.
         /// </summary>
-        public float CentreY { get; private set; }
+        public double CentreY { get; private set; }
 
 
         /// <summary>
         /// radius of rectangle
         /// </summary>
-        public float Radius { get; private set; }
+        public double Radius { get; private set; }
 
         /// <summary>
         /// left corner x coord
         /// </summary>
-        public float X { get; private set; }
+        public double X { get; private set; }
 
         /// <summary>
         /// right corner x coord   
         /// </summary>
-        public float X2 { get; private set; }
+        public double X2 { get; private set; }
 
         /// <summary>
         /// top corner y coord
         /// </summary>
-        public float Y { get; private set; }
+        public double Y { get; private set; }
 
         /// <summary>
         /// bottom corner y coord
         /// </summary>
-        public float Y2 { get; private set; }
+        public double Y2 { get; private set; }
 
 
         /// methods

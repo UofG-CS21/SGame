@@ -32,10 +32,10 @@ namespace SShared
         private readonly Rectangle _rect;
 
         /// <summary>The size of the smallest area</summary>
-        private readonly float _smallestAreaSize;
+        private readonly double _smallestAreaSize;
 
         // Constructor
-        public QuadTree(Rectangle rectangle, int capacity, float smallestAreaSize)
+        public QuadTree(Rectangle rectangle, int capacity, double smallestAreaSize)
         {
             _rect = rectangle;
             _smallestAreaSize = smallestAreaSize;
@@ -104,7 +104,7 @@ namespace SShared
 
                 _children = new QuadTree<T>[4];
 
-                float halfRadius = 0.5f * _rect.Radius;
+                double halfRadius = 0.5f * _rect.Radius;
 
                 _children[0] = new QuadTree<T>(new Rectangle(_rect.CentreX - halfRadius, _rect.CentreY - halfRadius, halfRadius), _ships.Capacity, _smallestAreaSize);
                 _children[1] = new QuadTree<T>(new Rectangle(_rect.CentreX + halfRadius, _rect.CentreY - halfRadius, halfRadius), _ships.Capacity, _smallestAreaSize);
