@@ -59,10 +59,10 @@ namespace SShared
         /// <summary>
         /// counts all nodes in this node
         /// </summary>
-        public double Count()
+        public int Count()
         {
 
-            double count = 0;
+            int count = 0;
             if (null != _children)
                 foreach (QuadTree<T> child in _children)
                     count += child.Count();
