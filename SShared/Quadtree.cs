@@ -22,16 +22,16 @@ namespace SShared
 
         // attributes
 
-        /// <summary>The child nodes</summary>
+        /// <summary>The child nodes of this quadtree</summary>
         private QuadTree<T>[] _children;
 
-        /// <summary>The stored ships</summary>
+        /// <summary>A list of ships stored in this quadtree</summary>
         private List<T> _ships;
 
-        /// <summary>The bounding box</summary>
+        /// <summary>The bounding box of this qaudtree</summary>
         private readonly Rectangle _rect;
 
-        /// <summary>The size of the smallest area</summary>
+        /// <summary>The size of the smallest area i.e the maximum depth</summary>
         private readonly double _maximumDepth;
 
         // Constructor
