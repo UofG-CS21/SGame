@@ -70,12 +70,13 @@ namespace SShared
 
         /// <summary>
         /// Inserts a ship
+        /// returns true if successfully inserted otherwise false
         /// </summary>
-        public void Insert(T ship)
+        public bool Insert(T ship)
         {
             // ignore objects that do not belong in this quad tree
             if (!_rect.Contains(ship.Rectangle))
-                return;
+                return false;
 
             // use subdivise method to add to any accepting node
             if (null == _children)
@@ -85,10 +86,11 @@ namespace SShared
                 if (child.Rectangle.Contains(ship.Rectangle))
                 {
                     child.Insert(ship);
-                    return;
+                    return true;
                 }
             // if no subnodes contain the ship or we are at the smallest subnode size then add the ship as node data
             _ships.Add(ship);
+            return true;
         }
 
 
