@@ -45,20 +45,7 @@ namespace SShared
 
         // properties
 
-        /// <summary>
-        /// counts all nodes in this node
-        /// </summary>
-        public int Count
-        {
-            get
-            {
-                int count = 0;
-                if (null != _children)
-                    foreach (QuadTree<T> child in _children)
-                        count += child.Count;
-                return (count += _ships.Count);
-            }
-        }
+
 
         /// <summary>
         /// gets the bounding area 
@@ -66,7 +53,22 @@ namespace SShared
         public Rectangle Rectangle { get { return _rect; } }
 
 
+
         // methods
+
+        /// <summary>
+        /// counts all nodes in this node
+        /// </summary>
+        public double Count()
+        {
+
+            double count = 0;
+            if (null != _children)
+                foreach (QuadTree<T> child in _children)
+                    count += child.Count();
+            return (count += _ships.Count);
+
+        }
 
         /// <summary>
         /// Inserts a ship
