@@ -1100,10 +1100,14 @@ shield_miss_data = [
     ( {'posX':-3,'posY':1,'area':3.1415,'energy':30}, {'posX':-5,'posY':4,'area':12.5664,'energy':120}, {'direction':149.1-360*47,'width':149}, {'direction':71.6+360*9,'width':26.6, 'energy':15, 'damage':2} ),
 
     # TC8 shielding [I,J] (that's a half of shield)
-    ( {'posX':-6,'posY':-4,'area':28.27433,'energy':280}, {'posX':-5,'posY':3,'area':50.265482,'energy':500}, {'direction':-29.7,'width':69.5}, {'direction':102.8,'width':26.8, 'energy':47, 'damage':1.3} ),
+    ( {'posX':-6,'posY':-4,'area':28.27433,'energy':280}, {'posX':-5,'posY':3,'area':50.265482,'energy':500}, {'direction':-29.7,'width':69.5}, {'direction':102.8,'width':12.959, 'energy':47, 'damage':1.3} ),
 
     # TC8 shielding (E,K) (that's a half of shield)
-    ( {'posX':-6,'posY':-4,'area':28.27433,'energy':280}, {'posX':-5,'posY':3,'area':50.265482,'energy':500}, {'direction':75.6,'width':134.4}, {'direction':102.8,'width':26.8, 'energy':47, 'damage':1.3} ),
+    ( {'posX':-6,'posY':-4,'area':28.27433,'energy':280}, {'posX':-5,'posY':3,'area':50.265482,'energy':500}, {'direction':75.6,'width':134.4}, {'direction':102.8,'width':12.959, 'energy':47, 'damage':1.3} ),
+
+    # TC9 
+    ( {'posX':0,'posY':0,'area':3.1415926535,'energy':10}, {'posX':44, 'posY':0, 'area':3.1415926535, 'energy':10}, {'direction':0,'width':107},{'direction':0,'width':30,'energy':1,'damage':1} ),
+      
 ]
 
 # this test gets scenarios where an activated shield is completely missed by a shot
@@ -1183,11 +1187,14 @@ shield_full_data = [
     ( {'posX':-50,'posY':-50,'area':30,'energy':300}, {'posX':-50, 'posY':50, 'area':30, 'energy':300}, {'direction':270,'width':90},{'direction':-270,'width':30,'energy':200,'damage':1} ),
     # now left
     ( {'posX':-50,'posY':-50,'area':30,'energy':300}, {'posX':-100, 'posY':-50, 'area':30, 'energy':300}, {'direction':0,'width':90},{'direction':180,'width':30,'energy':200,'damage':1} ),
-    
+
+    # only get hit by the circular part of shot, which is shielded fully (inverse shield of TC9)
+    ( {'posX':0,'posY':0,'area':3.14159265,'energy':10}, {'posX':44, 'posY':0, 'area':3.1415926535, 'energy':10}, {'direction':180,'width':73},{'direction':0,'width':30,'energy':1,'damage':1} ),
+       
 ]
 
-# this test gets scenarios where an activated shield is completely missed by a shot
-# and so the damage of a shot should sbe unchanged on activation
+# this test gets scenarios where an shield is fully blocked by an activated shield
+# and so the damage of a shot should be 0 on activation
 @pytest.mark.parametrize('shooter, shielder, shield, shoot', shield_full_data)
 def test_shield_full(server, clients, shooter, shielder, shield, shoot):
     reset_time(server)
