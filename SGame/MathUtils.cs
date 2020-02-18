@@ -138,17 +138,13 @@ namespace SGame
             return true;
         }
 
-
-
-
-
         /// <summary>
         /// Normalizes an angle in radians, i.e. makes it positive and between 0 and `clampValue`.
         /// </summary>
         public static double ClampAngle(double angle, double clampValue = 2.0 * Math.PI)
         {
             angle = angle % clampValue;
-            if (angle < 0.0) angle = (2.0 * Math.PI) - angle;
+            if (angle < 0.0) angle = (2.0 * Math.PI) + angle;
             return angle;
         }
 
@@ -191,6 +187,18 @@ namespace SGame
         }
 
         /// <summary>
+        /// Performs spherical linear interpolation (slerp) between two vectors.
+        /// </summary>
+        public static Vector2 Slerp(Vector2 a, Vector2 b, double t)
+        {
+            // See: https://keithmaggio.wordpress.com/2011/02/15/math-magician-lerp-slerp-and-nlerp/
+            double aDotB = Vector2.Dot(a, b);
+            double angle = Math.Acos(aDotB) * t;
+            Vector2 delta = (b - a * aDotB).Normalized();
+            return a * Math.Cos(angle) + delta * Math.Sin(angle);
+        }
+
+        /// <summary>
         /// Improved version of Math.Atan2. Gives actual result based on unit circle.
         /// </summary>
         public static double BetterArcTan(double y, double x)
@@ -230,15 +238,8 @@ namespace SGame
                 result = Api.Deg2Rad((x >= 0 ? 0 : 180));
             }
 
-
-
-
-
-
             return result;
         }
-
-
 
         /// <summary>
         /// Makes a direction vector out of an angle in radians.
