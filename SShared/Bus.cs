@@ -48,6 +48,14 @@ namespace SShared
             }
         }
 
+        /// <summary>
+        /// Poll events and update other internal state.
+        /// </summary>
+        public void Update()
+        {
+            Host.PollEvents();
+        }
+
         // ===== Dispose pattern =======================================================================================
 
         protected virtual void Dispose(bool disposing)
