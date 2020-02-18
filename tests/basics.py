@@ -1139,6 +1139,8 @@ shield_energy_usage_data = [
     # have half of a shield, stay energy neutral
     (31, 12, 90, 123, 12),
     (1234.567, 6432.21, 90, 1223, 6432.21),
+    # even at almost no energy
+    (456.789, 0.0001, 90, 1223, 0.0001),
     # have a full shield, go out of energy in area seconds
     (25, 250, 180, 24.999, 0),
     (50, 250, 180, 24.999, 0),
@@ -1182,13 +1184,48 @@ def test_shield_energy_usage(server, clients, area, energy, width, time, expecte
         assert isClose(data['shieldWidth'], width)
 
 shield_overuse_data = [
+    # use a huge shield and wait a long time - should be back at full energy
+    (200, 1800, 180, 500, 2000),
+    # try to use a shield at 0 energy with greater width than 90 - should turn off instantly
+    (200, 0, 90.01, 5, 1000),
+    # use up 1 extra energy per second - die after 50, regenerate energy for 2.5 seconds
+    (300, 50, 99, 52.5, 750),
+    # use up 0.3333 energy per second - die after 24, regenerate energy for 1 second
+    (876, 8, 93, 25, 876)
 
 ]
 
 # tests if the shields turn off and allow energy to recover
 @pytest.mark.parametrize('area, energy, width, time, expected', shield_overuse_data)
 def test_shield_overuse(server, clients, area, energy, width, time, expected):
-    pass
+    reset_time(server)
+    with clients(1) as (client1):
+
+        assert requests.post(client1.url + 'sudo', json = {
+            'token' : client1.token,
+            'area' : area,
+            'energy': energy,
+        })
+
+        assert requests.post(client1.url + 'shield', json = {
+            'token' : client1.token,
+            'direction' : 0,
+            'width' : width,
+        })
+
+
+        set_time(server,time*1000)
+
+        resp = requests.post(client1.url + 'getShipInfo', json = {
+            'token' : client1.token,
+        })
+
+        assert resp 
+
+        data = resp.json()
+
+        assert isClose(data['energy'],expected,0.02)
+        assert isClose(data['shieldWidth'], 0)
 
 # data for test_shield_miss
 # shooter shielder shield shot expected
