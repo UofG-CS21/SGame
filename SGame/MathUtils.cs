@@ -166,19 +166,6 @@ namespace SGame
         }
 
         /// <summary>
-        /// converst angle in -pi to pi range to angle in 0 to 2pi range
-        /// </summary>
-        public static double positiseAngle(double angle)
-        {
-            if (angle < 0)
-            {
-                angle += 2.0 * Math.PI;
-            }
-            return angle;
-
-        }
-
-        /// <summary>
         /// Checks two numbers for equality within a tolerance.
         /// </summary>
         public static bool ToleranceEquals(double a, double b, double tolerance)
