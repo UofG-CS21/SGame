@@ -1135,7 +1135,18 @@ def test_shield_shipInfo(server, clients, width, direction):
 # area energy width(deg) time(s) expected
 shield_energy_usage_data = [
     # have no shield, use no energy
-    (47, 0, 0, 6.5, 6.5*47)
+    (47, 0, 0, 6.5, 6.5*47),
+    # have half of a shield, stay energy neutral
+    (31, 12, 90, 123, 12),
+    (1234.567, 6432.21, 90, 1223, 6432.21),
+    # have a full shield, go out of energy in area seconds
+    (25, 250, 180, 24.999, 0),
+    (50, 250, 180, 24.999, 0),
+    (23.5, 235, 180, 23.499, 0),
+
+    # random data for our precise function currently used
+    (123, 300, 69, 4, 300 + 123*4 - 4*94.3),
+    (234, 345, 125, 6, 345 + 234*6 - 234*6 - 3.88888 * 6)
 ]
 
 # tests if the shields use energy as expected
@@ -1167,7 +1178,7 @@ def test_shield_energy_usage(server, clients, area, energy, width, time, expecte
 
         data = resp.json()
 
-        assert isClose(data['energy'],expected)
+        assert isClose(data['energy'],expected,0.02)
         assert isClose(data['shieldWidth'], width)
 
 shield_overuse_data = [
