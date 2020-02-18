@@ -1,4 +1,5 @@
 using System;
+using SShared;
 
 namespace SGame
 {

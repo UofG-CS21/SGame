@@ -20,4 +20,8 @@
     </AssemblyAttribute>
 </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SShared\SShared.csproj" />
+  </ItemGroup>
+
 </Project>
