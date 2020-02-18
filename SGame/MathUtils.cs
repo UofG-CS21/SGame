@@ -161,7 +161,25 @@ namespace SGame
             {
                 angle -= 2.0 * Math.PI;
             }
+            else if (angle < -Math.PI)
+            {
+                angle += 2.0 * Math.PI;
+            }
             return angle;
+
+        }
+
+        /// <summary>
+        /// converst angle in -pi to pi range to angle in 0 to 2pi range
+        /// </summary>
+        public static double positiseAngle(double angle)
+        {
+            if (angle < 0)
+            {
+                angle += 2.0 * Math.PI;
+            }
+            return angle;
+
         }
 
         /// <summary>
