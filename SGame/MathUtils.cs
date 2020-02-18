@@ -138,10 +138,6 @@ namespace SGame
             return true;
         }
 
-
-
-
-
         /// <summary>
         /// Normalizes an angle in radians, i.e. makes it positive and between 0 and `clampValue`.
         /// </summary>
@@ -226,8 +222,6 @@ namespace SGame
 
             return result;
         }
-
-
 
         /// <summary>
         /// Makes a direction vector out of an angle in radians.

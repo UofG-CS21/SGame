@@ -199,7 +199,8 @@ namespace SGame
             response.Data["posY"] = ship.Pos.Y;
             response.Data["velX"] = ship.Velocity.X;
             response.Data["velY"] = ship.Velocity.Y;
-
+            response.Data["shieldWidth"] = ship.ShieldWidth * 180 / Math.PI;
+            response.Data["shieldDir"] = ship.ShieldDir * 180 / Math.PI;
             response.Send();
         }
 
@@ -512,11 +513,116 @@ namespace SGame
         }
 
         /// <summary>
-        /// The number of raycasts to perform towards the shields of a ship (not including the outermost "left" and "right"
-        /// rays) to determine the shielding amount:
-        /// shielding amount = (# raycasts that hit the shield / total # of rays)
+        /// Returns the fraction of the shot, specified by the bounding angles on the victim [shotStart, shotStop]
+        /// that is shielded by the shielder's shield
         /// </summary>
-        public const int N_SHIELD_RAYCASTS = 3;
+        internal static double ShotShieldIntersection(double shotStart, double shotStop, Spaceship shielder)
+        {
+            // we will work with positive angles 
+            // (the amount of cases should be the same, but we don't have to think about negative values)
+
+            shotStart = MathUtils.ClampAngle(shotStart);
+            shotStop = MathUtils.ClampAngle(shotStop);
+            // make it so that going from shotStart to shotStop is the arc of the shot, going counterclockwise
+
+            Console.WriteLine("shot " + shotStart + "," + shotStop);
+
+            // case 1: shot goes through the problematic point 0=2pi
+            if (Math.Abs(shotStop - shotStart) > Math.PI)
+            {
+                // shotStart is thus the larger angle (below the x-axis), shotStop the other one
+                double larger = Math.Max(shotStart, shotStop);
+                double smaller = Math.Min(shotStart, shotStop);
+                shotStart = larger;
+                shotStop = smaller;
+            }
+            // case 2: it doesn't
+            else
+            {
+                // The shot is the 'direct' path from smaller angle to higher angle
+                // so shotStart is the smaller angle, shotStop is the larger one
+                double larger = Math.Max(shotStart, shotStop);
+                double smaller = Math.Min(shotStart, shotStop);
+                shotStart = smaller;
+                shotStop = larger;
+            }
+
+            double shieldStart = MathUtils.ClampAngle(shielder.ShieldDir - shielder.ShieldWidth);
+            double shieldStop = MathUtils.ClampAngle(shielder.ShieldDir + shielder.ShieldWidth);
+
+            // make it so that going from shieldStart to shieldStop is the arc of the shield, going counterclockwise
+
+            // case 1: shield goes through the problematic point 0=2pi
+            // iff both shieldStart and shieldStop are {smaller, larger} than shieldDir
+            if (Math.Min(shieldStart, shieldStop) > MathUtils.ClampAngle(shielder.ShieldDir) || Math.Max(shieldStart, shieldStop) < MathUtils.ClampAngle(shielder.ShieldDir))
+            {
+                // shieldStart is the larger angle, shieldStop is smaller
+                double larger = Math.Max(shieldStart, shieldStop);
+                double smaller = Math.Min(shieldStart, shieldStop);
+                shieldStop = smaller;
+                shieldStart = larger;
+            }
+            // case 2: shield does not go through the problematic point 0=2pi
+            else
+            {
+                // shieldStart is the smaller angle, shieldStop is larger
+                double larger = Math.Max(shieldStart, shieldStop);
+                double smaller = Math.Min(shieldStart, shieldStop);
+                shieldStart = smaller;
+                shieldStop = larger;
+            }
+
+            // now we want to sort the angles counter-clockwise, and have them in the order we would have encountered them
+            // if we want for a counter-clockwise walk from shotStart
+            // -> add 2PI to all angles smaller than shotStart
+            if (shotStop < shotStart) shotStop += 2 * Math.PI;
+            if (shieldStart < shotStart) shieldStart += 2 * Math.PI;
+            if (shieldStop < shotStart) shieldStop += 2 * Math.PI;
+
+            // FIXME: need to cosmetically change angles (i.e. add a trivial epsilon, like 1e-16)
+            // to ensure they are all different, OR use a pair array ( {shotStart,0},{shotStop,1},... ) so that they can be distinguished
+
+            Console.WriteLine("Shooting from " + shotStart + " to " + shotStop + ", shielded from " + shieldStart + " to " + shieldStop);
+
+            double[] angles = { shotStart, shotStop, shieldStart, shieldStop };
+            Array.Sort(angles);
+
+            double distanceShielded = 0;
+
+            // case 1: shotStop is the first encountered angle after shotStart
+            // either entire shot is in, or out, of the shield
+            if (angles[1] == shotStop)
+            {
+                // if next angle is ShieldStop, we were in
+                if (angles[2] == shieldStop)
+                    distanceShielded = shotStop - shotStart;
+                else    // otherwise we were out 
+                    distanceShielded = 0;
+            }
+            // case 2: shieldStart is the first encountered angle
+            else if (angles[1] == shieldStart)
+            {
+                // we will shield everything from this point to the next
+                // (whether that is shieldStop or shotStop)
+                distanceShielded = angles[2] - angles[1];
+            }
+            // case 3: shieldStop is the first encountered angle
+            else
+            {
+                // we have been shielded the entire time from shotStart to here
+                distanceShielded = angles[1] - angles[0];
+
+                // if we encounter shieldStart before shotStop, we will be shielded for the final journey
+                if (angles[2] == shieldStart)
+                {
+                    distanceShielded += angles[3] - angles[2];
+                }
+            }
+
+            // return the proportion of the shot angle that we have been shielded for
+            double distanceTotal = shotStop - shotStart;
+            return distanceShielded / distanceTotal;
+        }
 
         /// <summary>
         /// Returns the percentage (0.0 to 1.0) of damage covered by a ship's shield when it is being shot
@@ -578,6 +684,7 @@ namespace SGame
             double leftCapAngleSS = Double.NegativeInfinity, rightCapAngleSS = Double.PositiveInfinity;
             if (CircleCircleIntersection(shotOrigin, shotRadius, ship.Pos, shipR, out capHitLeft, out capHitRight))
             {
+                Console.WriteLine("The circular part of the shot intersects the ship!");
                 // FIXME: Is the "only one point is tangent between the shot cap and the ship arc" edge case properly handled?
                 if (capHitRight == null) capHitRight = capHitLeft;
 
@@ -604,6 +711,8 @@ namespace SGame
                 {
                     rightCapAngleSS = Math.Atan2(rightCapDelta.Y, rightCapDelta.X) - shotDir;
                 }
+
+                Console.WriteLine($"leftCapAngleSS={Rad2Deg(leftCapAngleSS)}°, rightCapAngleSS={Rad2Deg(rightCapAngleSS)}°");
             }
             // else just ignore the cone cap -> the values being set to +/-infinity will do the trick
 
@@ -612,7 +721,7 @@ namespace SGame
             tgLeftAngleSS = MathUtils.NormalizeAngle(tgLeftAngleSS);
             tgRightAngleSS = MathUtils.NormalizeAngle(tgRightAngleSS);
             if (!Double.IsNegativeInfinity(leftCapAngleSS)) leftCapAngleSS = MathUtils.NormalizeAngle(leftCapAngleSS);
-            if (!Double.IsPositiveInfinity(rightCapAngleSS)) rightCapAngleSS = MathUtils.NormalizeAngle(leftCapAngleSS);
+            if (!Double.IsPositiveInfinity(rightCapAngleSS)) rightCapAngleSS = MathUtils.NormalizeAngle(rightCapAngleSS);
 
             // Now need to raycast from the shot origin to the ship.
             // - Everything "behind" the tangent points is covered by the rest of the ship.
@@ -635,27 +744,17 @@ namespace SGame
                 throw new InvalidOperationException("Raycast missed during shield calculation!");
             }
 
-            // Now sweep some raycasts inbetween the "leftmost" ray and the "rightmost" ray that have been casted above.
-            // Use the number of these rays that hit the shield (vs. the total amount of rays casted) to determine the shielding amount for the shot.
-            //
-            // TODO: Use heuristics to dynamically determine a suitable number of rays to shoot
-            // (the wider the impact area, the more rays!)
-            Vector2 leftRayDir = (leftHitNear.Value - shotOrigin).Normalized(), rightRayDir = (rightHitNear.Value - shotOrigin).Normalized();
+            Console.WriteLine("LH = " + leftHitNear.Value + " RH = " + rightHitNear.Value);
 
-            double nRayHits = 0.0;
-            double iDiv = N_SHIELD_RAYCASTS + 1; // (+ 1 'cause the rightmost ray is not included; i starts from 1 not to include the leftmost ray)
-            for (int i = 1; i <= N_SHIELD_RAYCASTS; i++)
-            {
-                Vector2 iRayDir = MathUtils.Slerp(leftRayDir, rightRayDir, i / iDiv);
-                Vector2? iNearHit, iFarHit;
-                if (RaycastCircle(shotOrigin, iRayDir, ship.Pos, shipR, out iNearHit, out iFarHit)
-                    && IsPointOnShield(ship, iNearHit.Value))
-                {
-                    nRayHits += 1;
-                }
-            }
+            // Now calculate the bounding angles of the victim that is being shot at
+            double leftVictimHit = Math.Atan2(leftHitNear.Value.Y - ship.Pos.Y, leftHitNear.Value.X - ship.Pos.X);
+            double rightVictimHit = Math.Atan2(rightHitNear.Value.Y - ship.Pos.Y, rightHitNear.Value.X - ship.Pos.X);
 
-            return nRayHits / N_SHIELD_RAYCASTS;
+            Console.WriteLine("From victim's point of view " + ship.Pos + ": " + leftVictimHit + "," + rightVictimHit);
+
+            // Now calculate the intersection between the angles [leftVictimHit, rightVictimHit] and [victim.shieldDir - victim.shieldWidth, victim.shieldDir + victim.shieldWidth]
+
+            return ShotShieldIntersection(leftVictimHit, rightVictimHit, ship);
         }
 
         private int SCAN_ENERGY_SCALING_FACTOR = 2000;
@@ -665,7 +764,7 @@ namespace SGame
         /// is at an angle of worldDeg degrees from the vertex, its two other sides are an angle scanWidth from this point, and
         /// its area will be equal to SCAN_ENERGY_SCALING_FACTOR times the energy spent
         /// </summary>
-        public List<int> CircleSectorScan(Vector2 pos, double worldDeg, double scanWidth, int energySpent)
+        public List<int> CircleSectorScan(Vector2 pos, double worldDeg, double scanWidth, int energySpent, out double radius)
         {
             // The radius of the cone will be such that the area scanned is energySpent * SCAN_ENERGY_SCALING_FACTOR
             double areaScanned = energySpent * SCAN_ENERGY_SCALING_FACTOR;
@@ -675,7 +774,7 @@ namespace SGame
             scanWidth = (Math.PI * scanWidth) / 180.0;
 
             // We want the radius of the circle, such that a sercular sector of angle 2*scanwidth has area areaScanned
-            double radius = (double)Math.Sqrt(areaScanned / (2 * scanWidth));
+            radius = (double)Math.Sqrt(areaScanned / (2 * scanWidth));
 
             // The circular sector is a triangle whose vertices are pos, and the points at an angle (worldDeg +- scanWidth) and distance radius
             // And a segment between those points on the circle centered at pos with that radius
@@ -742,7 +841,8 @@ namespace SGame
 
             Console.WriteLine("Scan by " + id + ", pos = " + ships[id].Pos.ToString() + " , direction = " + direction + ", width = " + width + ", energy spent = " + energy);
 
-            List<int> scanned = CircleSectorScan(ship.Pos, direction, width, energy);
+            double scanRadius;
+            List<int> scanned = CircleSectorScan(ship.Pos, direction, width, energy, out scanRadius);
             JArray scannedShips = new JArray();
             foreach (int scannedId in scanned)
             {
@@ -797,7 +897,8 @@ namespace SGame
 
             Console.WriteLine("Shot by " + id + ", pos = " + ships[id].Pos.ToString() + " , direction = " + direction + ", width = " + width + ", energy spent = " + energy + ", scaling = " + damageScaling);
 
-            List<int> struck = CircleSectorScan(ship.Pos, direction, width, energy);
+            double shotRadius;
+            List<int> struck = CircleSectorScan(ship.Pos, direction, width, energy, out shotRadius);
             JArray struckShips = new JArray();
             foreach (int struckShipId in struck)
             {
@@ -805,7 +906,6 @@ namespace SGame
                 if (struckShipId == id)
                     continue;
                 var struckShip = ships[struckShipId];
-                double shipDistance = (struckShip.Pos - ship.Pos).Length();
 
                 //The api doesnt have a return value for shooting, but ive left this in for now for testing purposes.
                 JToken struckShipInfo = new JObject();
@@ -815,10 +915,9 @@ namespace SGame
                 struckShipInfo["posY"] = struckShip.Pos.Y;
                 struckShips.Add(struckShipInfo);
 
-                double damage = ShotDamage(energy, width, damageScaling, Vector2.Subtract(ships[id].Pos, ships[struckShipId].Pos).Length());
-
-                // FIXME: What is the real maximum radius of a shot? Assuming distance between ships here...
-                double shielding = ShieldingAmount(struckShip, ship.Pos, direction, width, shipDistance);
+                double shipDistance = (struckShip.Pos - ship.Pos).Length();
+                double damage = ShotDamage(energy, width, damageScaling, shipDistance); //< FIXME: Damage calculated on distance, and not shotRadius!
+                double shielding = ShieldingAmount(struckShip, ship.Pos, direction, width, shotRadius);
                 if (shielding > 0.0)
                 {
                     Console.WriteLine(struckShipId + " shielded itself for " + shielding * 100.0 + "% of " + id + "'s shot (= " + damage * shielding + " damage)");
