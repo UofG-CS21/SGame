@@ -479,14 +479,7 @@ namespace SGame
             }
 
             onArcAngle = Math.Atan2(dirVec.Y, dirVec.X) - arcDir;
-            if (onArcAngle > Math.PI)
-            {
-                onArcAngle -= Math.PI * 2;
-            }
-            else if (onArcAngle < -Math.PI)
-            {
-                onArcAngle += Math.PI * 2;
-            }
+            onArcAngle = MathUtils.NormalizeAngle(onArcAngle);
 
 
             //Since vectors have to be doubles, There is some uncertainty introuduced when double angles are converted. So i added a tolerance.
@@ -607,21 +600,48 @@ namespace SGame
             }
 
             // Now consider the ray hits. We only care about the hits nearest to the shot origin
-            // (that's where the shot would hit!); need to check if the points there would be shielded or not
+            // (that's where the shot would hit!); need to check if circle arc between shot hit points is fully shielded
             // Only if:
             // - *Both* points are shielded
-            // - The point on the ship circle exactly in the middle between the two raycasted points is shielded.
+            // - Each point on the arc between the hit points are shielded.
             //   (why? Consider the case where the two side points are shielded, but the shield is facing the opposite direction!)
             //
             // then the shield fully absorbed the impact.
             Vector2 leftHitShipPos = leftHitNear.Value - ship.Pos, rightHitShipPos = rightHitNear.Value - ship.Pos;
-            double leftHitShipAngle = Math.Atan2(leftHitShipPos.Y, leftHitShipPos.X), rightHitShipAngle = Math.Atan2(rightHitShipPos.Y, rightHitShipPos.X);
-            double midHitShipAngle = (leftHitShipAngle + rightHitShipAngle) / 2;
-            Vector2 midHitPoint = ship.Pos + Vector2.Multiply(MathUtils.DirVec(midHitShipAngle), (double)shipR);
+            double LeftHitShipAngle = Math.Atan2(leftHitShipPos.Y, leftHitShipPos.X), RightHitShipAngle = Math.Atan2(rightHitShipPos.Y, rightHitShipPos.X);
 
-            bool shielded = IsPointOnShield(ship, leftHitNear.Value)
-                && IsPointOnShield(ship, rightHitNear.Value)
-                && IsPointOnShield(ship, midHitPoint);
+            //The HitShipAngle variables hold the angles, from the defending ship center, to the respective hit point.
+            //We normalise these values and convert them to the 0 to 2 pi range so that comparisons with the shield arc angles can be made
+            LeftHitShipAngle = MathUtils.positiseAngle(MathUtils.NormalizeAngle(LeftHitShipAngle)); RightHitShipAngle = MathUtils.positiseAngle(MathUtils.NormalizeAngle(RightHitShipAngle));
+            if (LeftHitShipAngle > RightHitShipAngle)
+            {
+                (LeftHitShipAngle, RightHitShipAngle) = (RightHitShipAngle, LeftHitShipAngle);
+            }
+
+
+            //Determine shield arc edge angles and put them in correct form
+            double highAngle = MathUtils.positiseAngle(MathUtils.NormalizeAngle(0 + ship.ShieldDir + ship.ShieldWidth));
+            double lowAngle = MathUtils.positiseAngle(MathUtils.NormalizeAngle(0 + ship.ShieldDir - ship.ShieldWidth));
+            if (lowAngle > highAngle)
+            {
+                (lowAngle, highAngle) = (highAngle, lowAngle);
+            }
+            double shieldArc = highAngle - lowAngle;
+
+            bool shielded;
+
+            //If shieldArc == 2*ship.ShieldWidth then the shielded arc is from lowAngle -> highAngle.
+            //else  the shielded arc is from highAngle to lowAngle. The test for wheter or not damage is shielded changes dependeding.
+            if (MathUtils.ToleranceEquals(ship.ShieldWidth * 2, shieldArc, 0.0000000001))
+            {
+                shielded = (lowAngle <= LeftHitShipAngle && lowAngle <= RightHitShipAngle) && (RightHitShipAngle <= highAngle && LeftHitShipAngle <= highAngle);
+            }
+            else
+            {
+                shielded = (lowAngle >= RightHitShipAngle) || (LeftHitShipAngle >= highAngle);
+            }
+
+            Console.WriteLine("LeftHitShipAngle = " + Rad2Deg(LeftHitShipAngle) + "  lowAngle = " + Rad2Deg(lowAngle) + "   RightHitShipAngle = " + Rad2Deg(RightHitShipAngle) + "   highAngle = " + Rad2Deg(highAngle) + "  ship.Shielddir = " + Rad2Deg(ship.ShieldDir) + "  ship.ShieldWidth = " + Rad2Deg(ship.ShieldWidth));
             return shielded ? 1.0 : 0.0;
 
             // TODO(?): Implement partial shielding - where a fraction 0 < x < 1 is returned for a partial cover
