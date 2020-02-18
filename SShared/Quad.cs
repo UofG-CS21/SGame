@@ -4,12 +4,12 @@ using System.Diagnostics;
 namespace SShared
 {
     /// <summary>
-    /// World space rectangle
+    /// World space quad.
     /// </summary>
-    public struct Rectangle
+    public struct Quad
     {
 
-        public Rectangle(double centrex, double centrey, double radius)
+        public Quad(double centrex, double centrey, double radius)
         {
             CentreX = centrex;
             CentreY = centrey;
@@ -67,10 +67,10 @@ namespace SShared
         /// Checks the rectangle contains another rectangle
         /// returns true if it does other wise false
         /// </summary>
-        public bool Contains(Rectangle otherrect)
+        public bool Contains(Quad other)
         {
-            return otherrect.X >= X && otherrect.Y >= Y &&
-                    otherrect.X2 <= X2 && otherrect.Y2 <= Y2;
+            return other.X >= X && other.Y >= Y &&
+                    other.X2 <= X2 && other.Y2 <= Y2;
         }
 
 
@@ -78,9 +78,9 @@ namespace SShared
         /// Checks if the rectangle interesects with an other rectangle
         /// returns true if it does other wise false
         /// </summary>
-        public bool Intersects(Rectangle otherrect)
+        public bool Intersects(Quad other)
         {
-            return !(otherrect.X >= X2 || otherrect.X2 <= X || otherrect.Y >= Y2 || otherrect.Y2 <= Y);
+            return !(other.X >= X2 || other.X2 <= X || other.Y >= Y2 || other.Y2 <= Y);
         }
     }
 }
