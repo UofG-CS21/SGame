@@ -1,16 +1,14 @@
 using System;
+using SShared;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
 namespace SGame
 {
-
     /// <summary>
     /// Miscellaneous mathematical and geometrical utilities. 
     /// </summary>
     public static class MathUtils
     {
-
-
         // Calculates the sign of a point relative to a line defined by two points
         public static int pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2)
         {
@@ -138,10 +136,6 @@ namespace SGame
             return true;
         }
 
-
-
-
-
         /// <summary>
         /// Normalizes an angle in radians, i.e. makes it positive and between 0 and `clampValue`.
         /// </summary>
@@ -226,8 +220,6 @@ namespace SGame
 
             return result;
         }
-
-
 
         /// <summary>
         /// Makes a direction vector out of an angle in radians.

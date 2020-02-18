@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SGame;
 using Xunit;
+using SShared;
 
 
 
