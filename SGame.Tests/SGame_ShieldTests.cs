@@ -224,38 +224,102 @@ namespace SGame.Tests
             ship.ShieldWidth = Api.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -30, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
-            // //Test case 8: Same as Test case 3 but shot comes from opposite side
+            //Test case 8: Same as Test case 7 but shot comes from opposite side
 
-            // gameTime.Reset();
-            // ship = new Spaceship(8, gameTime);
-            // ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
-            // shipRadius = 2;
-            // ship.Area = shipRadius * shipRadius * Math.PI;
-            // ship.ShieldDir = Api.Deg2Rad(315);
-            // ship.ShieldWidth = Api.Deg2Rad(30);
-            // yield return new object[] { ship, shotOrigin = new Vector2(5, -2), shotDir = 135, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
+            gameTime.Reset();
+            ship = new Spaceship(8, gameTime);
+            ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
+            shipRadius = 2;
+            ship.Area = shipRadius * shipRadius * Math.PI;
+            ship.ShieldDir = Api.Deg2Rad(315);
+            ship.ShieldWidth = Api.Deg2Rad(30);
+            yield return new object[] { ship, shotOrigin = new Vector2(5, -2), shotDir = 135, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
-            // //Test case 9: Ray is unimpeded by shield. (Centre of shot passes through centre of ship)
+            //Test case 9: Ray is unimpeded by shield. (Centre of shot does not pass through centre of ship)
 
-            // gameTime.Reset();
-            // ship = new Spaceship(9, gameTime);
-            // ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
-            // shipRadius = 2;
-            // ship.Area = shipRadius * shipRadius * Math.PI;
-            // ship.ShieldDir = Api.Deg2Rad(45);
-            // ship.ShieldWidth = Api.Deg2Rad(30);
-            // yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
+            gameTime.Reset();
+            ship = new Spaceship(9, gameTime);
+            ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
+            shipRadius = 2;
+            ship.Area = shipRadius * shipRadius * Math.PI;
+            ship.ShieldDir = Api.Deg2Rad(45);
+            ship.ShieldWidth = Api.Deg2Rad(30);
+            yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -53, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
 
-            // //Test case 10: Ray is unimpeded on entry but impeded on exit. (Centre of shot passes through centre of ship)
+            //Test case 10: Ray is unimpeded on entry but impeded on exit. (Centre of shot does not pass through centre of ship)
 
-            // gameTime.Reset();
-            // ship = new Spaceship(10, gameTime);
-            // ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
-            // shipRadius = 2;
-            // ship.Area = shipRadius * shipRadius * Math.PI;
-            // ship.ShieldDir = Api.Deg2Rad(315);
-            // ship.ShieldWidth = Api.Deg2Rad(30);
-            // yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
+            gameTime.Reset();
+            ship = new Spaceship(10, gameTime);
+            ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
+            shipRadius = 2;
+            ship.Area = shipRadius * shipRadius * Math.PI;
+            ship.ShieldDir = Api.Deg2Rad(290);
+            ship.ShieldWidth = Api.Deg2Rad(30);
+            yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -53, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
+
+            //Test case 11: Ray is partially blocked by shield. (at this point, 0.0 should be returned)
+            gameTime.Reset();
+            ship = new Spaceship(11, gameTime);
+            ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
+            shipRadius = 2;
+            ship.Area = shipRadius * shipRadius * Math.PI;
+            ship.ShieldDir = Api.Deg2Rad(105);
+            ship.ShieldWidth = Api.Deg2Rad(30);
+            yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
+
+            //Test case 12: Ray is almost completely blocked by shield. (at this point, 0.0 should be returned)
+            gameTime.Reset();
+            ship = new Spaceship(12, gameTime);
+            ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
+            shipRadius = 2;
+            ship.Area = shipRadius * shipRadius * Math.PI;
+            ship.ShieldDir = Api.Deg2Rad(122.6872685193931);
+            ship.ShieldWidth = Api.Deg2Rad(30);
+            yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
+
+            //Test case 13: Ray is just barely completely blocked by shield. (at this point, 1.0 should be returned)
+            gameTime.Reset();
+            ship = new Spaceship(13, gameTime);
+            ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
+            shipRadius = 2;
+            ship.Area = shipRadius * shipRadius * Math.PI;
+            ship.ShieldDir = Api.Deg2Rad(123.3330639104773);
+            ship.ShieldWidth = Api.Deg2Rad(30);
+            yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
+
+
+            //The following test cases test the edge case that the two intersection points are covered but some section of the centre isnt.
+            //Test case 14: 
+            gameTime.Reset();
+            ship = new Spaceship(14, gameTime);
+            ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
+            shipRadius = 2;
+            ship.Area = shipRadius * shipRadius * Math.PI;
+            ship.ShieldDir = Api.Deg2Rad(312);
+            ship.ShieldWidth = Api.Deg2Rad(179);
+            yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
+
+
+            //Test case 15: 
+            gameTime.Reset();
+            ship = new Spaceship(15, gameTime);
+            ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
+            shipRadius = 2;
+            ship.Area = shipRadius * shipRadius * Math.PI;
+            ship.ShieldDir = Api.Deg2Rad(176.076);
+            ship.ShieldWidth = Api.Deg2Rad(179);
+            yield return new object[] { ship, shotOrigin = new Vector2(5.5, 1), shotDir = 180, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
+
+
+            //Test case 16: 
+            gameTime.Reset();
+            ship = new Spaceship(16, gameTime);
+            ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
+            shipRadius = 2;
+            ship.Area = shipRadius * shipRadius * Math.PI;
+            ship.ShieldDir = Api.Deg2Rad(133.573);
+            ship.ShieldWidth = Api.Deg2Rad(179);
+            yield return new object[] { ship, shotOrigin = new Vector2(5, -1.5), shotDir = 360 - 206.565051177078, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
 
 
