@@ -495,7 +495,7 @@ namespace SGame
 
 
             //Since vectors have to be doubles, There is some uncertainty introuduced when double angles are converted. So i added a tolerance.
-            return (-arcWidth <= onArcAngle && onArcAngle <= arcWidth) || (MathUtils.ToleranceEquals(Rad2Deg(-arcWidth), Rad2Deg(onArcAngle), 0.000001)) || (MathUtils.ToleranceEquals(Rad2Deg(arcWidth), Rad2Deg(onArcAngle), 0.000001));
+            return (-arcWidth <= onArcAngle && onArcAngle <= arcWidth) || (MathUtils.ToleranceEquals(MathUtils.Rad2Deg(-arcWidth), MathUtils.Rad2Deg(onArcAngle), 0.000001)) || (MathUtils.ToleranceEquals(MathUtils.Rad2Deg(arcWidth), MathUtils.Rad2Deg(onArcAngle), 0.000001));
         }
 
         /// <summary>
@@ -640,12 +640,12 @@ namespace SGame
             }
 
             // IMPORTANT - ShotWidth input is in degrees, (and already clamped from 0..180° at the source)
-            shotWidth = Deg2Rad(shotWidth);
+            shotWidth = MathUtils.Deg2Rad(shotWidth);
             // IMPORTANT - ShotDir input is in degrees, and needs:
             // - Being converted to radians
             // - Being clamped from 0..2pi (to prevent malicious input from breaking the code)
             // - Being normalized from -pi..pi (to prevent calculations below from potentially breaking)
-            shotDir = MathUtils.NormalizeAngle(MathUtils.ClampAngle(Deg2Rad(shotDir)));
+            shotDir = MathUtils.NormalizeAngle(MathUtils.ClampAngle(MathUtils.Deg2Rad(shotDir)));
 
             // Find the two tangent points from the origin of the shot to the ship + `tgAngle`, i.e.
             // the bisector angle between the (shot origin to ship center) line and the two tangents.
@@ -660,7 +660,7 @@ namespace SGame
             Vector2 shipCenterDelta = ship.Pos - shotOrigin;
             double shipCenterAngle = Math.Atan2(shipCenterDelta.Y, shipCenterDelta.X);
             double CAS2SS = MathUtils.NormalizeAngle(shipCenterAngle - shotDir); //< NOTE: Normalized, or things can break (deltas multiple of 2pi...)
-            Console.WriteLine("shot dir: " + Rad2Deg(shotDir) + "°, CAS2SS: " + Rad2Deg(CAS2SS) + "°, tgangle: " + Rad2Deg(tgAngle) + "°");
+            Console.WriteLine("shot dir: " + MathUtils.Rad2Deg(shotDir) + "°, CAS2SS: " + MathUtils.Rad2Deg(CAS2SS) + "°, tgangle: " + MathUtils.Rad2Deg(tgAngle) + "°");
 
             double tgLeftAngleSS = -tgAngle + CAS2SS, tgRightAngleSS = tgAngle + CAS2SS;
             Console.WriteLine("LA " + tgLeftAngleSS + " RA " + tgRightAngleSS);
@@ -706,7 +706,7 @@ namespace SGame
                     rightCapAngleSS = Math.Atan2(rightCapDelta.Y, rightCapDelta.X) - shotDir;
                 }
 
-                Console.WriteLine($"leftCapAngleSS={Rad2Deg(leftCapAngleSS)}°, rightCapAngleSS={Rad2Deg(rightCapAngleSS)}°");
+                Console.WriteLine($"leftCapAngleSS={MathUtils.Rad2Deg(leftCapAngleSS)}°, rightCapAngleSS={MathUtils.Rad2Deg(rightCapAngleSS)}°");
             }
             // else just ignore the cone cap -> the values being set to +/-infinity will do the trick
 
@@ -791,23 +791,6 @@ namespace SGame
             }
 
             return result;
-        }
-
-
-        /// <summary>
-        /// Convert an angle from radians to degrees.
-        /// </summary>
-        public static double Rad2Deg(double rad)
-        {
-            return rad * 180.0 / Math.PI;
-        }
-
-        /// <summary>
-        /// Convert an angle from degrees to radians.
-        /// </summary>
-        public static double Deg2Rad(double deg)
-        {
-            return deg * Math.PI / 180.0;
         }
 
         /// <summary>
@@ -970,14 +953,14 @@ namespace SGame
             Spaceship ship = ships[maybeid.Value];
             double dirDeg = (double)data.Json["direction"];
             double hWidthDeg = (double)data.Json["width"];
-            ship.ShieldDir = Deg2Rad(dirDeg); // (autonormalized)
+            ship.ShieldDir = MathUtils.Deg2Rad(dirDeg); // (autonormalized)
 
             if (hWidthDeg < 0.0 || hWidthDeg > 180.0)
             {
                 response.Data["error"] = "Invalid angle passed (range: [0..180])";
                 await response.Send(500);
             }
-            ship.ShieldWidth = Deg2Rad(hWidthDeg);
+            ship.ShieldWidth = MathUtils.Deg2Rad(hWidthDeg);
 
             Console.WriteLine("Shields up for " + maybeid.Value + ", width/2 = " + hWidthDeg + "°, dir = " + dirDeg + "°");
             await response.Send(200);

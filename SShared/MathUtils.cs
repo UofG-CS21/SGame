@@ -3,18 +3,31 @@ using System.IO;
 using System.Net;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using SShared;
 
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
-namespace SGame
+namespace SShared
 {
     /// <summary>
     /// Miscellaneous mathematical and geometrical utilities. 
     /// </summary>
     public static class MathUtils
     {
+        /// <summary>
+        /// Convert an angle from radians to degrees.
+        /// </summary>
+        public static double Rad2Deg(double rad)
+        {
+            return rad * 180.0 / Math.PI;
+        }
+
+        /// <summary>
+        /// Convert an angle from degrees to radians.
+        /// </summary>
+        public static double Deg2Rad(double deg)
+        {
+            return deg * Math.PI / 180.0;
+        }
+
         // Calculates the sign of a point relative to a line defined by two points
         public static int pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2)
         {
@@ -226,7 +239,7 @@ namespace SGame
 
             if (y == 0)
             {
-                result = Api.Deg2Rad((x >= 0 ? 0 : 180));
+                result = Deg2Rad((x >= 0 ? 0 : 180));
             }
 
             return result;
