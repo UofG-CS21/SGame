@@ -5,6 +5,7 @@ using System.Net;
 using CommandLine;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Threading.Tasks;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
 namespace SGame
@@ -51,11 +52,45 @@ namespace SGame
             router = new Router<Api>(api);
         }
 
+
+        public async Task<bool> ProcessRequest(HttpListenerContext context)
+        {
+            string requestUrl = context.Request.RawUrl.Substring(1);
+            Console.Error.WriteLine("Got a request: {0}", requestUrl);
+
+            var body = new StreamReader(context.Request.InputStream).ReadToEnd();
+            JObject json = new JObject();
+            if (body.Length > 0)
+            {
+                try
+                {
+                    json = JObject.Parse(body);
+                }
+                catch (JsonReaderException exc)
+                {
+                    // TODO: Log this and (likely) send a HTTP 500
+                }
+            }
+
+#if DEBUG
+            // Handle "exit" in debug mode
+            if (requestUrl == "exit")
+            {
+                return false;
+            }
+#endif
+
+            var response = new ApiResponse(context.Response);
+            var data = new ApiData(json);
+            await router.Dispatch(requestUrl, response, data);
+            return true;
+        }
+
         /// <summary>
         /// Runs the main loop run for the HTTP/REST server.
         /// </summary>
         /// <param name="prefixes">A list of endpoint URLs to bind the HTTP server to.</param>
-        public void ServerLoop(string[] prefixes)
+        public async Task ServerLoop(string[] prefixes)
         {
             if (!HttpListener.IsSupported)
             {
@@ -73,40 +108,14 @@ namespace SGame
             // Main server loop
             listener.Start();
             Console.Error.WriteLine("Listening...");
+
             while (true)
             {
-                // Note: The GetContext method blocks while waiting for a request. 
-                HttpListenerContext context = listener.GetContext();
-
-                string requestUrl = context.Request.RawUrl.Substring(1);
-                Console.Error.WriteLine("Got a request: {0}", requestUrl);
-
-                var body = new StreamReader(context.Request.InputStream).ReadToEnd();
-                JObject json = new JObject();
-                if (body.Length > 0)
-                {
-                    try
-                    {
-                        json = JObject.Parse(body);
-                    }
-                    catch (JsonReaderException exc)
-                    {
-                        // TODO: Log this and (likely) send a HTTP 500
-                    }
-                }
-
-#if DEBUG
-                // Handle "exit" in debug mode
-                if (requestUrl == "exit")
-                {
-                    break;
-                }
-#endif
-
-                var response = new ApiResponse(context.Response);
-                var data = new ApiData(json);
-                router.Dispatch(requestUrl, response, data);
+                var task = await listener.GetContextAsync();
+                bool keepGoing = await ProcessRequest(task);
+                if (!keepGoing) break;
             }
+
 
             listener.Stop();
             Console.Error.WriteLine("Stopped");
@@ -115,17 +124,22 @@ namespace SGame
         /// <summary>
         /// The entry point of the program.
         /// </summary>
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
+            CmdLineOptions options = null;
             Parser.Default.ParseArguments<CmdLineOptions>(args)
-                .WithParsed<CmdLineOptions>(opts =>
-                {
-                    string[] endpoints = new string[] { "http://" + opts.Host + ":" + opts.Port + "/" };
-                    Console.WriteLine("Endpoint: {0}", endpoints[0]);
+                .WithParsed<CmdLineOptions>((opts) => options = opts);
+            if (options == null)
+            {
+                Environment.ExitCode = -1;
+                return;
+            }
 
-                    Program P = new Program();
-                    P.ServerLoop(endpoints);
-                });
+            string[] endpoints = new string[] { "http://" + options.Host + ":" + options.Port + "/" };
+            Console.WriteLine("Endpoint: {0}", endpoints[0]);
+
+            Program P = new Program();
+            await P.ServerLoop(endpoints);
         }
     }
 }

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections;
 using SGame;
+using SShared;
 using Xunit;
 using SShared;
 

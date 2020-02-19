@@ -7,7 +7,6 @@ using SShared;
 
 namespace SShared
 {
-
     /// <summary>
     /// Miscellaneous mathematical and geometrical utilities. 
     /// </summary>
