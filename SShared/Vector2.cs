@@ -1,6 +1,6 @@
 using System;
 
-namespace SGame
+namespace SShared
 {
     /// <summary>
     /// A 2D vector of double-precision doubles.

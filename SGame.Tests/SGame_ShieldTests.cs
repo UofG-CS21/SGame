@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections;
 using SGame;
 using Xunit;
+using SShared;
 
 namespace SGame.Tests
 {

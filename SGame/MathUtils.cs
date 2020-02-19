@@ -1,4 +1,11 @@
 using System;
+using System.IO;
+using System.Net;
+using System.Collections.Generic;
+using System.Diagnostics;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using SShared;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
 namespace SGame
