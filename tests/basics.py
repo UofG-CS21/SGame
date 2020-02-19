@@ -1344,7 +1344,9 @@ shield_full_data = [
 
     # only get hit by the circular part of shot, which is shielded fully (inverse shield of TC9)
     ( {'posX':0,'posY':0,'area':3.14159265,'energy':10}, {'posX':44, 'posY':0, 'area':3.1415926535, 'energy':10}, {'direction':180,'width':73},{'direction':0,'width':30,'energy':1,'damage':1} ),
-       
+    
+    #TC10
+    ( {'posX':-1,'posY':4,'area':12.5663706,'energy':10}, {'posX':2,'posY':-1,'area':12.5663706,'energy':10}, {'direction':120.3,'width':30},{'direction':-58.706,'width':13.6,'energy':1,'damage':1} )
 ]
 
 # this test gets scenarios where an shield is fully blocked by an activated shield
@@ -1406,3 +1408,85 @@ def test_shield_full(server, clients, shooter, shielder, shield, shoot):
 
         # damage should be zero
         assert damage_shield == 0
+
+
+# data for test_shield_full
+# shooter shielder shield shot block
+# shooter: sudo json to set up client1
+# shielder: sudo json to set up client2
+# shield: shield json to activate shield
+# shoot: shoot json to shoot
+# block: portion of damage blocked
+shield_partial_data = [
+
+    #TC11
+    ( {'posX':-1,'posY':4,'area':12.5663706,'energy':10}, {'posX':2,'posY':-1,'area':12.5663706,'energy':10}, {'direction':105.16559,'width':15.16559},{'direction':-58.706,'width':13.6,'energy':1,'damage':1}, 0.5 ),
+
+    #TC12 (shielding more to the right so shield is all within shot)
+    ( {'posX':3,'posY':4,'area':3.141592,'energy':10}, {'posX':-1,'posY':2,'area':28.2743338823 ,'energy':10}, {'direction':38.029,'width':22.5},{'direction':-155.3,'width':38.735,'energy':1,'damage':1}, 1-45/61.92751 ),
+    
+    #TC12 but shielding at I
+    ( {'posX':3,'posY':4,'area':3.141592,'energy':10}, {'posX':-1,'posY':2,'area':28.2743338823 ,'energy':10}, {'direction':48.029,'width':22.5},{'direction':-155.3,'width':38.735,'energy':1,'damage':1}, 1-36.39873/61.92751 ),
+    
+
+]
+
+# this test gets scenarios where an shield is fully blocked by an activated shield
+# and so the damage of a shot should be 0 on activation
+@pytest.mark.parametrize('shooter, shielder, shield, shoot, block', shield_partial_data)
+def test_shield_partial(server, clients, shooter, shielder, shield, shoot, block):
+    reset_time(server)
+    with clients(2) as (attacker, victim):
+
+        shooter['token'] = attacker.token
+        shoot['token'] = attacker.token
+        shielder['token'] = victim.token
+        shield['token'] = victim.token
+        
+        resp = requests.post(attacker.url + 'sudo',json=shooter)
+        assert resp 
+
+        resp = requests.post(victim.url + 'sudo', json=shielder)
+        assert resp 
+
+        # shoot, ensure that victim was struck
+        resp = requests.post(attacker.url + 'shoot',json=shoot)
+        assert resp 
+        data = resp.json()
+        assert len(data['struck']) == 1
+
+        # store damage dealt
+        resp = requests.post(victim.url + 'getShipInfo', json={
+            'token' : victim.token
+        })
+        assert resp 
+        damage_no_shield = shielder['area'] - resp.json()['area']
+
+        assert damage_no_shield > 0
+
+        # reset both ships
+        resp = requests.post(attacker.url + 'sudo',json=shooter)
+        assert resp 
+
+        resp = requests.post(victim.url + 'sudo', json=shielder)
+        assert resp
+
+        # activate shield
+        resp = requests.post(victim.url + 'shield',json=shield)
+        assert resp
+
+        # shoot again
+        resp = requests.post(attacker.url + 'shoot',json=shoot)
+        assert resp 
+        data = resp.json()
+        assert len(data['struck']) == 1
+
+        # look at damage dealt this time
+        resp = requests.post(victim.url + 'getShipInfo', json={
+            'token' : victim.token
+        })
+        assert resp 
+        damage_shield = shielder['area'] - resp.json()['area']
+
+        # damage should be block times as before
+        assert isClose(damage_shield / damage_no_shield, block, 0.01)
