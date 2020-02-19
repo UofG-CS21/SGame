@@ -17,7 +17,7 @@ namespace SGame.Tests
         {
 
             double onArcAngle = double.MaxValue;
-            bool actual = Api.IsPointOnArc(point, arcCenter, Api.Deg2Rad(arcDir), Api.Deg2Rad(arcWidth), arcRadius, out onArcAngle);
+            bool actual = Api.IsPointOnArc(point, arcCenter, MathUtils.Deg2Rad(arcDir), MathUtils.Deg2Rad(arcWidth), arcRadius, out onArcAngle);
             Assert.Equal(expected, actual);
         }
 
@@ -27,7 +27,7 @@ namespace SGame.Tests
         {
             Vector2 tg1, tg2;
             double bisectAngle;
-            expectedAngle = Math.Round(Api.Deg2Rad(expectedAngle), 14);
+            expectedAngle = Math.Round(MathUtils.Deg2Rad(expectedAngle), 14);
 
             Api.CircleTangents(circleCenter, circleRadius, point, out tg1, out tg2, out bisectAngle);
             //Round to account for geogebra rounding.
@@ -44,7 +44,7 @@ namespace SGame.Tests
         {
 
             Vector2? inters1, inters2;
-            rayDir = Api.Deg2Rad(rayDir);
+            rayDir = MathUtils.Deg2Rad(rayDir);
             bool result = Api.RaycastCircle(rayOrigin, rayDir, circleCenter, circleRadius,
             out inters1, out inters2);
 
@@ -178,8 +178,8 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(135);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(135);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
             //Test case 4: Same as Test case 3 but shot comes from opposite side
@@ -189,8 +189,8 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(315);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(315);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(5, -2), shotDir = 135, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
             //Test case 5: Ray is unimpeded by shield. (Centre of shot passes through centre of ship)
@@ -200,8 +200,8 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(45);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(45);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
 
             //Test case 6: Ray is unimpeded on entry but impeded on exit. (Centre of shot passes through centre of ship)
@@ -211,8 +211,8 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(315);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(315);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
 
 
@@ -224,8 +224,8 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(130);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(130);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -30, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
             //Test case 8: Same as Test case 7 but shot comes from opposite side
@@ -235,8 +235,8 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(315);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(315);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(5, -2), shotDir = 135, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
             //Test case 9: Ray is unimpeded by shield. (Centre of shot does not pass through centre of ship)
@@ -246,8 +246,8 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(45);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(45);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -53, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
 
             //Test case 10: Ray is unimpeded on entry but impeded on exit. (Centre of shot does not pass through centre of ship)
@@ -257,8 +257,8 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(290);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(290);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -53, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
 
             //Test case 11: Ray is partially blocked by shield. 
@@ -267,8 +267,8 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(105);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(105);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 0.5 };
 
             //Test case 12: Ray is almost completely blocked by shield. 
@@ -277,9 +277,9 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(45);
-            ship.ShieldWidth = Api.Deg2Rad(30);
-            yield return new object[] { ship, shotOrigin = new Vector2(2, 5), shotDir = -90, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = (Api.Deg2Rad(75) - Api.Deg2Rad(73.82604780385)) / Api.Deg2Rad(30) };
+            ship.ShieldDir = MathUtils.Deg2Rad(45);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
+            yield return new object[] { ship, shotOrigin = new Vector2(2, 5), shotDir = -90, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = (MathUtils.Deg2Rad(75) - MathUtils.Deg2Rad(73.82604780385)) / MathUtils.Deg2Rad(30) };
 
             //Test case 13: Ray is just barely completely blocked by shield. (at this point, 1.0 should be returned)
             gameTime.Reset();
@@ -287,8 +287,8 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(123.3330639104773);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(123.3330639104773);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
 
@@ -299,8 +299,8 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(-90);
-            ship.ShieldWidth = Api.Deg2Rad(179);
+            ship.ShieldDir = MathUtils.Deg2Rad(-90);
+            ship.ShieldWidth = MathUtils.Deg2Rad(179);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 30, (ship.Pos - shotOrigin).Length(), expectedValue = (58.0 / 60.0) };
 
 
@@ -310,8 +310,8 @@ namespace SGame.Tests
             // ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             // shipRadius = 2;
             // ship.Area = shipRadius * shipRadius * Math.PI;
-            // ship.ShieldDir = Api.Deg2Rad(176.076);
-            // ship.ShieldWidth = Api.Deg2Rad(179);
+            // ship.ShieldDir = MathUtils.Deg2Rad(176.076);
+            // ship.ShieldWidth = MathUtils.Deg2Rad(179);
             // yield return new object[] { ship, shotOrigin = new Vector2(5.5, 1), shotDir = 180, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
 
 
@@ -321,8 +321,8 @@ namespace SGame.Tests
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(133.573);
-            ship.ShieldWidth = Api.Deg2Rad(179);
+            ship.ShieldDir = MathUtils.Deg2Rad(133.573);
+            ship.ShieldWidth = MathUtils.Deg2Rad(179);
             yield return new object[] { ship, shotOrigin = new Vector2(5, -1.5), shotDir = 360 - 206.565051177078, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
 
