@@ -1,4 +1,10 @@
 using System;
+using System.IO;
+using System.Net;
+using System.Collections.Generic;
+using System.Diagnostics;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SShared;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
@@ -155,7 +161,12 @@ namespace SGame
             {
                 angle -= 2.0 * Math.PI;
             }
+            else if (angle < -Math.PI)
+            {
+                angle += 2.0 * Math.PI;
+            }
             return angle;
+
         }
 
         /// <summary>
