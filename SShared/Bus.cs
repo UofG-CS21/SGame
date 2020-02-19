@@ -6,6 +6,29 @@ using LiteNetLib.Utils;
 
 namespace SShared
 {
+    /// <summary>
+    /// Implemented by all bus messages.
+    /// </summary>
+    public interface IBusMessage : INetSerializable
+    {
+        /// <summary>
+        /// A identifier code for this type of message.
+        /// </summary>
+        public static ushort Id { get; }
+    }
+
+    /// <summary>
+    /// Arguments to an event involving a bus message. 
+    /// </summary>
+    public class BusMessageEventArgs : EventArgs
+    {
+        public BusMessageEventArgs(IBusMessage message)
+        {
+            Message = message;
+        }
+
+        public IBusMessage Message { get; private set; }
+    };
 
     /// <summary>
     /// A node on the event bus.
@@ -27,7 +50,7 @@ namespace SShared
         /// </summary>
         public bool IsMaster { get; private set; }
 
-        NetSerializer _serializer;
+        NetDataWriter _writer;
 
         /// <summary>
         /// A serializer that can be used to serialize / deserialize any `BusMsgs.*`.
@@ -55,6 +78,8 @@ namespace SShared
                 //_netHost.BroadcastReceiveEnable = true;
             }
 
+            _writer = new NetDataWriter();
+
             Serializer = new NetSerializer();
             BusMsgs.Serialization.RegisterAllSerializers(Serializer);
         }
@@ -65,6 +90,22 @@ namespace SShared
         public void Update()
         {
             Host.PollEvents();
+        }
+
+        /// <summary>
+        /// An event that is triggered when a message is received from the bus.
+        /// </summary>
+        public event EventHandler<BusMessageEventArgs> OnBusMessageReceived;
+
+        /// <summary>
+        /// Sends a bus message to every peer connected to this node.
+        /// </summary>
+        public void SendBusMessage<T>(T message, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered)
+            where T : class, IBusMessage, new()
+        {
+            _writer.Reset();
+            Serializer.Serialize<T>(_writer, message);
+            Host.SendToAll(_writer, delivery);
         }
 
         // ===== Dispose pattern =======================================================================================
@@ -108,7 +149,26 @@ namespace SShared
 
         public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, DeliveryMethod deliveryMethod)
         {
-            // TODO IMPLEMENT: Do something when a message is received from a connected peer
+            // Read the packet and deserialize a bus message from it...
+            ushort msgId;
+            if (reader.TryGetUShort(out msgId))
+            {
+                Type msgType;
+                if (BusMsgs.Serialization.MessageTypes.TryGetValue(msgId, out msgType))
+                {
+                    // Expand the appropriate `NetSerializer.Deserialize<TMessage>()` and call it to deserialize the message
+                    // See: https://stackoverflow.com/a/3958029
+                    var typelessDeserialize = typeof(NetSerializer).GetMethod("Deserialize");
+                    var deserialize = typelessDeserialize.MakeGenericMethod(msgType);
+                    var message = (IBusMessage)deserialize.Invoke(Serializer, new object[] { reader });
+                    // Dispatch the event
+                    OnBusMessageReceived.Invoke(this, new BusMessageEventArgs(message));
+                }
+                // else: unknown message type, ignore
+            }
+            // else: broken message, ignore
+
+            reader.Recycle();
         }
 
         public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)

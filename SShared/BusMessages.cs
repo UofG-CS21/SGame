@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using LiteNetLib.Utils;
 
 namespace SShared.BusMsgs
@@ -6,12 +8,9 @@ namespace SShared.BusMsgs
     /// <summary>
     /// A message sent when a scanning or shooting action is requested.
     /// </summary>
-    public struct ScanShoot : INetSerializable
+    public struct ScanShoot : IBusMessage
     {
-        /// <summary>
-        /// Id of this message type.
-        /// </summary>
-        public const ushort Id = 0x0010;
+        public static ushort Id { get { return 0x0010; } }
 
         /// <summary>
         /// The origin of the scan.
@@ -62,11 +61,33 @@ namespace SShared.BusMsgs
     public static class Serialization
     {
         /// <summary>
+        /// Maps message type Ids to the underlying type.
+        /// </summary>
+        static Dictionary<ushort, Type> _msgTypes = new Dictionary<ushort, Type>();
+
+        static Serialization()
+        {
+            // v--- Register all message types here ---v
+            _msgTypes[ScanShoot.Id] = typeof(ScanShoot);
+        }
+
+        /// <summary>
+        /// A table of (message type id -> underlying Type) for all known bus message types.
+        /// </summary>
+        public static Dictionary<ushort, Type> MessageTypes { get { return _msgTypes; } }
+
+        /// <summary>
         /// Registers serializers for all bus message types.
         /// </summary>
         public static void RegisterAllSerializers(NetSerializer serializer)
         {
-            serializer.RegisterNestedType<ScanShoot>();
+            foreach (var (id, type) in _msgTypes)
+            {
+                // See: https://stackoverflow.com/a/3958029
+                var typelessRegistrar = typeof(NetSerializer).GetMethod("RegisterNestedType");
+                var registrar = typelessRegistrar.MakeGenericMethod(type);
+                registrar.Invoke(serializer, new object[] { });
+            }
         }
     }
 }
