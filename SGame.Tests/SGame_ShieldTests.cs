@@ -5,7 +5,7 @@ using System.Collections;
 using SGame;
 using SShared;
 using Xunit;
-using SShared;
+
 
 namespace SGame.Tests
 {
@@ -17,7 +17,7 @@ namespace SGame.Tests
         {
 
             double onArcAngle = double.MaxValue;
-            bool actual = Api.IsPointOnArc(point, arcCenter, MathUtils.Deg2Rad(arcDir), MathUtils.Deg2Rad(arcWidth), arcRadius, out onArcAngle);
+            bool actual = MathUtils.IsPointOnArc(point, arcCenter, MathUtils.Deg2Rad(arcDir), MathUtils.Deg2Rad(arcWidth), arcRadius, out onArcAngle);
             Assert.Equal(expected, actual);
         }
 
@@ -29,7 +29,7 @@ namespace SGame.Tests
             double bisectAngle;
             expectedAngle = Math.Round(MathUtils.Deg2Rad(expectedAngle), 14);
 
-            Api.CircleTangents(circleCenter, circleRadius, point, out tg1, out tg2, out bisectAngle);
+            MathUtils.CircleTangents(circleCenter, circleRadius, point, out tg1, out tg2, out bisectAngle);
             //Round to account for geogebra rounding.
             double[] actualVectorValues = new double[] { Math.Round(tg1.X, 6), Math.Round(tg1.Y, 6), Math.Round(tg2.X, 6), Math.Round(tg2.Y, 6) };
             double[] expectedVectorValues = new double[] { Math.Round((expectedTangent1).X, 6), Math.Round((expectedTangent1).Y, 6), Math.Round((expectedTangent2).X, 6), Math.Round((expectedTangent2).Y, 6) };
@@ -45,7 +45,7 @@ namespace SGame.Tests
 
             Vector2? inters1, inters2;
             rayDir = MathUtils.Deg2Rad(rayDir);
-            bool result = Api.RaycastCircle(rayOrigin, rayDir, circleCenter, circleRadius,
+            bool result = MathUtils.RaycastCircle(rayOrigin, rayDir, circleCenter, circleRadius,
             out inters1, out inters2);
 
 
@@ -94,7 +94,7 @@ namespace SGame.Tests
         {
 
             Vector2? inters1, inters2;
-            bool result = Api.CircleCircleIntersection(center1, radius1, center2, radius2, out inters1, out inters2);
+            bool result = MathUtils.CircleCircleIntersection(center1, radius1, center2, radius2, out inters1, out inters2);
 
 
             //Gotta make sure vector is null or not to perform correct comparison.
