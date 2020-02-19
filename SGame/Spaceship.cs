@@ -7,7 +7,7 @@ namespace SGame
     /// <summary>
     /// Class representing a single spaceship on the server side.
     /// </summary>
-    class Spaceship
+    class Spaceship : IQuadBounded
     {
         /// <summary>
         /// Energy of the spaceship.
@@ -88,6 +88,11 @@ namespace SGame
         /// Reward received by opponent for killing this ship
         /// </summary>
         public double KillReward { get; set; }
+
+        /// <summary>
+        /// The current bounds of the ship.
+        /// </summary>
+        public Quad Bounds => new Quad(Pos.X, Pos.Y, Radius());
 
         /// <summary>
         /// Number of milliseconds between combat actions that reset the kill reward
