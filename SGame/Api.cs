@@ -420,7 +420,7 @@ namespace SGame
             // See: https://math.stackexchange.com/a/1367732
             double rDist = (center1 - center2).Length();
             int distSign = Math.Sign(rDist - (radius1 + radius2));
-            if (distSign == 1)
+            if ((distSign == 1) || (rDist + radius1 < radius2) || (rDist + radius2 < radius1))
             {
                 inters1 = null;
                 inters2 = null;
@@ -433,7 +433,7 @@ namespace SGame
                 double c1 = r1r2Sq / (2.0 * rDistSq);
                 Vector2 k1 = Vector2.Multiply(center1 + center2, 0.5f)
                              + Vector2.Multiply(center2 - center1, (double)c1);
-                if (distSign == 0)
+                if ((distSign == 0) || (rDist + radius1 == radius2) || (rDist + radius2 == radius1))
                 {
                     inters1 = k1;
                     inters2 = null;
