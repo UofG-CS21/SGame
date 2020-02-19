@@ -62,7 +62,7 @@ namespace SGame
             }
             set
             {
-                _shieldDir = MathUtils.ClampAngle(value, 2.0 * Math.PI);
+                _shieldDir = MathUtils.NormalizeAngle(MathUtils.ClampAngle(value, 2.0 * Math.PI));
             }
         }
 

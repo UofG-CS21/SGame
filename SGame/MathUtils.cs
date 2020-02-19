@@ -157,7 +157,12 @@ namespace SGame
             {
                 angle -= 2.0 * Math.PI;
             }
+            else if (angle < -Math.PI)
+            {
+                angle += 2.0 * Math.PI;
+            }
             return angle;
+
         }
 
         /// <summary>
