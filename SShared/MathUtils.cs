@@ -156,6 +156,170 @@ namespace SShared
         }
 
         /// <summary>
+        /// Casts a ray to a circle, checking for the intersection points.
+        /// Returns true if any intersection is found, setting `inters1` or both `inters1` and `inters2` appropriately.
+        /// If both `inters1` and `inters2` are outputted, `inters1` is the intersection point nearest to `rayOrigin`.
+        /// </summary>
+        public static bool RaycastCircle(Vector2 rayOrigin, double rayDir, Vector2 circleCenter, double circleRadius,
+            out Vector2? inters1, out Vector2? inters2)
+        {
+            return RaycastCircle(rayOrigin, MathUtils.DirVec(rayDir), circleCenter, circleRadius, out inters1, out inters2);
+        }
+
+        /// <summary>
+        /// Casts a ray to a circle, checking for the intersection points.
+        /// Returns true if any intersection is found, setting `inters1` or both `inters1` and `inters2` appropriately.
+        /// If both `inters1` and `inters2` are outputted, `inters1` is the intersection point nearest to `rayOrigin`.
+        /// </summary>
+        public static bool RaycastCircle(Vector2 rayOrigin, Vector2 rayDir, Vector2 circleCenter, double circleRadius,
+            out Vector2? inters1, out Vector2? inters2)
+        {
+            Console.WriteLine("Raycast from O=" + rayOrigin + ", dir=" + rayDir + ", circleCenter=" + circleCenter + ", circleRadius=" + circleRadius);
+
+            inters1 = null;
+            inters2 = null;
+
+            // ray: P = rayOrigin + [cos(rayDir), sin(rayDir)] * t, t >= 0
+            // circle: dot(Q, Q) = circleRadius^2, where Q = P - circleCenter
+            // Then let P = Q and solve for t
+            var q = rayOrigin - circleCenter;
+
+            // You get a quadratic in the form c1 * t^2 + c2 * t + c3 = 0 where:
+            double c1 = 1.0; // = Vector2.Dot(rd, rd);
+            double c2 = 2.0 * Vector2.Dot(q, rayDir);
+            double c3 = Vector2.Dot(q, q) - circleRadius * circleRadius;
+            double delta = c2 * c2 - 4.0 * c1 * c3;
+
+            if (MathUtils.ToleranceEquals(delta, 0.0, 0.000001))
+            {
+                Console.WriteLine(delta);
+                delta = Math.Abs(delta);
+            }
+
+            switch (Math.Sign(delta))
+            {
+                case 1:
+                    double sqrtDelta = Math.Sqrt(delta);
+
+                    double t1 = (double)((-c2 - sqrtDelta) / (2.0 * c1));
+                    inters1 = null;
+                    if (t1 >= 0.0f)
+                    {
+                        inters1 = rayOrigin + rayDir * t1;
+                    }
+
+                    double t2 = (double)((-c2 + sqrtDelta) / (2.0 * c1));
+                    inters2 = null;
+                    if (t2 >= 0.0f)
+                    {
+                        inters2 = rayOrigin + rayDir * t2;
+                    }
+
+                    return inters1 != null || inters2 != null;
+
+                case 0:
+                    double t = (double)(-c2 / c1);
+                    inters1 = null;
+                    if (t >= 0)
+                    {
+                        inters1 = rayOrigin + rayDir * (double)(-c2 / (2.0 * c1));
+                    }
+                    inters2 = null;
+                    return true;
+
+                default: // -1
+                    inters1 = null;
+                    inters2 = null;
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Finds the two tangent points on a circle from an external point.
+        /// `bisectAngle` will be set to the angle (0 to PI/2, in radians) between
+        /// the line betwen `circleCenter` and `point` and one of the two tangents.
+        /// </summary>
+        public static void CircleTangents(Vector2 circleCenter, double circleRadius, Vector2 point, out Vector2 tg1, out Vector2 tg2, out double bisectAngle)
+        {
+            // Consider the segment from `point` to `circleCenter` and the triangles it forms with the two radii from
+            // `circleCenter` to the tangents. Then if alpha is the angle between a radius and the line between the two centers,
+            // alpha = arccos(adj / hyp) = arccos(radius / centerDist)
+            // From that angle you can calculate the bisector angle at the external point, then the two tangent points as needed.
+            Vector2 centerDelta = circleCenter - point;
+            bisectAngle = Math.PI * 0.5 - Math.Acos(circleRadius / centerDelta.Length());
+            double centerAngle = Math.Atan2(centerDelta.Y, centerDelta.X);
+
+            //Internal is the third angle in the rightangled triangle which connects the tangent point, circle centre and point.
+            double internalAngle = Math.PI / 2 - bisectAngle;
+            tg1 = circleCenter - MathUtils.DirVec(centerAngle - internalAngle) * (double)circleRadius;
+            tg2 = circleCenter - MathUtils.DirVec(centerAngle + internalAngle) * (double)circleRadius;
+        }
+
+        /// <summary>
+        /// Returns true if the given point sits on top of a circle arc centered at `arcCenter`, with half-width `arcWidth` radians
+        /// around `arcDir` and radius `arcRadius`. Outputs the angle on the arc if this is the case.
+        /// </summary>
+        public static bool IsPointOnArc(Vector2 point, Vector2 arcCenter, double arcDir, double arcWidth, double arcRadius, out double onArcAngle)
+        {
+            // arc: P = arcCenter + arcRadius * [cos(alpha), sin(alpha)], where alpha = arcDir + arcWidth * t, where -1 <= t <= 1
+            // let point = P...
+            Vector2 dirVec = (point - arcCenter) * (double)(1.0 / arcRadius);
+            if (!MathUtils.ToleranceEquals(dirVec.Length(), 1.0, 0.001))
+            {
+                // Can't be a valid direction vector
+                onArcAngle = double.NaN;
+                return false;
+
+            }
+
+            onArcAngle = Math.Atan2(dirVec.Y, dirVec.X) - arcDir;
+            onArcAngle = MathUtils.NormalizeAngle(onArcAngle);
+
+
+            //Since vectors have to be doubles, There is some uncertainty introuduced when double angles are converted. So i added a tolerance.
+            return (-arcWidth <= onArcAngle && onArcAngle <= arcWidth) || (MathUtils.ToleranceEquals(MathUtils.Rad2Deg(-arcWidth), MathUtils.Rad2Deg(onArcAngle), 0.000001)) || (MathUtils.ToleranceEquals(MathUtils.Rad2Deg(arcWidth), MathUtils.Rad2Deg(onArcAngle), 0.000001));
+        }
+
+        /// <summary>
+        /// Calculates the intersection point[s] between two circles.
+        /// Returns true if any intersection is found, setting `inters1` or both `inters1` and `inters2` appropriately.
+        /// </summary>
+        public static bool CircleCircleIntersection(Vector2 center1, double radius1, Vector2 center2, double radius2,
+            out Vector2? inters1, out Vector2? inters2)
+        {
+            // See: https://math.stackexchange.com/a/1367732
+            double rDist = (center1 - center2).Length();
+            int distSign = Math.Sign(rDist - (radius1 + radius2));
+            if ((distSign == 1) || (rDist + radius1 < radius2) || (rDist + radius2 < radius1))
+            {
+                inters1 = null;
+                inters2 = null;
+                return false;
+            }
+            else
+            {
+                double r1r2Sq = radius1 * radius1 - radius2 * radius2;
+                double rDistSq = rDist * rDist;
+                double c1 = r1r2Sq / (2.0 * rDistSq);
+                Vector2 k1 = Vector2.Multiply(center1 + center2, 0.5f)
+                             + Vector2.Multiply(center2 - center1, (double)c1);
+                if ((distSign == 0) || (rDist + radius1 == radius2) || (rDist + radius2 == radius1))
+                {
+                    inters1 = k1;
+                    inters2 = null;
+                }
+                else
+                {
+                    double c2 = 0.5 * Math.Sqrt(2.0 * (radius1 * radius1 + radius2 * radius2) / rDistSq - (r1r2Sq * r1r2Sq) / (rDistSq * rDistSq) - 1.0);
+                    Vector2 k2 = Vector2.Multiply(new Vector2(center2.Y - center1.Y, center1.X - center2.X), (double)c2);
+                    inters1 = k1 - k2;
+                    inters2 = k1 + k2;
+                }
+                return true;
+            }
+        }
+
+        /// <summary>
         /// Normalizes an angle in radians, i.e. makes it positive and between 0 and `clampValue`.
         /// </summary>
         public static double ClampAngle(double angle, double clampValue = 2.0 * Math.PI)
@@ -202,48 +366,7 @@ namespace SShared
             return a * Math.Cos(angle) + delta * Math.Sin(angle);
         }
 
-        /// <summary>
-        /// Improved version of Math.Atan2. Gives actual result based on unit circle.
-        /// </summary>
-        public static double BetterArcTan(double y, double x)
-        {
-            double result;
-            if (x == 0)
-            {
-                if (y > 0)
-                {
-                    result = Math.PI / 2;
-                }
-                else if (y < 0)
-                {
-                    result = -Math.PI / 2;
-                }
-                else
-                {
-                    result = 0;
-                }
-                return result;
-            }
-            result = Math.Atan2(y, x);
-            if (x < 0)
-            {
-                if (result >= 0 && result < Math.PI / 2)
-                {
-                    result = result - Math.PI;
-                }
-                else if (result < 0 && result > -Math.PI / 2)
-                {
-                    result = result + Math.PI;
-                }
-            }
 
-            if (y == 0)
-            {
-                result = Deg2Rad((x >= 0 ? 0 : 180));
-            }
-
-            return result;
-        }
 
         /// <summary>
         /// Makes a direction vector out of an angle in radians.
