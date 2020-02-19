@@ -366,8 +366,7 @@ namespace SGame
             double c3 = Vector2.Dot(q, q) - circleRadius * circleRadius;
             double delta = c2 * c2 - 4.0 * c1 * c3;
 
-            // FIXME: Prevents issues with incorrect rounding
-            if (MathUtils.ToleranceEquals(delta, 0.0, 0.001))
+            if (MathUtils.ToleranceEquals(delta, 0.0, 0.000001))
             {
                 Console.WriteLine(delta);
                 delta = Math.Abs(delta);
@@ -579,8 +578,8 @@ namespace SGame
             if (shieldStart < shotStart) shieldStart += 2 * Math.PI;
             if (shieldStop < shotStart) shieldStop += 2 * Math.PI;
 
-            // FIXME: need to cosmetically change angles (i.e. add a trivial epsilon, like 1e-16)
-            // to ensure they are all different, OR use a pair array ( {shotStart,0},{shotStop,1},... ) so that they can be distinguished
+            // If these values are identical, e.g. shieldStop == shotStop, it might be that you can fake-block/pass-through shields
+            // this is an easter egg for hackers that want to fight double precision with their coordinated friend for no benefit 
 
             Console.WriteLine("Shooting from " + shotStart + " to " + shotStop + ", shielded from " + shieldStart + " to " + shieldStop);
 
@@ -685,7 +684,6 @@ namespace SGame
             if (CircleCircleIntersection(shotOrigin, shotRadius, ship.Pos, shipR, out capHitLeft, out capHitRight))
             {
                 Console.WriteLine("The circular part of the shot intersects the ship!");
-                // FIXME: Is the "only one point is tangent between the shot cap and the ship arc" edge case properly handled?
                 if (capHitRight == null) capHitRight = capHitLeft;
 
                 // First put the intersection points so that the "left" cap hit point is nearest to the "left" tangent point,
@@ -916,7 +914,7 @@ namespace SGame
                 struckShips.Add(struckShipInfo);
 
                 double shipDistance = (struckShip.Pos - ship.Pos).Length();
-                double damage = ShotDamage(energy, width, damageScaling, shipDistance); //< FIXME: Damage calculated on distance, and not shotRadius!
+                double damage = ShotDamage(energy, width, damageScaling, shipDistance);
                 double shielding = ShieldingAmount(struckShip, ship.Pos, direction, width, shotRadius);
                 if (shielding > 0.0)
                 {
