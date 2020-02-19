@@ -2,6 +2,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using LiteNetLib;
+using LiteNetLib.Utils;
 
 namespace SShared
 {
@@ -26,6 +27,13 @@ namespace SShared
         /// </summary>
         public bool IsMaster { get; private set; }
 
+        NetSerializer _serializer;
+
+        /// <summary>
+        /// A serializer that can be used to serialize / deserialize any `BusMsgs.*`.
+        /// </summary>
+        public NetSerializer Serializer { get; private set; }
+
         /// <summary>
         /// Initializes a bus node.
         /// </summary>
@@ -46,6 +54,9 @@ namespace SShared
                 Host.Start(port);
                 //_netHost.BroadcastReceiveEnable = true;
             }
+
+            Serializer = new NetSerializer();
+            BusMsgs.Serialization.RegisterAllSerializers(Serializer);
         }
 
         /// <summary>
