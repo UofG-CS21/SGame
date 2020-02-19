@@ -7,6 +7,10 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.6.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="2.9.8">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
   </ItemGroup>
 
@@ -15,5 +19,9 @@
         <_Parameter1>SGame.Tests</_Parameter1>
     </AssemblyAttribute>
 </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SShared\SShared.csproj" />
+  </ItemGroup>
 
 </Project>

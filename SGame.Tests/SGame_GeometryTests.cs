@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SGame;
 using Xunit;
+using SShared;
 
 
 
@@ -23,9 +24,9 @@ namespace SGame.Tests
         [ClassData(typeof(pLSTestData))]
         public void Test_pointLineSign(Vector2 point, Vector2 triPoint1, Vector2 triPoint2, Vector2 triPoint3, bool expected)
         {
-            int point_sign_1 = MathsUtil.pointLineSign(point, triPoint1, triPoint2);
-            int point_sign_2 = MathsUtil.pointLineSign(point, triPoint2, triPoint3);
-            int point_sign_3 = MathsUtil.pointLineSign(point, triPoint3, triPoint1);
+            int point_sign_1 = MathUtils.pointLineSign(point, triPoint1, triPoint2);
+            int point_sign_2 = MathUtils.pointLineSign(point, triPoint2, triPoint3);
+            int point_sign_3 = MathUtils.pointLineSign(point, triPoint3, triPoint1);
 
             Assert.Equal(expected, ((point_sign_1 >= 0 && point_sign_2 >= 0 && point_sign_3 >= 0) || (point_sign_1 <= 0 && point_sign_2 <= 0 && point_sign_3 <= 0)));
 
@@ -35,7 +36,7 @@ namespace SGame.Tests
         [ClassData(typeof(CTSITestData))]
         public void CircleTriangleSideIntersection(Vector2 circleCenter, double radius, Vector2 linePoint1, Vector2 linePoint2, bool expected)
         {
-            bool actual = MathsUtil.CircleTriangleSideIntersection(circleCenter, radius, linePoint1, linePoint2);
+            bool actual = MathUtils.CircleTriangleSideIntersection(circleCenter, radius, linePoint1, linePoint2);
             Assert.Equal(expected, actual);
         }
 
@@ -43,7 +44,7 @@ namespace SGame.Tests
         [ClassData(typeof(CTITestData))]
         public void CircleTriangleIntersection(Vector2 circleCenter, double radius, Vector2 A, Vector2 B, Vector2 C, bool expected)
         {
-            bool actual = MathsUtil.CircleTriangleIntersection(circleCenter, radius, A, B, C);
+            bool actual = MathUtils.CircleTriangleIntersection(circleCenter, radius, A, B, C);
             Assert.Equal(expected, actual);
         }
 
@@ -51,7 +52,7 @@ namespace SGame.Tests
         [ClassData(typeof(CSITestData))]
         public void CircleSegmentIntersection(Vector2 circleCenter, double circleRadius, Vector2 segmentCenter, double segmentRadius, double segmentAngle, double segmentWidth, bool expected)
         {
-            bool actual = MathsUtil.CircleSegmentIntersection(circleCenter, circleRadius, segmentCenter, segmentRadius, segmentAngle, segmentWidth);
+            bool actual = MathUtils.CircleSegmentIntersection(circleCenter, circleRadius, segmentCenter, segmentRadius, segmentAngle, segmentWidth);
             Assert.Equal(expected, actual);
         }
     }

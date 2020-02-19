@@ -1,6 +1,7 @@
 ﻿using System;
 using CommandLine;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SArbiter.Tests")]
 namespace SArbiter
 {
 
@@ -36,6 +37,7 @@ namespace SArbiter
             Parser.Default.ParseArguments<CmdLineOptions>(args)
                 .WithParsed<CmdLineOptions>(opts =>
                 {
+                    // TODO: Main entry point
                 });
         }
     }

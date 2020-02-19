@@ -5,12 +5,19 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SShared;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
 namespace SGame
 {
-    public static class MathsUtil
+
+    /// <summary>
+    /// Miscellaneous mathematical and geometrical utilities. 
+    /// </summary>
+    public static class MathUtils
     {
+
+
         // Calculates the sign of a point relative to a line defined by two points
         public static int pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2)
         {
@@ -138,6 +145,102 @@ namespace SGame
             return true;
         }
 
+        /// <summary>
+        /// Normalizes an angle in radians, i.e. makes it positive and between 0 and `clampValue`.
+        /// </summary>
+        public static double ClampAngle(double angle, double clampValue = 2.0 * Math.PI)
+        {
+            angle = angle % clampValue;
+            if (angle < 0.0) angle = (2.0 * Math.PI) + angle;
+            return angle;
+        }
 
+        /// <summary>
+        /// Clamps an angle in radians to the -PI to PI range.
+        /// </summary>
+        public static double NormalizeAngle(double angle)
+        {
+            if (angle > Math.PI)
+            {
+                angle -= 2.0 * Math.PI;
+            }
+            else if (angle < -Math.PI)
+            {
+                angle += 2.0 * Math.PI;
+            }
+            return angle;
+
+        }
+
+        /// <summary>
+        /// Checks two numbers for equality within a tolerance.
+        /// </summary>
+        public static bool ToleranceEquals(double a, double b, double tolerance)
+        {
+            return Math.Abs(a - b) <= tolerance;
+        }
+
+        /// <summary>
+        /// Performs spherical linear interpolation (slerp) between two vectors.
+        /// </summary>
+        public static Vector2 Slerp(Vector2 a, Vector2 b, double t)
+        {
+            // See: https://keithmaggio.wordpress.com/2011/02/15/math-magician-lerp-slerp-and-nlerp/
+            double aDotB = Vector2.Dot(a, b);
+            double angle = Math.Acos(aDotB) * t;
+            Vector2 delta = (b - a * aDotB).Normalized();
+            return a * Math.Cos(angle) + delta * Math.Sin(angle);
+        }
+
+        /// <summary>
+        /// Improved version of Math.Atan2. Gives actual result based on unit circle.
+        /// </summary>
+        public static double BetterArcTan(double y, double x)
+        {
+            double result;
+            if (x == 0)
+            {
+                if (y > 0)
+                {
+                    result = Math.PI / 2;
+                }
+                else if (y < 0)
+                {
+                    result = -Math.PI / 2;
+                }
+                else
+                {
+                    result = 0;
+                }
+                return result;
+            }
+            result = Math.Atan2(y, x);
+            if (x < 0)
+            {
+                if (result >= 0 && result < Math.PI / 2)
+                {
+                    result = result - Math.PI;
+                }
+                else if (result < 0 && result > -Math.PI / 2)
+                {
+                    result = result + Math.PI;
+                }
+            }
+
+            if (y == 0)
+            {
+                result = Api.Deg2Rad((x >= 0 ? 0 : 180));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Makes a direction vector out of an angle in radians.
+        /// </summary>
+        public static Vector2 DirVec(double direction)
+        {
+            return new Vector2((double)Math.Cos(direction), (double)Math.Sin(direction));
+        }
     }
 }
