@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Threading.Tasks;
 using SShared;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
@@ -59,13 +60,13 @@ namespace SGame
         /// If token is present and valid, returns the relevant player ID.
         /// Otherwise, sends an error response, and returns null.
         /// <summary>
-        Nullable<int> GetSpaceshipId(ApiResponse response, JObject data)
+        async Task<Nullable<int>> GetSpaceshipId(ApiResponse response, JObject data)
         {
 
             if (!data.ContainsKey("token"))
             {
                 response.Data["error"] = "Spaceship token not in sent data.";
-                response.Send(500);
+                await response.Send(500);
                 return null;
             }
             var token = (string)data["token"];
@@ -79,12 +80,12 @@ namespace SGame
             {
                 deadPlayers.Remove(token);
                 response.Data["error"] = "Your spaceship has been killed. Please reconnect.";
-                response.Send(500);
+                await response.Send(500);
                 return null;
             }
 
             response.Data["error"] = "Ship not found for given token.";
-            response.Send(500);
+            await response.Send(500);
             return null;
         }
 
@@ -105,7 +106,7 @@ namespace SGame
         /// </summary>
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("connect")]
-        public void ConnectPlayer(ApiResponse response, ApiData data)
+        public async Task ConnectPlayer(ApiResponse response, ApiData data)
         {
             int playerID = freeID;
             freeID++;
@@ -118,7 +119,7 @@ namespace SGame
 
             response.Data["id"] = playerID;
             response.Data["token"] = playerToken;
-            response.Send();
+            await response.Send();
         }
 
         /// <summary>
@@ -128,9 +129,9 @@ namespace SGame
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("disconnect")]
         [ApiParam("token", typeof(string))]
-        public void DisconnectPlayer(ApiResponse response, ApiData data)
+        public async Task DisconnectPlayer(ApiResponse response, ApiData data)
         {
-            var maybeId = GetSpaceshipId(response, data.Json);
+            var maybeId = await GetSpaceshipId(response, data.Json);
             if (maybeId == null)
             {
                 return;
@@ -142,7 +143,7 @@ namespace SGame
             ships.Remove(id);
             players.Remove(token);
             inversePlayers.Remove(id);
-            response.Send(200);
+            await response.Send(200);
         }
 
         /// <summary>
@@ -154,10 +155,10 @@ namespace SGame
         [ApiParam("token", typeof(string))]
         [ApiParam("x", typeof(double))]
         [ApiParam("y", typeof(double))]
-        public void AcceleratePlayer(ApiResponse response, ApiData data)
+        public async Task AcceleratePlayer(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var maybeId = GetSpaceshipId(response, data.Json);
+            var maybeId = await GetSpaceshipId(response, data.Json);
             if (maybeId == null)
             {
                 return;
@@ -172,7 +173,7 @@ namespace SGame
             double accelerationApplied = (double)energySpent / (double)energyRequired;
 
             ships[id].Velocity += Vector2.Multiply(new Vector2(x, y), accelerationApplied);
-            response.Send(200);
+            await response.Send(200);
         }
 
 
@@ -183,10 +184,10 @@ namespace SGame
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("getShipInfo")]
         [ApiParam("token", typeof(string))]
-        public void GetShipInfo(ApiResponse response, ApiData data)
+        public async Task GetShipInfo(ApiResponse response, ApiData data)
         {
             UpdateGameState();
-            var id = GetSpaceshipId(response, data.Json);
+            var id = await GetSpaceshipId(response, data.Json);
             if (id == null)
             {
                 return;
@@ -202,7 +203,8 @@ namespace SGame
             response.Data["velY"] = ship.Velocity.Y;
             response.Data["shieldWidth"] = ship.ShieldWidth * 180 / Math.PI;
             response.Data["shieldDir"] = ship.ShieldDir * 180 / Math.PI;
-            response.Send();
+            await response.Send();
+
         }
 
         // Calculates the sign of a point relative to a line defined by two points
@@ -818,11 +820,11 @@ namespace SGame
         [ApiParam("direction", typeof(double))]
         [ApiParam("width", typeof(double))]
         [ApiParam("energy", typeof(int))]
-        public void Scan(ApiResponse response, ApiData data)
+        public async Task Scan(ApiResponse response, ApiData data)
         {
             UpdateGameState();
 
-            int id = IntersectionParamCheck(response, data);
+            int id = await IntersectionParamCheck(response, data);
 
             Spaceship ship = ships[id];
             int energy = (int)data.Json["energy"];
@@ -851,7 +853,7 @@ namespace SGame
             }
 
             response.Data["scanned"] = scannedShips;
-            response.Send();
+            await response.Send();
         }
 
         /// <summary>
@@ -871,10 +873,10 @@ namespace SGame
         [ApiParam("energy", typeof(int))]
         [ApiParam("damage", typeof(double))]
 
-        public void Shoot(ApiResponse response, ApiData data)
+        public async Task Shoot(ApiResponse response, ApiData data)
         {
             //Check that the arguments for each parameter are valid
-            int id = IntersectionParamCheck(response, data, true);
+            int id = await IntersectionParamCheck(response, data, true);
             if (id == -1)
             {
                 return;
@@ -945,7 +947,7 @@ namespace SGame
             ships[id].LastCombat = ships[id].LastUpdate;
 
             response.Data["struck"] = struckShips;
-            response.Send();
+            await response.Send();
         }
 
         /// <summary>
@@ -957,13 +959,13 @@ namespace SGame
         [ApiParam("token", typeof(string))]
         [ApiParam("direction", typeof(double))]
         [ApiParam("width", typeof(double))]
-        public void Shield(ApiResponse response, ApiData data)
+        public async Task Shield(ApiResponse response, ApiData data)
         {
-            var maybeid = GetSpaceshipId(response, data.Json);
+            var maybeid = await GetSpaceshipId(response, data.Json);
             if (maybeid == null)
             {
                 response.Data["error"] = "Could not find spaceship for given token";
-                response.Send(500);
+                await response.Send(500);
             }
             Spaceship ship = ships[maybeid.Value];
             double dirDeg = (double)data.Json["direction"];
@@ -973,12 +975,12 @@ namespace SGame
             if (hWidthDeg < 0.0 || hWidthDeg > 180.0)
             {
                 response.Data["error"] = "Invalid angle passed (range: [0..180])";
-                response.Send(500);
+                await response.Send(500);
             }
             ship.ShieldWidth = Deg2Rad(hWidthDeg);
 
             Console.WriteLine("Shields up for " + maybeid.Value + ", width/2 = " + hWidthDeg + "°, dir = " + dirDeg + "°");
-            response.Send(200);
+            await response.Send(200);
         }
 
         /// <summary>
@@ -1004,10 +1006,10 @@ namespace SGame
         /// <summary>
         /// Verifies the arguments passed in an intersection based request are appropriate.
         /// </summary>
-        private int IntersectionParamCheck(ApiResponse response, ApiData data, bool requireDamage = false)
+        private async Task<int> IntersectionParamCheck(ApiResponse response, ApiData data, bool requireDamage = false)
         {
             UpdateGameState();
-            var maybeId = GetSpaceshipId(response, data.Json);
+            var maybeId = await GetSpaceshipId(response, data.Json);
             if (maybeId == null)
             {
                 return -1;
@@ -1021,7 +1023,7 @@ namespace SGame
                 if (data.Json[requiredParams[i]] == null)
                 {
                     response.Data["error"] = "Requires parameter: " + requiredParams[i];
-                    response.Send(500);
+                    await response.Send(500);
                     return -1;
                 }
             }
@@ -1032,7 +1034,7 @@ namespace SGame
             if (width <= 0 || width >= 90)
             {
                 response.Data["error"] = "Width not in interval (0,90) degrees";
-                response.Send(500);
+                await response.Send(500);
                 return -1;
             }
 
@@ -1040,7 +1042,7 @@ namespace SGame
             if (energy <= 0)
             {
                 response.Data["error"] = "Energy spent must be positive";
-                response.Send(500);
+                await response.Send(500);
                 return -1;
             }
 
@@ -1049,7 +1051,7 @@ namespace SGame
                 if (data.Json["damage"] == null)
                 {
                     response.Data["error"] = "Requires parameter: " + "damage";
-                    response.Send(500);
+                    await response.Send(500);
                     return -1;
                 }
 
@@ -1057,7 +1059,7 @@ namespace SGame
                 if (damage <= 0)
                 {
                     response.Data["error"] = "Damage scaling must be positive";
-                    response.Send(500);
+                    await response.Send(500);
                     return -1;
                 }
             }
@@ -1099,7 +1101,7 @@ namespace SGame
         /// <param name="response">The HTTP response to the client.</param>
         [ApiRoute("sudo")]
         [ApiParam("token", typeof(string), Optional = true)]
-        public void Sudo(ApiResponse response, ApiData data)
+        public async Task Sudo(ApiResponse response, ApiData data)
         {
             Spaceship ship = null;
 
@@ -1111,7 +1113,7 @@ namespace SGame
                 else
                 {
                     response.Data["error"] = "Ship not found for given token.";
-                    response.Send(500);
+                    await response.Send(500);
                     return;
                 }
             }
@@ -1125,7 +1127,7 @@ namespace SGame
                 if (setter == null)
                 {
                     response.Data["error"] = "Unrecognized attribute `" + kv.Key + "`";
-                    response.Send(500);
+                    await response.Send(500);
                     return;
                 }
 
@@ -1136,12 +1138,12 @@ namespace SGame
                 catch (Exception exc)
                 {
                     response.Data["error"] = "Failed to set attribute `" + kv.Key + "`: " + exc.ToString();
-                    response.Send(500);
+                    await response.Send(500);
                     return;
                 }
             }
 
-            response.Send(200);
+            await response.Send(200);
         }
 #endif
 

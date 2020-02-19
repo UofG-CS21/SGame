@@ -10,14 +10,11 @@ using SShared;
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
 namespace SGame
 {
-
     /// <summary>
     /// Miscellaneous mathematical and geometrical utilities. 
     /// </summary>
     public static class MathUtils
     {
-
-
         // Calculates the sign of a point relative to a line defined by two points
         public static int pointLineSign(Vector2 point, Vector2 linePoint1, Vector2 linePoint2)
         {
