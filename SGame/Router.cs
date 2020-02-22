@@ -5,6 +5,7 @@ using System.Net;
 using System.Reflection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Threading.Tasks;
 
 namespace SGame
 {
@@ -13,7 +14,7 @@ namespace SGame
     /// </summary>
     /// <param name="response">The response to write to.</param>
     /// <param name="data">The data passed to the API call.</param>
-    delegate void ApiRouteDelegate(ApiResponse response, ApiData data);
+    delegate Task ApiRouteDelegate(ApiResponse response, ApiData data);
 
 
     /// <summary>
@@ -63,18 +64,18 @@ namespace SGame
             }
         }
 
-        public void Dispatch(string route, ApiResponse response, ApiData data)
+        public async Task Dispatch(string route, ApiResponse response, ApiData data)
         {
             var handler = apiRoutes.GetValueOrDefault(route, null);
             if (handler == null)
             {
                 // FIXME: log error?
-                response.Send(404);
+                await response.Send(404);
                 return;
             }
             try
             {
-                handler.Invoke(response, data);
+                await handler.Invoke(response, data);
             }
             catch (Exception ex)
             {
@@ -85,7 +86,7 @@ namespace SGame
                 if (!response.Sent)
                 {
                     Console.WriteLine("Error: response was not sent");
-                    response.Send(500);
+                    await response.Send(500);
                 }
             }
         }
