@@ -438,9 +438,9 @@ namespace SGame
             double rightRayAngleSS = Math.Min(Math.Min(tgRightAngleSS, shotWidth), rightCapAngleSS);
 
             Vector2? leftHitNear = null, leftHitFar = null;
-            bool leftHit = MathUtils.RaycastCircle(shotOrigin, shotDir + leftRayAngleSS, ship.Pos, shipR, out leftHitNear, out leftHitFar);
+            bool leftHit = new Ray(shotOrigin, shotDir + leftRayAngleSS).HitCircle(ship.Pos, shipR, out leftHitNear, out leftHitFar);
             Vector2? rightHitNear = null, rightHitFar = null;
-            bool rightHit = MathUtils.RaycastCircle(shotOrigin, shotDir + rightRayAngleSS, ship.Pos, shipR, out rightHitNear, out rightHitFar);
+            bool rightHit = new Ray(shotOrigin, shotDir + rightRayAngleSS).HitCircle(ship.Pos, shipR, out rightHitNear, out rightHitFar);
 
             if (!leftHit || !rightHit)
             {

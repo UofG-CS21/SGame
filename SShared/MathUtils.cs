@@ -8,6 +8,123 @@ using SShared;
 namespace SShared
 {
     /// <summary>
+    /// A 2D ray, for raycasting.
+    /// </summary>
+    public struct Ray
+    {
+        /// <summary>
+        /// World-space origin point of the ray.
+        /// </summary>
+        public Vector2 Origin { get; set; }
+
+        Vector2 _dirVec;
+
+        /// <summary>
+        /// World-space direction vector of the ray (always autonormalized).
+        /// </summary>
+        public Vector2 DirVec
+        {
+            get
+            {
+                return _dirVec;
+            }
+            set
+            {
+                _dirVec = value.Normalized();
+            }
+        }
+
+        /// <summary>
+        /// World-space direction angle of the ray (prefer `DirVec` to this!).
+        /// </summary>
+        public double Dir
+        {
+            get
+            {
+                return Math.Atan2(_dirVec.Y, _dirVec.X);
+            }
+            set
+            {
+                _dirVec = MathUtils.DirVec(value);
+            }
+        }
+
+        public Ray(Vector2 origin, Vector2 dirVec)
+        {
+            Origin = origin;
+            _dirVec = dirVec;
+        }
+
+        public Ray(Vector2 origin, double dir)
+        {
+            Origin = origin;
+            _dirVec = MathUtils.DirVec(dir);
+        }
+
+        /// <summary>
+        /// Computes the intersections with the given circle (either none, only `hitNear`, or both `hitNear` and `hitFar`).
+        /// Returns false on no hit.
+        /// </summary>
+        public bool HitCircle(Vector2 center, double radius, out Vector2? hitNear, out Vector2? hitFar)
+        {
+            hitNear = null;
+            hitFar = null;
+
+            // ray: P = rayOrigin + [cos(rayDir), sin(rayDir)] * t, t >= 0
+            // circle: dot(Q, Q) = circleRadius^2, where Q = P - circleCenter
+            // Then let P = Q and solve for t
+            var q = Origin - center;
+
+            // You get a quadratic in the form c1 * t^2 + c2 * t + c3 = 0 where:
+            double c1 = 1.0; // = Vector2.Dot(rd, rd);
+            double c2 = 2.0 * Vector2.Dot(q, DirVec);
+            double c3 = Vector2.Dot(q, q) - radius * radius;
+            double delta = c2 * c2 - 4.0 * c1 * c3;
+
+            // FIXME: Prevents issues with incorrect rounding
+            if (MathUtils.ToleranceEquals(delta, 0.0, 0.001))
+            {
+                delta = Math.Abs(delta);
+            }
+
+            switch (Math.Sign(delta))
+            {
+                case 1:
+                    double sqrtDelta = Math.Sqrt(delta);
+
+                    double t1 = (double)((-c2 - sqrtDelta) / (2.0 * c1));
+                    hitNear = null;
+                    if (t1 >= 0.0f)
+                    {
+                        hitNear = Origin + DirVec * t1;
+                    }
+
+                    double t2 = (double)((-c2 + sqrtDelta) / (2.0 * c1));
+                    hitFar = null;
+                    if (t2 >= 0.0f)
+                    {
+                        hitFar = Origin + DirVec * t2;
+                    }
+
+                    return hitNear != null || hitFar != null;
+
+                case 0:
+                    double t = (double)(-c2 / c1);
+                    hitNear = null;
+                    if (t >= 0)
+                    {
+                        hitNear = Origin + DirVec * (double)(-c2 / (2.0 * c1));
+                    }
+                    hitFar = null;
+                    return true;
+
+                default: // -1
+                    return false;
+            }
+        }
+    }
+
+    /// <summary>
     /// Miscellaneous mathematical and geometrical utilities. 
     /// </summary>
     public static class MathUtils
