@@ -43,11 +43,6 @@ namespace SGame
         public Vector2 Velocity { get; set; }
 
         /// <summary>
-        /// Is the spaceship marked as dead?
-        /// </summary>
-        public bool Dead { get; set; }
-
-        /// <summary>
         /// The game timer used for this spaceship. 
         /// </summary>
         public GameTime GameTime { get; set; }
@@ -116,7 +111,6 @@ namespace SGame
         {
             this.Token = token;
             this.GameTime = gameTime;
-            this.Dead = false;
             this.Area = 1;
             this.Energy = 10.0;
             this.Pos = new Vector2(0, 0);

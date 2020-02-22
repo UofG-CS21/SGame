@@ -25,11 +25,17 @@ namespace SGame
         /// </summary>
         public LocalQuadTreeNode QuadTreeNode { get; set; }
 
+        /// <summary>
+        /// All ships who died in this node. F.
+        /// </summary>
+        public Dictionary<string, Spaceship> DeadShips { get; set; }
+
         // start the gameTime stopwatch on API creation
         public Api(LocalQuadTreeNode quadTreeNode)
         {
             this.gameTime = new GameTime();
             this.QuadTreeNode = quadTreeNode;
+            this.DeadShips = new Dictionary<string, Spaceship>();
         }
 
         /// <summary>
@@ -46,18 +52,19 @@ namespace SGame
             }
             var token = (string)data["token"];
 
-            var ship = QuadTreeNode.ShipsByToken.GetValueOrDefault(token, null);
-            if (ship == null)
+            if (DeadShips.ContainsKey(token))
             {
-                response.Data["error"] = "Ship not found for given token.";
+                DeadShips.Remove(token); // (no need to notify the other nodes for this)
+
+                response.Data["error"] = "Your spaceship has been killed. Please reconnect.";
                 await response.Send(500);
                 return null;
             }
 
-            if (ship.Dead)
+            var ship = QuadTreeNode.ShipsByToken.GetValueOrDefault(token, null);
+            if (ship == null)
             {
-                QuadTreeNode.ShipsByToken.Remove(token); // (no need to notify the nodes)
-                response.Data["error"] = "Your spaceship has been killed. Please reconnect.";
+                response.Data["error"] = "Ship not found for given token.";
                 await response.Send(500);
                 return null;
             }
@@ -581,7 +588,9 @@ namespace SGame
                 if (struckShip.Area - damage < MINIMUM_AREA)
                 {
                     ship.Area += struckShip.KillReward;
-                    struckShip.Dead = true;
+
+                    QuadTreeNode.ShipsByToken.Remove(struckShip.Token);
+                    DeadShips.Add(struckShip.Token, struckShip);
                 }
                 else // Struck ship survived - note that it's in combat
                 {
