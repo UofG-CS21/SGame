@@ -38,7 +38,7 @@ namespace SShared
         /// <summary>
         /// The 4 children of this node (each might be null).
         /// </summary>
-        private QuadTreeNode<T>[] children;
+        private QuadTreeNode<T>[] _children;
 
         /// <summary>
         /// The maximum number of quadtree subdivisions (= the maximum depth of a leaf node).
@@ -61,7 +61,7 @@ namespace SShared
         {
             this._bounds = bounds;
             this.Depth = depth;
-            this.children = new QuadTreeNode<T>[4] { null, null, null, null };
+            this._children = new QuadTreeNode<T>[4] { null, null, null, null };
         }
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace SShared
         /// </summary>
         public QuadTreeNode<T> Child(Quadrant pos)
         {
-            return children[(int)pos];
+            return _children[(int)pos];
         }
 
         /// <summary>
@@ -104,7 +104,7 @@ namespace SShared
                 }
                 child.Depth = Depth + 1;
             }
-            children[(int)pos] = child;
+            _children[(int)pos] = child;
         }
 
         /// <summary>
@@ -115,9 +115,9 @@ namespace SShared
             uint count = 0;
             for (int i = 0; i < 4; i++)
             {
-                if (children[i] != null)
+                if (_children[i] != null)
                 {
-                    count += children[i].ChildCountRecur();
+                    count += _children[i].ChildCountRecur();
                 }
             }
             return count;
@@ -126,7 +126,7 @@ namespace SShared
         /// <summary>
         /// Checks a range in this quad (and NOT its children) for items intersecting it.
         /// </summary>
-        public abstract Task<List<T>> CheckRange(Quad range);
+        public abstract Task<List<T>> CheckRangeLocal(Quad range);
 
         /// <summary>
         /// Checks a range in this quad (and all of its children) for items intersecting it.
@@ -139,10 +139,10 @@ namespace SShared
             if (_bounds.Intersects(range))
             {
                 // checking at the current quad level
-                found.AddRange(await CheckRange(range).ConfigureAwait(false));
+                found.AddRange(await CheckRangeLocal(range).ConfigureAwait(false));
 
                 // checking recursively all children
-                foreach (var child in children)
+                foreach (var child in _children)
                 {
                     if (child != null)
                     {
@@ -167,7 +167,7 @@ namespace SShared
             _items = new List<T>();
         }
 
-        public override Task<List<T>> CheckRange(Quad range)
+        public override Task<List<T>> CheckRangeLocal(Quad range)
         {
             return new Task<List<T>>(() => _items.Where(ship => ship.Bounds.Intersects(range)).ToList());
         }

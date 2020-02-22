@@ -10,6 +10,19 @@ namespace SGame
     class Spaceship : IQuadBounded
     {
         /// <summary>
+        /// Token (= private key) of this spaceship.
+        /// </summary>
+        public string Token { get; set; }
+
+        /// <summary>
+        /// Public id (= public key) of this spaceship. Extracted from `Token`.
+        /// </summary>
+        public string PublicId
+        {
+            get { return Token.Substring(Token.Length - 8); }
+        }
+
+        /// <summary>
         /// Energy of the spaceship.
         /// </summary>
         public double Energy { get; set; }
@@ -30,9 +43,9 @@ namespace SGame
         public Vector2 Velocity { get; set; }
 
         /// <summary>
-        /// ID of the spaceship (only assigned at creation).
+        /// Is the spaceship marked as dead?
         /// </summary>
-        public int Id { get; }
+        public bool Dead { get; set; }
 
         /// <summary>
         /// The game timer used for this spaceship. 
@@ -99,10 +112,11 @@ namespace SGame
         ///</summary>
         public const double COMBAT_COOLDOWN = 60 * 1000; // one minute
 
-        public Spaceship(int id, GameTime gameTime)
+        public Spaceship(string token, GameTime gameTime)
         {
+            this.Token = token;
             this.GameTime = gameTime;
-            this.Id = id;
+            this.Dead = false;
             this.Area = 1;
             this.Energy = 10.0;
             this.Pos = new Vector2(0, 0);
@@ -132,7 +146,6 @@ namespace SGame
                 return area * (shieldWidth * 2) / Math.PI;
             else
                 return area + 10 * (shieldWidth * 2 - Math.PI) / Math.PI;
-
         }
 
         public void UpdateState()

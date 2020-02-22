@@ -48,10 +48,12 @@ namespace SGame
         /// </summary>
         Program()
         {
-            api = new Api();
+            // FIXME: The bounds of the quad will generally not be the whole size of the univers!
+            //        (assuming there is only one SGame instance for now; will need changed later)
+            var quadtree = new LocalQuadTreeNode(new SShared.Quad(0.0, 0.0, double.MaxValue), 0);
+            api = new Api(quadtree);
             router = new Router<Api>(api);
         }
-
 
         public async Task<bool> ProcessRequest(HttpListenerContext context)
         {

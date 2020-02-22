@@ -2,7 +2,8 @@
 conftest.py: pytest configuration and fixtures.
 """
 
-import os, sys
+import os
+import sys
 import pytest
 import requests
 import subprocess as sp
@@ -14,9 +15,12 @@ def pytest_addoption(parser):
     """
     This configures the commandline arguments that can be passed to pytest.
     """
-    parser.addoption("--sgame", action="store", default="../SGame", type=str, help="Path to the SGame source directory")
-    parser.addoption("--host", action="store", default='localhost', type=str, help="Host to bind the SGame server instance to")
-    parser.addoption("--port", action="store", default=5000, type=int, help="Port to bind the SGame server instance to")
+    parser.addoption("--sgame", action="store", default="../SGame",
+                     type=str, help="Path to the SGame source directory")
+    parser.addoption("--host", action="store", default='localhost',
+                     type=str, help="Host to bind the SGame server instance to")
+    parser.addoption("--port", action="store", default=5000,
+                     type=int, help="Port to bind the SGame server instance to")
 
 
 # Test fixtures
@@ -42,7 +46,8 @@ def server(request) -> ServerFixture:
     """
     A session-wide fixture passed to know the host/port of the SGame server started by GitLab.
     """
-    sgame_root, host, port = map(request.config.getoption, ["--sgame", "--host", "--port"])
+    sgame_root, host, port = map(request.config.getoption, [
+                                 "--sgame", "--host", "--port"])
     sgame_dir, sgame_name = os.path.split(os.path.realpath(sgame_root))
 
     yield ServerFixture(host, port)
@@ -51,13 +56,14 @@ def server(request) -> ServerFixture:
 class Client:
     """The state of a connected ship."""
 
-    def __init__(self, id: int, token: str, url: str):
-        self.id = id
-        """The connected ship's ID."""
+    def __init__(self, token: str, url: str):
         self.token = token
         """The connected ship's token."""
+        self.id = self.token[-8:]
+        """The connected ship's public ID."""
         self.url = url
         """The REST API URL this client connected to."""
+
 
 class ClientsFixture:
     """A fixture that manages a number of clients to connect."""
@@ -77,12 +83,16 @@ class ClientsFixture:
         self.clients = []
         for i in range(self.n_clients):
             resp = requests.post(url=self.server.url + 'connect')
-            if not resp: raise RuntimeError(f"Could not connect to server at {server.url}!")
+            if not resp:
+                raise RuntimeError(
+                    f"Could not connect to server at {self.server.url}!")
 
             resp_dict = resp.json()
-            if 'id' not in resp_dict: raise RuntimeError("Ship id not present in `connect` response!")
-            if 'token' not in resp_dict: raise RuntimeError("Ship token not present in `connect` response!")
-            self.clients.append(Client(int(resp_dict['id']), resp_dict['token'], self.server.url))
+            if 'token' not in resp_dict:
+                raise RuntimeError(
+                    "Ship token not present in `connect` response!")
+            self.clients.append(
+                Client(resp_dict['token'], self.server.url))
 
         if len(self.clients) > 1:
             return self.clients
@@ -92,9 +102,11 @@ class ClientsFixture:
     def __exit__(self, type, value, traceback):
         """Disconnect all clients."""
         for client in self.clients:
-            requests.post(url=self.server.url + 'disconnect', json={'token': client.token})
+            requests.post(url=self.server.url + 'disconnect',
+                          json={'token': client.token})
         self.clients = []
         return False  # Raise any exceptions back to caller
+
 
 @pytest.fixture
 def clients(server) -> ClientsFixture:
@@ -107,4 +119,4 @@ def clients(server) -> ClientsFixture:
             <do stuff with the clients>
     ```
     """
-    return ClientsFixture(server) # Acts as a callable but it's actually a class...
+    return ClientsFixture(server)  # Acts as a callable but it's actually a class...
