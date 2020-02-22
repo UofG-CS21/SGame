@@ -9,7 +9,7 @@ namespace SGame
 {
     abstract class SGameQuadTreeNode : QuadTreeNode<Spaceship>
     {
-        public SGameQuadTreeNode(Quad bounds, uint depth) : base(bounds, depth)
+        public SGameQuadTreeNode(SGameQuadTreeNode parent, Quad bounds, uint depth) : base(parent, bounds, depth)
         {
         }
 
@@ -18,7 +18,7 @@ namespace SGame
 
     class LocalQuadTreeNode : SGameQuadTreeNode
     {
-        public LocalQuadTreeNode(Quad bounds, uint depth) : base(bounds, depth)
+        public LocalQuadTreeNode(SGameQuadTreeNode parent, Quad bounds, uint depth) : base(parent, bounds, depth)
         {
             this.ShipsByToken = new Dictionary<string, Spaceship>();
         }

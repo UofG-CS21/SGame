@@ -46,6 +46,11 @@ namespace SShared
         public const uint MaxDepth = 15;
 
         /// <summary>
+        /// The parent node of this quadtree node (root has parent=null)
+        /// </summary>
+        public QuadTreeNode<T> Parent { get; private set; }
+
+        /// <summary>
         /// The depth of this quadtree node (root has Depth=0).
         /// </summary>
         public uint Depth { get; private set; }
@@ -57,8 +62,9 @@ namespace SShared
         /// </summary>
         public Quad Bounds { get { return _bounds; } }
 
-        public QuadTreeNode(Quad bounds, uint depth)
+        public QuadTreeNode(QuadTreeNode<T> parent, Quad bounds, uint depth)
         {
+            this.Parent = parent;
             this._bounds = bounds;
             this.Depth = depth;
             this._children = new QuadTreeNode<T>[4] { null, null, null, null };
@@ -74,7 +80,7 @@ namespace SShared
 
         /// <summary>
         /// Sets the child of this node at the given position (replacing any previously-present one).
-        /// (Automatically modifies the child's bounds and depth as needed).
+        /// (Automatically modifies the child's bounds, depth and parent as needed).
         /// Throws if the maximum subdivision depth was reached
         /// </summary>
         public void SetChild(Quadrant pos, QuadTreeNode<T> child)
@@ -102,6 +108,7 @@ namespace SShared
                         child._bounds = new Quad(Bounds.CentreX + halfRadius, Bounds.CentreY - halfRadius, halfRadius);
                         break;
                 }
+                child.Parent = this;
                 child.Depth = Depth + 1;
             }
             _children[(int)pos] = child;
@@ -152,24 +159,6 @@ namespace SShared
             }
 
             return found;
-        }
-    }
-
-    /// <summary>
-    /// A quadtree node that stores its items locally, in a list.
-    /// </summary>
-    public class ListQuadTreeNode<T> : QuadTreeNode<T> where T : IQuadBounded
-    {
-        List<T> _items;
-
-        public ListQuadTreeNode(Quad bounds, uint depth) : base(bounds, depth)
-        {
-            _items = new List<T>();
-        }
-
-        public override Task<List<T>> CheckRangeLocal(Quad range)
-        {
-            return new Task<List<T>>(() => _items.Where(ship => ship.Bounds.Intersects(range)).ToList());
         }
     }
 }

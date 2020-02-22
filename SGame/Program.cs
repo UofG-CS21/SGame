@@ -48,9 +48,10 @@ namespace SGame
         /// </summary>
         Program()
         {
-            // FIXME: The bounds of the quad will generally not be the whole size of the univers!
-            //        (assuming there is only one SGame instance for now; will need changed later)
-            var quadtree = new LocalQuadTreeNode(new SShared.Quad(0.0, 0.0, double.MaxValue), 0);
+            // FIXME: Assuming the local SGame node manages the whole universe for now
+            //        (this will change when multiple nodes are connected to a SArbiter)
+            var quadtree = new LocalQuadTreeNode(null, new SShared.Quad(0.0, 0.0, double.MaxValue), 0);
+
             api = new Api(quadtree);
             router = new Router<Api>(api);
         }
