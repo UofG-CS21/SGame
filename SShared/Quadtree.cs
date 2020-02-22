@@ -1,144 +1,175 @@
 
 using System;
 using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 
 namespace SShared
 {
     /// <summary>
-    /// Interface used in quadtree
+    /// A quadrant in a quadtree node.
     /// </summary>
-    public interface INeedsRectangle
+    public enum Quadrant : int
     {
-        Rectangle Rectangle { get; }
+        NW = 0,
+        NE = 1,
+        SW = 2,
+        SE = 3,
     }
 
     /// <summary>
-    /// Quad tree
-    /// param T must be rectangle
+    /// Something bounded by a worldspace quad.
     /// </summary>
-    public class QuadTree<T> where T : INeedsRectangle
+    public interface IQuadBounded
     {
+        /// <summary>
+        /// The world-space bounding box of this item.
+        /// </summary>
+        public Quad Bounds { get; }
+    }
+
+    /// <summary>
+    /// The base class of all quadtree nodes.
+    /// The values stored in the nodes will be of type `T`.
+    /// </summary>
+    public abstract class QuadTreeNode<T> : IQuadBounded where T : IQuadBounded
+    {
+        /// <summary>
+        /// The 4 children of this node (each might be null).
+        /// </summary>
+        private QuadTreeNode<T>[] children;
+
         /// <summary>
         /// The maximum number of quadtree subdivisions (= the maximum depth of a leaf node).
         /// </summary>
-        public readonly uint MaxDepth = 16;
-
-        // attributes
-
-        /// <summary>The child nodes of this quadtree</summary>
-        private QuadTree<T>[] _children;
-
-        /// <summary>A list of ships stored in this quadtree</summary>
-        private List<T> _ships;
-
-        /// <summary>The bounding box of this qaudtree</summary>
-        private readonly Rectangle _rect;
-
-        // Constructor
-        public QuadTree(Rectangle rectangle, int capacity, uint depth)
-        {
-            _rect = rectangle;
-            Depth = depth;
-            _ships = new List<T>(capacity);
-            _children = null;
-        }
-
-        // properties
+        public const uint MaxDepth = 15;
 
         /// <summary>
-        /// gets the bounding area 
+        /// The depth of this quadtree node (root has Depth=0).
         /// </summary>
-        public Rectangle Rectangle { get { return _rect; } }
-
-        /// <summary>The depth of this quadtree node (root has Depth=0).</summary>
         public uint Depth { get; private set; }
 
-        // methods
+        private Quad _bounds;
 
         /// <summary>
-        /// counts all nodes in this node
+        /// The bounds of this quadtree node.
         /// </summary>
-        public int Count()
+        public Quad Bounds { get { return _bounds; } }
+
+        public QuadTreeNode(Quad bounds, uint depth)
         {
-
-            int count = 0;
-            if (null != _children)
-                foreach (QuadTree<T> child in _children)
-                    count += child.Count();
-            return (count += _ships.Count);
-
+            this._bounds = bounds;
+            this.Depth = depth;
+            this.children = new QuadTreeNode<T>[4] { null, null, null, null };
         }
 
         /// <summary>
-        /// Inserts a ship
-        /// returns true if successfully inserted otherwise false
+        /// Returns the child of this node at the given position (or null if not present).
         /// </summary>
-        public bool Insert(T ship)
+        public QuadTreeNode<T> Child(Quadrant pos)
         {
-            // ignore objects that do not belong in this quad tree
-            if (!_rect.Contains(ship.Rectangle))
-                return false;
-
-            // use subdivise method to add to any accepting node
-            if (null == _children)
-                Subdivide();
-
-            foreach (QuadTree<T> child in _children)
-                if (child.Rectangle.Contains(ship.Rectangle))
-                {
-                    child.Insert(ship);
-                    return true;
-                }
-            // if no subnodes contain the ship or we are at the smallest subnode size then add the ship as node data
-            _ships.Add(ship);
-            return true;
+            return children[(int)pos];
         }
 
-
         /// <summary>
-        /// Creates 4 children, dividing this quad into 4 quads of equal area.
-        /// Returns `false` on failure (maximum depth reached -> can't subdivide any further).
+        /// Sets the child of this node at the given position (replacing any previously-present one).
+        /// (Automatically modifies the child's bounds and depth as needed).
+        /// Throws if the maximum subdivision depth was reached
         /// </summary>
-        public bool Subdivide()
+        public void SetChild(Quadrant pos, QuadTreeNode<T> child)
         {
-            if (Depth >= MaxDepth)
+            if (Depth == MaxDepth)
             {
-                return false;
+                throw new InvalidOperationException("Maximum quadtree depth reached");
             }
 
-            _children = new QuadTree<T>[4];
-
-            double halfRadius = 0.5 * _rect.Radius;
-            _children[0] = new QuadTree<T>(new Rectangle(_rect.CentreX - halfRadius, _rect.CentreY - halfRadius, halfRadius), _ships.Capacity, Depth + 1);
-            _children[1] = new QuadTree<T>(new Rectangle(_rect.CentreX + halfRadius, _rect.CentreY - halfRadius, halfRadius), _ships.Capacity, Depth + 1);
-            _children[2] = new QuadTree<T>(new Rectangle(_rect.CentreX - halfRadius, _rect.CentreY + halfRadius, halfRadius), _ships.Capacity, Depth + 1);
-            _children[3] = new QuadTree<T>(new Rectangle(_rect.CentreX + halfRadius, _rect.CentreY + halfRadius, halfRadius), _ships.Capacity, Depth + 1);
-
-            return true;
+            if (child != null)
+            {
+                double halfRadius = Bounds.Radius * 0.5;
+                switch (pos)
+                {
+                    case Quadrant.NW:
+                        child._bounds = new Quad(Bounds.CentreX - halfRadius, Bounds.CentreY + halfRadius, halfRadius);
+                        break;
+                    case Quadrant.NE:
+                        child._bounds = new Quad(Bounds.CentreX + halfRadius, Bounds.CentreY + halfRadius, halfRadius);
+                        break;
+                    case Quadrant.SW:
+                        child._bounds = new Quad(Bounds.CentreX - halfRadius, Bounds.CentreY - halfRadius, halfRadius);
+                        break;
+                    case Quadrant.SE:
+                        child._bounds = new Quad(Bounds.CentreX + halfRadius, Bounds.CentreY - halfRadius, halfRadius);
+                        break;
+                }
+                child.Depth = Depth + 1;
+            }
+            children[(int)pos] = child;
         }
 
         /// <summary>
-        /// checks range to find any ships that appear in it 
+        /// Recursively count all nodes that are children of this node.
         /// </summary>
-        public List<T> CheckRange(Rectangle range)
+        public uint ChildCountRecur()
+        {
+            uint count = 0;
+            for (int i = 0; i < 4; i++)
+            {
+                if (children[i] != null)
+                {
+                    count += children[i].ChildCountRecur();
+                }
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// Checks a range in this quad (and NOT its children) for items intersecting it.
+        /// </summary>
+        public abstract Task<List<T>> CheckRange(Quad range);
+
+        /// <summary>
+        /// Checks a range in this quad (and all of its children) for items intersecting it.
+        /// </summary>
+        public async Task<List<T>> CheckRangeRecur(Quad range)
         {
             List<T> found = new List<T>();
 
             // abort if the range does not intersect this quad
-            if (_rect.Intersects(range))
+            if (_bounds.Intersects(range))
             {
                 // checking at the current quad level
-                foreach (T ship in _ships)
-                    if (range.Contains(ship.Rectangle))
-                        found.Add(ship);
+                found.AddRange(await CheckRange(range).ConfigureAwait(false));
 
-                if (null != _children)
-                    foreach (QuadTree<T> child in _children)
-                        // add ship from child
-                        found.AddRange(child.CheckRange(range));
+                // checking recursively all children
+                foreach (var child in children)
+                {
+                    if (child != null)
+                    {
+                        found.AddRange(await child.CheckRangeRecur(range).ConfigureAwait(false));
+                    }
+                }
             }
+
             return found;
+        }
+    }
+
+    /// <summary>
+    /// A quadtree node that stores its items locally, in a list.
+    /// </summary>
+    public class ListQuadTreeNode<T> : QuadTreeNode<T> where T : IQuadBounded
+    {
+        List<T> _items;
+
+        public ListQuadTreeNode(Quad bounds, uint depth) : base(bounds, depth)
+        {
+            _items = new List<T>();
+        }
+
+        public override Task<List<T>> CheckRange(Quad range)
+        {
+            return new Task<List<T>>(() => _items.Where(ship => ship.Bounds.Intersects(range)).ToList());
         }
     }
 }

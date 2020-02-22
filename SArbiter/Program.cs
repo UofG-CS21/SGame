@@ -1,4 +1,5 @@
 ﻿using System;
+using SShared;
 using CommandLine;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SArbiter.Tests")]
@@ -26,19 +27,28 @@ namespace SArbiter
         /// The UDP port to use for the master event bus.
         /// </summary>
         [Option("bus-port", Default = 3000u, Required = false, HelpText = "The UDP port to use for the master event bus.")]
-        public uint BusPost { get; set; }
+        public uint BusPort { get; set; }
     }
 
 
     class Program
     {
+        static void Loop(CmdLineOptions opts)
+        {
+            using (BusNode busMaster = new BusNode(null, (int)opts.BusPort))
+            {
+                Console.WriteLine("Listening...");
+                while (true)
+                {
+                    busMaster.Update();
+                }
+            }
+        }
+
         static void Main(string[] args)
         {
             Parser.Default.ParseArguments<CmdLineOptions>(args)
-                .WithParsed<CmdLineOptions>(opts =>
-                {
-                    // TODO: Main entry point
-                });
+                .WithParsed<CmdLineOptions>(opts => Loop(opts));
         }
     }
 }

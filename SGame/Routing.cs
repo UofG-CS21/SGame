@@ -2,6 +2,7 @@
 using System.Net;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
 namespace SGame
@@ -118,7 +119,7 @@ namespace SGame
         /// Sends `Data` as a response to the API request, closing it off.
         /// </summary>
         /// <param name="status">The HTTP status code of the response.</param>
-        public void Send(int status=200)
+        public async Task Send(int status = 200)
         {
             if (this.Sent)
             {
@@ -131,7 +132,7 @@ namespace SGame
             byte[] buffer = Encoding.UTF8.GetBytes(jsonStr);
             response.ContentLength64 = buffer.Length;
             System.IO.Stream output = response.OutputStream;
-            output.Write(buffer, 0, buffer.Length);
+            await output.WriteAsync(buffer, 0, buffer.Length);
             output.Close();
             this.Sent = true;
         }
