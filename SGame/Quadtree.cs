@@ -11,12 +11,14 @@ namespace SGame
     {
         public List<Spaceship> Struck = new List<Spaceship>();
         public double AreaGain = 0.0;
+        public List<Spaceship> Graveyard = new List<Spaceship>();
 
         public ScanShootResults Merge(ScanShootResults other)
         {
             if (other != null)
             {
                 Struck.AddRange(other.Struck);
+                Graveyard.AddRange(other.Graveyard);
                 AreaGain += other.AreaGain;
             }
             return this;
@@ -53,6 +55,11 @@ namespace SGame
             );
         }
 
+        /// <summary>
+        /// Minimum ship area, below which it is considered dead.
+        /// </summary>
+        private const double MINIMUM_AREA = 0.75;
+
         public override async Task<ScanShootResults> ScanShootRecur(Messages.ScanShoot msg)
         {
             ScanShootResults results = new ScanShootResults();
@@ -72,17 +79,51 @@ namespace SGame
                 );
                 results.Struck.AddRange(iscanned);
 
-                // FIXME: Implement local shooting here; change results.AreaGain accordingly
+                if (msg.ScaledEnergy > 0.0)
+                {
+                    foreach (var struckShip in iscanned)
+                    {
+                        double shipDistance = (struckShip.Pos - msg.Origin).Length();
+                        double damage = MathUtils.ShotDamage(msg.ScaledEnergy, msg.Width, shipDistance);
+                        double shielding = MathUtils.ShieldingAmount(struckShip, msg.Origin, msg.Direction, msg.Width, msg.Radius);
+                        if (shielding > 0.0)
+                        {
+                            Console.WriteLine($"{struckShip.PublicId} shielded itself for {shielding * 100.0}% of {msg.Originator}'s shot (= {damage * shielding} damage)");
+                        }
+                        damage *= (1.0 - shielding);
+
+                        // We have killed a ship, gain it's kill reward, and move struck ship to the graveyard
+                        results.AreaGain += struckShip.KillReward;
+                        if (struckShip.Area - damage < MINIMUM_AREA)
+                        {
+                            results.Graveyard.Add(struckShip);
+                            ShipsByToken.Remove(struckShip.Token);
+                        }
+                        else // Struck ship survived - note that it's in combat
+                        {
+                            if (struckShip.LastUpdate - struckShip.LastCombat > LocalSpaceship.COMBAT_COOLDOWN)
+                            {
+                                // Reset kill reward when hit ship was not in combat
+                                struckShip.KillReward = struckShip.Area;
+                            }
+                            struckShip.LastCombat = struckShip.LastUpdate;
+                            struckShip.Area -= damage;
+                        }
+                    }
+                }
             }
 
             // 2) Search all siblings (always)
-            for (int i = 0; i < 4; i++)
+            if (Parent != null)
             {
-                var sibling = (SGameQuadTreeNode)Parent.Child((Quadrant)i);
-                if (sibling == null || sibling == this) continue;
+                for (int i = 0; i < 4; i++)
+                {
+                    var sibling = (SGameQuadTreeNode)Parent.Child((Quadrant)i);
+                    if (sibling == null || sibling == this) continue;
 
-                var resultsHere = await sibling.ScanShootRecur(msg);
-                results.Merge(resultsHere);
+                    var resultsHere = await sibling.ScanShootRecur(msg);
+                    results.Merge(resultsHere);
+                }
             }
 
             // 3) Search all children (but only if the local node was affected by the scan its children could be)
@@ -104,6 +145,7 @@ namespace SGame
 
     class RemoteQuadTreeNode : SGameQuadTreeNode
     {
+        public static readonly TimeSpan REPLYTIMEOUT = new TimeSpan(1500);
         public RemoteQuadTreeNode(SGameQuadTreeNode parent, Quad bounds, uint depth, NetNode bus, LiteNetLib.NetPeer nodePeer)
             : base(parent, bounds, depth)
         {
@@ -135,14 +177,15 @@ namespace SGame
             {
                 Bus.SendMessage(msg, NodePeer);
 
-                // TODO: Add a timeout, after which to return null if no response received
-                var struck = await new MessageWaiter<Messages.Struck>(Bus, NodePeer, (struck) => struck.Originator == msg.Originator).Wait;
-
+                var struckTask = new MessageWaiter<Messages.Struck>(Bus, NodePeer, (struck) => struck.Originator == msg.Originator).Wait;
                 ScanShootResults results = new ScanShootResults();
-                foreach (var struckInfo in struck.ShipsInfo)
+                if (Task.WaitAll(new Task[] { struckTask }, REPLYTIMEOUT))
                 {
-                    results.AreaGain += struckInfo.AreaGain;
-                    results.Struck.Add(struckInfo.Ship);
+                    foreach (var struckInfo in struckTask.Result.ShipsInfo)
+                    {
+                        results.AreaGain += struckInfo.AreaGain;
+                        results.Struck.Add(struckInfo.Ship);
+                    }
                 }
                 return results;
             }

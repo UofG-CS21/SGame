@@ -130,7 +130,7 @@ namespace SGame.Tests
         internal void ShieldingAmountTest(Spaceship ship, Vector2 shotOrigin, double shotDir, double shotWidth, double shotRadius, double expectedValue)
         {
 
-            double actual = Api.ShieldingAmount(ship, shotOrigin, shotDir, shotWidth, shotRadius);
+            double actual = MathUtils.ShieldingAmount(ship, shotOrigin, shotDir, shotWidth, shotRadius);
             // Assert.Equal(expectedValue, actual);
             Assert.True(MathUtils.ToleranceEquals(expectedValue, actual, 0.02));
 
