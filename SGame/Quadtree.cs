@@ -9,16 +9,14 @@ namespace SGame
 {
     class ScanShootResults
     {
-        public List<Spaceship> Struck = new List<Spaceship>();
+        public List<Messages.Struck.ShipInfo> Struck = new List<Messages.Struck.ShipInfo>();
         public double AreaGain = 0.0;
-        public List<Spaceship> Graveyard = new List<Spaceship>();
 
         public ScanShootResults Merge(ScanShootResults other)
         {
             if (other != null)
             {
                 Struck.AddRange(other.Struck);
-                Graveyard.AddRange(other.Graveyard);
                 AreaGain += other.AreaGain;
             }
             return this;
@@ -73,41 +71,47 @@ namespace SGame
 
                 Console.WriteLine($"Scanning with radius {msg.Radius}, in triangle <{msg.Origin}, {leftPoint}, {rightPoint}>");
 
-                var iscanned = ShipsByToken.Values.Where((ship) =>
-                    MathUtils.CircleTriangleIntersection(ship.Pos, ship.Radius(), msg.Origin, leftPoint, rightPoint)
-                    || MathUtils.CircleSegmentIntersection(ship.Pos, ship.Radius(), msg.Origin, msg.Radius, msg.Direction, msg.Width)
-                );
+                var iscanned = ShipsByToken.Values
+                    .Where((ship) =>
+                        ship.Token != msg.Originator
+                        && (MathUtils.CircleTriangleIntersection(ship.Pos, ship.Radius(), msg.Origin, leftPoint, rightPoint)
+                            || MathUtils.CircleSegmentIntersection(ship.Pos, ship.Radius(), msg.Origin, msg.Radius, msg.Direction, msg.Width))
+                    )
+                    .Select((ship) => new Messages.Struck.ShipInfo() { Ship = ship });
+
                 results.Struck.AddRange(iscanned);
 
-                if (msg.ScaledEnergy > 0.0)
+                if (msg.ScaledShotEnergy > 0.0)
                 {
-                    foreach (var struckShip in iscanned)
+                    foreach (var struck in results.Struck)
                     {
-                        double shipDistance = (struckShip.Pos - msg.Origin).Length();
-                        double damage = MathUtils.ShotDamage(msg.ScaledEnergy, msg.Width, shipDistance);
-                        double shielding = MathUtils.ShieldingAmount(struckShip, msg.Origin, msg.Direction, msg.Width, msg.Radius);
+                        var ourShip = (LocalSpaceship)struck.Ship;
+
+                        double shipDistance = (ourShip.Pos - msg.Origin).Length();
+                        double damage = MathUtils.ShotDamage(msg.ScaledShotEnergy, msg.Width, shipDistance);
+                        double shielding = MathUtils.ShieldingAmount(ourShip, msg.Origin, msg.Direction, msg.Width, msg.Radius);
                         if (shielding > 0.0)
                         {
-                            Console.WriteLine($"{struckShip.PublicId} shielded itself for {shielding * 100.0}% of {msg.Originator}'s shot (= {damage * shielding} damage)");
+                            Console.WriteLine($"{ourShip.PublicId} shielded itself for {shielding * 100.0}% of {msg.Originator}'s shot (= {damage * shielding} damage)");
                         }
                         damage *= (1.0 - shielding);
 
                         // We have killed a ship, gain it's kill reward, and move struck ship to the graveyard
-                        results.AreaGain += struckShip.KillReward;
-                        if (struckShip.Area - damage < MINIMUM_AREA)
+                        if (ourShip.Area - damage < MINIMUM_AREA)
                         {
-                            results.Graveyard.Add(struckShip);
-                            ShipsByToken.Remove(struckShip.Token);
+                            results.AreaGain += ourShip.KillReward;
+                            struck.AreaGain = -damage;
                         }
                         else // Struck ship survived - note that it's in combat
                         {
-                            if (struckShip.LastUpdate - struckShip.LastCombat > LocalSpaceship.COMBAT_COOLDOWN)
+                            if (ourShip.LastUpdate - ourShip.LastCombat > LocalSpaceship.COMBAT_COOLDOWN)
                             {
                                 // Reset kill reward when hit ship was not in combat
-                                struckShip.KillReward = struckShip.Area;
+                                ourShip.KillReward = ourShip.Area;
                             }
-                            struckShip.LastCombat = struckShip.LastUpdate;
-                            struckShip.Area -= damage;
+                            ourShip.LastCombat = ourShip.LastUpdate;
+                            ourShip.Area -= damage;
+                            struck.AreaGain = damage;
                         }
                     }
                 }
@@ -184,7 +188,7 @@ namespace SGame
                     foreach (var struckInfo in struckTask.Result.ShipsInfo)
                     {
                         results.AreaGain += struckInfo.AreaGain;
-                        results.Struck.Add(struckInfo.Ship);
+                        results.Struck.Add(struckInfo);
                     }
                 }
                 return results;

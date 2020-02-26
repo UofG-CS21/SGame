@@ -244,29 +244,40 @@ namespace SGame
             }
 
             int energy = (int)data.Json["energy"];
-            double direction = (double)data.Json["direction"];
-            double width = (double)data.Json["width"];
+            double directionDeg = (double)data.Json["direction"];
+            double widthDeg = (double)data.Json["width"];
+
             energy = (int)Math.Min(energy, Math.Floor(ship.Energy));
             ship.Energy -= energy;
 
-            Console.WriteLine($"Scan by {ship.PublicId}, pos={ship.Pos}, dir={direction}, width={width}, energy spent={energy}");
+            Console.WriteLine($"Scan by {ship.PublicId}, pos={ship.Pos}, dir={directionDeg}°, width={widthDeg}°, energy spent={energy}");
 
-
-            // FIXME: Recursive instead of local scan
-            List<LocalSpaceship> scannedShips = CircleSectorScanLocal(ship.Pos, direction, width, energy);
-            JArray respDict = new JArray();
-            foreach (Spaceship scannedShip in scannedShips)
+            var scanMsg = new SShared.Messages.ScanShoot()
             {
-                // ignore our ship
-                if (scannedShip == ship)
+                Originator = ship.Token,
+                Origin = ship.Pos,
+                Direction = MathUtils.Deg2Rad(directionDeg),
+                ScaledShotEnergy = 0,
+                Width = MathUtils.Deg2Rad(widthDeg),
+                Radius = MathUtils.ScanShootRadius(MathUtils.Deg2Rad(widthDeg), energy),
+            };
+
+            ScanShootResults results = await QuadTreeNode.ScanShootRecur(scanMsg);
+            ship.Area += results.AreaGain;
+
+            JArray respDict = new JArray();
+            foreach (var scanned in results.Struck)
+            {
+                if (scanned.Ship.Token == ship.Token)
                     continue;
 
-                JToken scannedShipInfo = new JObject();
-                scannedShipInfo["id"] = scannedShip.PublicId;
-                scannedShipInfo["area"] = scannedShip.Area;
-                scannedShipInfo["posX"] = scannedShip.Pos.X;
-                scannedShipInfo["posY"] = scannedShip.Pos.Y;
-                respDict.Add(scannedShipInfo);
+                //The api doesnt have a return value for shooting, but ive left this in for now for testing purposes.
+                JToken struckShipInfo = new JObject();
+                struckShipInfo["id"] = scanned.Ship.PublicId;
+                struckShipInfo["area"] = scanned.Ship.Area;
+                struckShipInfo["posX"] = scanned.Ship.Pos.X;
+                struckShipInfo["posY"] = scanned.Ship.Pos.Y;
+                respDict.Add(struckShipInfo);
             }
 
             response.Data["scanned"] = respDict;
@@ -274,7 +285,7 @@ namespace SGame
         }
 
 
-        /// <summary>
+        /// <summary>await P.ServerLoop(endpoints);
         /// Handles a "Shoot" REST request, damaging all ships caught in its blast. pew pew.
         /// </summary>
         /// <param name="data">The JSON payload of the request, containing the token of the ship, the angle to shoot at, the width of the shot, the energy to expend on the shot (determines distance), and damage (scaling) </param>
@@ -292,23 +303,23 @@ namespace SGame
             {
                 return;
             }
-            double width = (double)data.Json["width"];
-            double direction = (double)data.Json["direction"];
+            double widthDeg = (double)data.Json["width"];
+            double directionDeg = (double)data.Json["direction"];
             double damageScaling = (double)data.Json["damage"];
 
             int energy = (int)Math.Min((int)data.Json["energy"], Math.Floor(ship.Energy / damageScaling));
             ship.Energy -= energy * damageScaling; //remove energy for the shot
 
-            Console.WriteLine($"Shot by {ship.PublicId}, pos={ship.Pos}, dir={direction}, width={width}, energy spent={energy}, scaling={damageScaling}");
+            Console.WriteLine($"Shot by {ship.PublicId}, pos={ship.Pos}, dir={directionDeg}°, width={widthDeg}°, energy spent={energy}, scaling={damageScaling}");
 
             var shootMsg = new SShared.Messages.ScanShoot()
             {
                 Originator = ship.Token,
                 Origin = ship.Pos,
-                Direction = direction,
-                ScaledEnergy = energy * damageScaling,
-                Width = width,
-                Radius = MathUtils.ScanShootRadius(width, energy),
+                Direction = MathUtils.Deg2Rad(directionDeg),
+                ScaledShotEnergy = energy * damageScaling,
+                Width = MathUtils.Deg2Rad(widthDeg),
+                Radius = MathUtils.ScanShootRadius(MathUtils.Deg2Rad(widthDeg), energy),
             };
 
             ScanShootResults results = await QuadTreeNode.ScanShootRecur(shootMsg);
@@ -318,24 +329,27 @@ namespace SGame
             foreach (var struckShip in results.Struck)
             {
                 // ignore our ship
-                if (struckShip.Token == ship.Token)
+                if (struckShip.Ship.Token == ship.Token)
                     continue;
+
+                double preShotArea = struckShip.Ship.Area + Math.Abs(struckShip.AreaGain);
 
                 //The api doesnt have a return value for shooting, but ive left this in for now for testing purposes.
                 JToken struckShipInfo = new JObject();
-                struckShipInfo["id"] = struckShip.PublicId;
-                struckShipInfo["area"] = struckShip.Area;
-                struckShipInfo["posX"] = struckShip.Pos.X;
-                struckShipInfo["posY"] = struckShip.Pos.Y;
+                struckShipInfo["id"] = struckShip.Ship.PublicId;
+                struckShipInfo["area"] = preShotArea;
+                struckShipInfo["posX"] = struckShip.Ship.Pos.X;
+                struckShipInfo["posY"] = struckShip.Ship.Pos.Y;
                 respDict.Add(struckShipInfo);
-            }
 
-            foreach (var deadShip in results.Graveyard)
-            {
-                var ourDeadShip = QuadTreeNode.ShipsByToken.GetValueOrDefault(deadShip.Token, null);
-                if (ourDeadShip != null)
+                if (struckShip.AreaGain < 0.0) // ship ded
                 {
-                    DeadShips.Add(ourDeadShip.Token, ourDeadShip);
+                    var ourDeadShip = QuadTreeNode.ShipsByToken.GetValueOrDefault(struckShip.Ship.Token, null);
+                    if (ourDeadShip != null)
+                    {
+                        QuadTreeNode.ShipsByToken.Remove(ourDeadShip.Token);
+                        DeadShips.Add(ourDeadShip.Token, ourDeadShip);
+                    }
                 }
             }
 

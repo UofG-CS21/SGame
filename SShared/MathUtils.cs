@@ -497,11 +497,11 @@ namespace SShared
 
         /// <summary>
         /// Calculates the shotDamage applied to a ship. Shot damage drops off exponentially as distance increases, base =1.1
+        /// Width is in radians.
         /// </summary>
         public static double ShotDamage(double scaledEnergy, double width, double distance)
         {
             distance = Math.Max(distance, 1);
-            width = (double)(Math.PI * width) / 180.0;
             return scaledEnergy / (Math.Max(1, Math.Pow(2, 2 * width)) * Math.Sqrt(distance));
 
             /* 
@@ -516,6 +516,7 @@ namespace SShared
         }
         public const int SCAN_ENERGY_SCALING_FACTOR = 2000;
 
+        /// Width is in radians.
         public static double ScanShootRadius(double scanWidth, double energySpent)
         {
             double areaScanned = energySpent * SCAN_ENERGY_SCALING_FACTOR;
@@ -526,7 +527,7 @@ namespace SShared
         /// <summary>
         /// Returns the percentage (0.0 to 1.0) of damage covered by a ship's shield when it is being shot
         /// from `shotOrigin` with a cone of half-width `shotWidth` radians and length `shotRadius`.
-        /// WARNING: `width` and `shotDir` are in DEGREES!
+        /// WARNING: `width` and `shotDir` are in RADIANS!
         /// </summary>
         public static double ShieldingAmount(Spaceship ship, Vector2 shotOrigin, double shotDir, double shotWidth, double shotRadius)
         {
@@ -543,13 +544,10 @@ namespace SShared
                 return 0.0;
             }
 
-            // IMPORTANT - ShotWidth input is in degrees, (and already clamped from 0..180° at the source)
-            shotWidth = MathUtils.Deg2Rad(shotWidth);
             // IMPORTANT - ShotDir input is in degrees, and needs:
-            // - Being converted to radians
             // - Being clamped from 0..2pi (to prevent malicious input from breaking the code)
             // - Being normalized from -pi..pi (to prevent calculations below from potentially breaking)
-            shotDir = MathUtils.NormalizeAngle(MathUtils.ClampAngle(MathUtils.Deg2Rad(shotDir)));
+            shotDir = MathUtils.NormalizeAngle(MathUtils.ClampAngle(shotDir));
 
             // Find the two tangent points from the origin of the shot to the ship + `tgAngle`, i.e.
             // the bisector angle between the (shot origin to ship center) line and the two tangents.

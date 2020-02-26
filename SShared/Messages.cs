@@ -24,7 +24,7 @@ namespace SShared.Messages
         public Vector2 Origin;
 
         /// <summary>
-        /// World-space direction of the center of the scan.
+        /// World-space direction of the center of the scan **in radians**.
         /// </summary>
         public double Direction;
 
@@ -41,7 +41,7 @@ namespace SShared.Messages
         /// <summary>
         /// `energy * scalingFactor` for a shot; Zero for just scanning
         /// </summary>
-        public double ScaledEnergy;
+        public double ScaledShotEnergy;
 
         // -- INetSerializable -------------------------------------------------
 
@@ -54,7 +54,7 @@ namespace SShared.Messages
             writer.Put(Direction);
             writer.Put(Width);
             writer.Put(Radius);
-            writer.Put(ScaledEnergy);
+            writer.Put(ScaledShotEnergy);
         }
 
         public void Deserialize(NetDataReader reader)
@@ -66,7 +66,7 @@ namespace SShared.Messages
             Direction = reader.GetDouble();
             Width = reader.GetDouble();
             Radius = reader.GetDouble();
-            ScaledEnergy = reader.GetDouble();
+            ScaledShotEnergy = reader.GetDouble();
         }
     }
 
@@ -82,7 +82,7 @@ namespace SShared.Messages
         /// </summary>
         public string Originator = null;
 
-        public struct ShipInfo
+        public class ShipInfo
         {
             /// <summary>
             /// The struck ship.
