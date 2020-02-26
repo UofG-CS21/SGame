@@ -35,7 +35,7 @@ namespace SArbiter
     {
         static void Loop(CmdLineOptions opts)
         {
-            using (BusNode busMaster = new BusNode(null, (int)opts.BusPort))
+            using (NetNode busMaster = new NetNode(null, (int)opts.BusPort))
             {
                 Console.WriteLine("Listening...");
                 while (true)

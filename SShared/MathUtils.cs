@@ -483,8 +483,6 @@ namespace SShared
             return a * Math.Cos(angle) + delta * Math.Sin(angle);
         }
 
-
-
         /// <summary>
         /// Makes a direction vector out of an angle in radians.
         /// </summary>

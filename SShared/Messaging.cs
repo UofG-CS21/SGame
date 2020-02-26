@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using LiteNetLib;
 using LiteNetLib.Utils;
 
@@ -9,7 +10,7 @@ namespace SShared
     /// <summary>
     /// Implemented by all bus messages.
     /// </summary>
-    public interface IBusMessage : INetSerializable
+    public interface IMessage : INetSerializable
     {
         /// <summary>
         /// A identifier code for this type of message.
@@ -20,20 +21,23 @@ namespace SShared
     /// <summary>
     /// Arguments to an event involving a bus message. 
     /// </summary>
-    public class BusMessageEventArgs : EventArgs
+    public class MessageEventArgs : EventArgs
     {
-        public BusMessageEventArgs(IBusMessage message)
+        public MessageEventArgs(NetPeer sender, IMessage message)
         {
+            Sender = sender;
             Message = message;
         }
 
-        public IBusMessage Message { get; private set; }
+        public NetPeer Sender { get; private set; }
+
+        public IMessage Message { get; private set; }
     };
 
     /// <summary>
-    /// A node on the event bus.
+    /// A node on the message bus system.
     /// </summary>
-    public class BusNode : INetEventListener, IDisposable
+    public class NetNode : INetEventListener, IDisposable
     {
         /// <summary>
         /// Key used to authenticate clients on the bus.
@@ -46,9 +50,9 @@ namespace SShared
         public NetManager Host { get; private set; }
 
         /// <summary>
-        /// True if this node is a bus master, false if it's just a normal (client) node.
+        /// True if this node is a server node, false if it's a client.
         /// </summary>
-        public bool IsMaster { get; private set; }
+        public bool IsServer { get; private set; }
 
         NetDataWriter _writer;
 
@@ -62,18 +66,18 @@ namespace SShared
         /// </summary>
         /// <param name="hostname">If not null, connect to the given hostname/address; if null, start a server node.</param>
         /// <param name="port">The port to connect to (or bind to for server nodes).</param>
-        public BusNode(string hostname, int port)
+        public NetNode(string hostname, int port)
         {
             Host = new NetManager(this);
             if (hostname != null)
             {
-                IsMaster = false;
+                IsServer = false;
                 Host.Start();
                 Host.Connect(hostname, port, Secret);
             }
             else
             {
-                IsMaster = true;
+                IsServer = true;
                 Host.Start(port);
                 //_netHost.BroadcastReceiveEnable = true;
             }
@@ -81,7 +85,7 @@ namespace SShared
             _writer = new NetDataWriter();
 
             Serializer = new NetSerializer();
-            BusMsgs.Serialization.RegisterAllSerializers(Serializer);
+            Messages.Serialization.RegisterAllSerializers(Serializer);
         }
 
         /// <summary>
@@ -93,19 +97,30 @@ namespace SShared
         }
 
         /// <summary>
-        /// An event that is triggered when a message is received from the bus.
+        /// An event that is triggered when a message is received by this node.
         /// </summary>
-        public event EventHandler<BusMessageEventArgs> OnBusMessageReceived;
+        public event EventHandler<MessageEventArgs> OnMessageReceived;
 
         /// <summary>
         /// Sends a bus message to every peer connected to this node.
         /// </summary>
-        public void SendBusMessage<T>(T message, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered)
-            where T : class, IBusMessage, new()
+        public void BroadcastMessage<T>(T message, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered)
+            where T : class, IMessage, new()
         {
             _writer.Reset();
             Serializer.Serialize<T>(_writer, message);
             Host.SendToAll(_writer, delivery);
+        }
+
+        /// <summary>
+        /// Sends a bus message to a particular peer.
+        /// </summary>
+        public void SendMessage<T>(T message, NetPeer peer, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered)
+            where T : class, IMessage, new()
+        {
+            _writer.Reset();
+            Serializer.Serialize<T>(_writer, message);
+            peer.Send(_writer, delivery);
         }
 
         // ===== Dispose pattern =======================================================================================
@@ -154,15 +169,15 @@ namespace SShared
             if (reader.TryGetUShort(out msgId))
             {
                 Type msgType;
-                if (BusMsgs.Serialization.MessageTypes.TryGetValue(msgId, out msgType))
+                if (Messages.Serialization.MessageTypes.TryGetValue(msgId, out msgType))
                 {
                     // Expand the appropriate `NetSerializer.Deserialize<TMessage>()` and call it to deserialize the message
                     // See: https://stackoverflow.com/a/3958029
                     var typelessDeserialize = typeof(NetSerializer).GetMethod("Deserialize");
                     var deserialize = typelessDeserialize.MakeGenericMethod(msgType);
-                    var message = (IBusMessage)deserialize.Invoke(Serializer, new object[] { reader });
+                    var message = (IMessage)deserialize.Invoke(Serializer, new object[] { reader });
                     // Dispatch the event
-                    OnBusMessageReceived.Invoke(this, new BusMessageEventArgs(message));
+                    OnMessageReceived.Invoke(this, new MessageEventArgs(peer, message));
                 }
                 // else: unknown message type, ignore
             }
@@ -179,6 +194,55 @@ namespace SShared
         public void OnNetworkLatencyUpdate(NetPeer peer, int latency)
         {
             // TODO: Log the new ping for the peer?
+        }
+    }
+
+    /// <summary>
+    /// Waits for a message of type T from a NetNode.
+    /// </summary>
+    public class MessageWaiter<T> where T : class, IMessage
+    {
+        TaskCompletionSource<T> _completionSrc;
+
+        /// <summary>
+        /// Starts waiting for a `T` message coming from `node`.
+        /// If `peer` is not null, ensures that the sender is `peer`.
+        /// If `filter` is not null, ensures that the message passes the given filter.
+        /// </summary>
+        public MessageWaiter(NetNode node, NetPeer peer = null, Predicate<T> filter = null)
+        {
+            Node = node;
+            Peer = peer;
+            _completionSrc = new TaskCompletionSource<T>();
+            Node.OnMessageReceived += OnMessageReceived;
+        }
+
+        internal void OnMessageReceived(object sender, MessageEventArgs e)
+        {
+            if (Peer == null || e.Sender == Peer)
+            {
+                var tMsg = e.Message as T;
+                if (tMsg != null && (Filter == null || Filter(tMsg)))
+                {
+                    Node.OnMessageReceived -= OnMessageReceived;
+                    _completionSrc.SetResult(tMsg);
+                }
+            }
+        }
+        ~MessageWaiter()
+        {
+            Node.OnMessageReceived -= OnMessageReceived;
+        }
+
+        public NetNode Node { get; private set; }
+
+        public NetPeer Peer { get; private set; }
+
+        public Predicate<T> Filter { get; private set; }
+
+        public Task<T> Wait
+        {
+            get { return _completionSrc.Task; }
         }
     }
 }
