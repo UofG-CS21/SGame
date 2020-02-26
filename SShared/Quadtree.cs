@@ -8,17 +8,6 @@ using System.Collections.Generic;
 namespace SShared
 {
     /// <summary>
-    /// A quadrant in a quadtree node.
-    /// </summary>
-    public enum Quadrant : int
-    {
-        NW = 0,
-        NE = 1,
-        SW = 2,
-        SE = 3,
-    }
-
-    /// <summary>
     /// Something bounded by a worldspace quad.
     /// </summary>
     public interface IQuadBounded
@@ -92,22 +81,7 @@ namespace SShared
 
             if (child != null)
             {
-                double halfRadius = Bounds.Radius * 0.5;
-                switch (pos)
-                {
-                    case Quadrant.NW:
-                        child._bounds = new Quad(Bounds.CentreX - halfRadius, Bounds.CentreY + halfRadius, halfRadius);
-                        break;
-                    case Quadrant.NE:
-                        child._bounds = new Quad(Bounds.CentreX + halfRadius, Bounds.CentreY + halfRadius, halfRadius);
-                        break;
-                    case Quadrant.SW:
-                        child._bounds = new Quad(Bounds.CentreX - halfRadius, Bounds.CentreY - halfRadius, halfRadius);
-                        break;
-                    case Quadrant.SE:
-                        child._bounds = new Quad(Bounds.CentreX + halfRadius, Bounds.CentreY - halfRadius, halfRadius);
-                        break;
-                }
+                child._bounds = Bounds.QuadrantBounds(pos);
                 child.Parent = this;
                 child.Depth = Depth + 1;
             }

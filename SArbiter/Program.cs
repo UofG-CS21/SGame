@@ -30,7 +30,6 @@ namespace SArbiter
         public uint BusPort { get; set; }
     }
 
-
     class Program
     {
         static void Loop(CmdLineOptions opts)

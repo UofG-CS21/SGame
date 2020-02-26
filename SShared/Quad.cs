@@ -4,6 +4,17 @@ using System.Diagnostics;
 namespace SShared
 {
     /// <summary>
+    /// A quadrant in a quadtree node.
+    /// </summary>
+    public enum Quadrant : int
+    {
+        NW = 0,
+        NE = 1,
+        SW = 2,
+        SE = 3,
+    }
+
+    /// <summary>
     /// World space quad.
     /// </summary>
     public struct Quad
@@ -73,7 +84,6 @@ namespace SShared
                     other.X2 <= X2 && other.Y2 <= Y2;
         }
 
-
         /// <summary>
         /// Checks if the rectangle interesects with an other rectangle
         /// returns true if it does other wise false
@@ -81,6 +91,25 @@ namespace SShared
         public bool Intersects(Quad other)
         {
             return !(other.X >= X2 || other.X2 <= X || other.Y >= Y2 || other.Y2 <= Y);
+        }
+
+        /// <summary>
+        /// Return the bounds of a certain quadrant of this quad.
+        /// </summary>
+        public Quad QuadrantBounds(Quadrant quadrant)
+        {
+            double radius = Radius * 0.5, halfRadius = radius * 0.5;
+            switch (quadrant)
+            {
+                case Quadrant.NW:
+                    return new Quad(CentreX - halfRadius, CentreY + halfRadius, radius);
+                case Quadrant.NE:
+                    return new Quad(CentreX + halfRadius, CentreY + halfRadius, radius);
+                case Quadrant.SW:
+                    return new Quad(CentreX - halfRadius, CentreY - halfRadius, radius);
+                default: // Quadrant.SE
+                    return new Quad(CentreX + halfRadius, CentreY - halfRadius, radius);
+            }
         }
     }
 }
