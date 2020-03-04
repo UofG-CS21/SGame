@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Timers;
 using System.IO;
 using System.Net;
 using CommandLine;
@@ -33,6 +34,8 @@ namespace SGame
     /// </summary>
     class Program
     {
+
+
         /// <summary>
         /// The external REST API and its state.
         /// </summary>
@@ -42,6 +45,9 @@ namespace SGame
         /// Routes REST API calls to Server.
         /// </summary>
         Router<Api> router;
+
+
+        private static Timer GameLoopTimer;
 
         /// <summary>
         /// Initializes an instance of the program.
@@ -87,6 +93,29 @@ namespace SGame
             var data = new ApiData(json);
             await router.Dispatch(requestUrl, response, data);
             return true;
+        }
+
+        private void SetupTimer(int frequency)
+        {
+            GameLoopTimer = new Timer(frequency);
+
+            GameLoopTimer.Elapsed += UpdateGameState;
+            GameLoopTimer.AutoReset = true;
+            GameLoopTimer.Enabled = true;
+
+        }
+
+        private void UpdateGameState(Object source, ElapsedEventArgs e)
+        {
+            api.UpdateGameState();
+            //Console.WriteLine("Updated game state at {0:HH:mm:ss.fff}", e.SignalTime);
+
+        }
+
+        private void StartGameLoop()
+        {
+            int frequency = 30; //Milliseconds
+            SetupTimer(frequency);
         }
 
         /// <summary>
@@ -142,6 +171,7 @@ namespace SGame
             Console.WriteLine("Endpoint: {0}", endpoints[0]);
 
             Program P = new Program();
+            P.StartGameLoop();
             await P.ServerLoop(endpoints);
         }
     }
