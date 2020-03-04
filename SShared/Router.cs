@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Threading.Tasks;
 
-namespace SGame
+namespace SShared
 {
     /// <summary>
     /// Handles an API call at a given route.
@@ -20,7 +20,7 @@ namespace SGame
     /// <summary>
     /// Uses Reflection to dispatch REST API calls to methods of a class.
     /// </summary>
-    class Router<Api>
+    public class Router<Api>
     {
         /// <summary>
         /// The internal object to call route handlers on.
