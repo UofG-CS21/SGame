@@ -34,8 +34,6 @@ namespace SGame
     /// </summary>
     class Program
     {
-
-
         /// <summary>
         /// The external REST API and its state.
         /// </summary>
@@ -102,20 +100,12 @@ namespace SGame
             GameLoopTimer.Elapsed += UpdateGameState;
             GameLoopTimer.AutoReset = true;
             GameLoopTimer.Enabled = true;
-
         }
 
         private void UpdateGameState(Object source, ElapsedEventArgs e)
         {
             api.UpdateGameState();
             //Console.WriteLine("Updated game state at {0:HH:mm:ss.fff}", e.SignalTime);
-
-        }
-
-        private void StartGameLoop()
-        {
-            int frequency = 30; //Milliseconds
-            SetupTimer(frequency);
         }
 
         /// <summary>
@@ -139,6 +129,7 @@ namespace SGame
 
             // Main server loop
             listener.Start();
+            SetupTimer(30);
             Console.Error.WriteLine("Listening...");
 
             while (true)
@@ -150,6 +141,7 @@ namespace SGame
 
 
             listener.Stop();
+            GameLoopTimer.Stop();
             Console.Error.WriteLine("Stopped");
         }
 
@@ -171,7 +163,6 @@ namespace SGame
             Console.WriteLine("Endpoint: {0}", endpoints[0]);
 
             Program P = new Program();
-            P.StartGameLoop();
             await P.ServerLoop(endpoints);
         }
     }
