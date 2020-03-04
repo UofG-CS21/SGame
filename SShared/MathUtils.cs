@@ -764,5 +764,16 @@ namespace SShared
             double distanceTotal = shotStop - shotStart;
             return distanceShielded / distanceTotal;
         }
+
+        public static bool DoesQuadIntersectCircleSector(Quad quad, Messages.ScanShoot msg)
+        {
+            Vector2 quadCentre = new Vector2(quad.CentreX, quad.CentreY);
+            double maximumQuadRadius = 1.41421356237 * quad.Radius;
+            Vector2 leftPoint = new Vector2(msg.Radius * Math.Cos(msg.Direction + msg.Width), msg.Radius * Math.Sin(msg.Direction + msg.Width));
+            Vector2 rightPoint = new Vector2(msg.Radius * Math.Cos(msg.Direction - msg.Width), msg.Radius * Math.Sin(msg.Direction - msg.Width));
+
+            //Console.WriteLine("Quad affected: " + quadCentre + " " + msg.Origin maximumQuadRadius + " " + CircleSegmentIntersection(quadCentre, maximumQuadRadius, msg.Origin, msg.Radius, msg.Direction, msg.Width));
+           return CircleTriangleIntersection(quadCentre, maximumQuadRadius, msg.Origin, leftPoint, rightPoint) || CircleSegmentIntersection(quadCentre, maximumQuadRadius, msg.Origin, msg.Radius, msg.Direction, msg.Width);
+        }
     }
 }
