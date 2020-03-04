@@ -727,6 +727,7 @@ def test_combat_battle(server, clients):
         })
         assert resp
 
+
         # Checking the client one gains both ship 2 and 3 area
         resp = requests.post(client1.url + 'getShipInfo', json={
             'token': client1.token,
