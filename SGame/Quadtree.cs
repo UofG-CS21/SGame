@@ -63,7 +63,7 @@ namespace SGame
             ScanShootResults results = new ScanShootResults();
 
             // 1) Search ships locally (but only if affected by the scan)
-            bool affected = true; // TODO!!
+            bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds , msg);
             if (affected)
             {
                 Vector2 leftPoint = MathUtils.DirVec(msg.Direction + msg.Width) * msg.Radius;
@@ -176,7 +176,7 @@ namespace SGame
 
         public override async Task<ScanShootResults> ScanShootRecur(Messages.ScanShoot msg)
         {
-            bool affected = true; // TODO!!
+            bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds , msg);
             if (affected)
             {
                 Bus.SendMessage(msg, NodePeer);
