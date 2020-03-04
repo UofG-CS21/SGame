@@ -8,6 +8,7 @@ using Newtonsoft.Json.Linq;
 using SShared;
 using System.Threading.Tasks;
 using System.Text;
+using System.Timers;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SArbiter.Tests")]
 namespace SArbiter
@@ -41,6 +42,12 @@ namespace SArbiter
         /// </summary>
         [Option("bus-port", Default = 3000u, Required = false, HelpText = "The UDP port to use for the master event bus.")]
         public uint BusPort { get; set; }
+
+        /// <summary>
+        /// Tickrate of the sever.
+        /// </summary>
+        [Option("tickrate", Default = 100u, Required = false, HelpText = "Tickrate of the arbiter, i.e. how often it polls for bus events per second.")]
+        public uint Tickrate { get; set; }
     }
 
     class Program : IDisposable
@@ -51,11 +58,17 @@ namespace SArbiter
 
         private Router<ArbiterApi> _apiRouter = null;
 
+        private Timer _updateTimer = null;
+
         internal Program(CmdLineOptions options)
         {
             _busMaster = new NetNode(options.BusHost, (int)options.BusPort);
             _routingTable = new RoutingTable(_busMaster, null);
             _apiRouter = new Router<ArbiterApi>(new ArbiterApi(_routingTable));
+
+            _updateTimer = new Timer(1000.0 / options.Tickrate);
+            _updateTimer.AutoReset = true;
+            _updateTimer.Elapsed += Update;
         }
 
         public void Dispose()
@@ -96,7 +109,12 @@ namespace SArbiter
             return true;
         }
 
-        public async Task MainLoop(SArbiter.CmdLineOptions options)
+        private void Update(object sender, ElapsedEventArgs e)
+        {
+            _busMaster.Update();
+        }
+
+        public async Task ServerLoop(SArbiter.CmdLineOptions options)
         {
             if (!HttpListener.IsSupported)
             {
@@ -111,6 +129,7 @@ namespace SArbiter
 
                 // Main server loop
                 listener.Start();
+                _updateTimer.Start();
                 Console.Error.WriteLine("Listening...");
 
                 bool keepGoing = true;
@@ -118,12 +137,11 @@ namespace SArbiter
                 {
                     var task = await listener.GetContextAsync();
                     keepGoing = await ProcessRequest(task);
-
-                    busMaster.Update();
                 }
                 while (keepGoing);
 
                 listener.Stop();
+                _updateTimer.Stop();
                 Console.Error.WriteLine("Stopped");
             }
         }
@@ -143,7 +161,7 @@ namespace SArbiter
 
             using (Program P = new Program(options))
             {
-                await P.MainLoop(options);
+                await P.ServerLoop(options);
             }
         }
     }

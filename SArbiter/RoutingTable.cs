@@ -34,7 +34,7 @@ namespace SArbiter
             string token, pid;
             do
             {
-                token = new Guid().ToString();
+                token = Guid.NewGuid().ToString();
                 pid = token.Substring(token.Length - 8);
             }
             while (_shipPublicIds.Contains(pid));

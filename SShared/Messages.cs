@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using LiteNetLib.Utils;
 
 namespace SShared.Messages
@@ -167,9 +168,13 @@ namespace SShared.Messages
             foreach (var (id, type) in _msgTypes)
             {
                 // See: https://stackoverflow.com/a/3958029
-                var typelessRegistrar = typeof(NetSerializer).GetMethod("RegisterNestedType");
-                var registrar = typelessRegistrar.MakeGenericMethod(type);
-                registrar.Invoke(serializer, new object[] { });
+                // Equivalent to `serializer.RegisterNestedType<MsgType>(() => new MsgType())`
+                var genericRegistrar = typeof(NetSerializer).GetMethods()
+                    .First(method => method.Name == "RegisterNestedType" && method.IsGenericMethod && method.GetParameters().Length == 1);
+                var registrar = genericRegistrar.MakeGenericMethod(type);
+                var constructor = type.GetConstructor(Type.EmptyTypes);
+                var constructorLambda = Expression.Lambda(Expression.New(constructor)).Compile();
+                registrar.Invoke(serializer, new[] { constructorLambda });
             }
         }
     }
