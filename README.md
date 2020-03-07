@@ -99,25 +99,25 @@ Automated tests can be executed as such:
 
 restore C# dependencies for SGame
 
-```
+```csharp
 dotnet restore SGame
 ```
 
 Builds SGame (integrated FxCop analysis)
 
-```
+```csharp
 dotnet build SGame
 ```
 
 Running the command below runs the automated Xunit tests
 
-```
+```csharp
 dotnet test
 ```
 
 The second set of automated testing which can be executed are the pytests (Black box tests)
 
-```
+```bash
 bash ci/runtests.sh ${SGAME_HOST} ${SGAME_PORT}
 ```
 
