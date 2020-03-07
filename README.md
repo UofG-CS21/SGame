@@ -104,7 +104,7 @@ The Xunit tests include testing on geometry (scanning, shielding and shooting) a
 
 Below is an example Xunit test:
 
-```
+```csharp
 //Test case 1: Attacker is within defending ship. No damage should be shielded.
 
             gameTime.Reset();
@@ -123,7 +123,7 @@ The pytest were created to simulate testing in live manner i.e black box test. W
 
 For example the test belows ensures that getShipInfo retrieves the correct inital state of the spaceship (without caring about the internals)
 
-```
+```python
 def test_getShipInfo_intial_state(clients):
     """
     Tests if getShipInfo matches the intial state of the ship
