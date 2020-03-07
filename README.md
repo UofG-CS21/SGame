@@ -65,43 +65,15 @@ The prerequisites are as follows:
 
 #### donet core 3.0
 
-Unit testing tool for the .NET Framework
-
-```
-XUnit
-```
-
-Lite reliable UDP library for .NET.
-
-```
-LiteNetLib
-```
-
-High-performance JSON framework for .NET.
-
-```
-Newtonsoft.JSon
-```
-
-Static analyser, checks code for security, performance, and design issues, among others
-
-```
-FxCopAnalyzers
-```
+- XUnit (Unit testing tool for the .NET Framework)
+- LiteNetLib (Lite reliable UDP library for .NET.)
+- Newtonsoft.JSon (High-performance JSON framework for .NET.)
+- FxCopAnalyzers (Static analyser)
 
 #### Python 2.7 or above
 
-Testing framework used for our black box tests
-
-```
-pytests
-```
-
-HTTP library (Used again for testing purposes)
-
-```
-requests
-```
+- pytests (Testing framework used for our black box tests)
+- requests (HTTP library - Used again for testing purposes)
 
 ### Installing
 
