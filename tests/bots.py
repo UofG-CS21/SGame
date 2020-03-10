@@ -1,7 +1,31 @@
 import requests
 import time
 import abc
+import random
 from multiprocessing import Process, Pipe
+
+# functions to generate random json data for API requests
+
+def GSIgen():
+    return {}
+
+def accgen():
+    return {'x': random.randrange(-5,5), 'y':random.randrange(-5,5)}
+
+def scangen():
+    return {'width':random.randrange(1,90),'direction':random.randrange(-345,456),'energy':random.randrange(1,10)}
+
+def shootgen():
+    return {'width':random.randrange(1,90),'direction':random.randrange(-345,456),'energy':random.randrange(1,10),'damage':0.000001}
+
+def shieldgen():
+    return {'width':random.randrange(1,180),'direction':random.randrange(-345,456)}
+
+API = [ ['shoot', shootgen], ['scan', scangen], ['getShipInfo', GSIgen], ['accelerate', accgen], ['shield', shieldgen] ]
+
+def randomAPI():
+    api = random.choice(API)
+    return api[0], api[1]()
 
 class Bot:
 
@@ -10,7 +34,6 @@ class Bot:
         self.port = server.port
         resp = requests.post(url='http://' + self.host + ':' + str(self.port) + '/connect')
         self.token = resp.json()['token']
-        self.maxHangTime = {}
         self.apiCallTimes = {}
         self.p = None
         self.pipe = None
@@ -29,11 +52,9 @@ class Bot:
         start = time.time()
         resp = requests.post(url = 'http://' + self.host + ':' + str(self.port) + '/' + path, json=data)
         end = time.time()
-        self.maxHangTime[path] = max(self.maxHangTime.get(path,0),end-start)
         if path not in self.apiCallTimes:
-            self.apiCallTimes[path] = {'calls':0,'time':0}
-        self.apiCallTimes[path]['calls'] += 1
-        self.apiCallTimes[path]['time'] += end-start
+            self.apiCallTimes[path] = []
+        self.apiCallTimes[path].append(end-start)
         return (resp,end-start)
 
     def generate_output(self):
@@ -67,6 +88,45 @@ class Idlebot(Bot):
         time.sleep(t)
         output.send(self.generate_output())
 
+
+
+# uses a random command {rate} times a second
+class Randombot(Bot):
+    def __init__(self, server, rate = 3):
+        super().__init__(server)
+        self.rate = rate
+        self.name = 'Randombot'
+
+    def generate_output(self):
+        return (self.apiCallTimes)
+
+    def run_inner(self, output, t = 3):
+        calls = 0
+        start = time.time()
+        delay = 1.0 / self.rate
+        while time.time()-start < t:
+            calls += 1
+            last = time.time()
+            path, data = randomAPI()
+            res = self.timedapi(path, data)
+            assert res[0]
+            #if not res[0]:
+            #    print('oops',path,data,res[0].json())
+            wait = delay - (time.time() - last)
+            if wait > 0:
+                time.sleep(wait)
+        output.send(self.generate_output())
+
+    def finish(self):
+        if self.p is None:
+            print("You need to run " + self.name + " before you finish!")
+            return False
+        self.p.join()
+        self.apiCallTimes = self.pipe[1].recv()
+        res = self.quit()
+        return res
+
+
 # disconnects and connects {rate} times a second
 class Discobot(Bot):
     def __init__(self, server, rate = 3):
@@ -75,21 +135,21 @@ class Discobot(Bot):
         self.name = "Discobot"
 
     def generate_output(self,):
-        return (self.token, self.maxHangTime, self.apiCallTimes)
+        return (self.token, self.apiCallTimes)
 
     def run_inner(self, output, t = 3):
+        calls = 0
         start = time.time()
         delay = 1.0 / self.rate
-        last = start
         while time.time()-start < t:
+            calls += 1
+            last = time.time()
             assert self.timedapi('disconnect')
             resp = self.timedapi('connect')
             self.token = resp[0].json()['token']
             wait = delay - (time.time() - last)
-            last = time.time()
             if wait > 0:
                 time.sleep(wait)
-        
         output.send(self.generate_output())
 
     def finish(self):
@@ -97,6 +157,6 @@ class Discobot(Bot):
             print("You need to run " + self.name + " before you finish!")
             return False
         self.p.join()
-        self.token, self.maxHangTime, self.apiCallTimes = self.pipe[1].recv()
+        self.token, self.apiCallTimes = self.pipe[1].recv()
         res = self.quit()
         return res

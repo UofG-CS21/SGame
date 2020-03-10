@@ -3,6 +3,9 @@ import time
 import pytest
 import bots
 
+def getMaxHangTime(bots):
+    return max( [ max([ max(times) for times in bot.apiCallTimes.values()]) for bot in bots ] )
+
 def test_init(server):
     bot1 = bots.Bot(server)
     bot1.run(3)
@@ -22,14 +25,26 @@ def test_idle(server):
     assert bot1.finish()
     assert bot2.finish()
 
-def test_disco(server):
-    n = 500
+def test_random(server):
+    n = 10
     t = 5
-    discobots = [ bots.Discobot(server, 3) for i in range(n) ]
+    randombots = [ bots.Randombot(server, 50) for i in range(n) ]
+    for i in range(n):
+        randombots[i].run(t)
+    for i in range(n):
+        assert randombots[i].finish() 
+
+    MHT = getMaxHangTime(randombots)
+    print('Highest wait time for random = ' + str(MHT))
+
+def test_disco(server):
+    n = 10
+    t = 5
+    discobots = [ bots.Discobot(server, 50) for i in range(n) ]
     for i in range(n):
         discobots[i].run(t)
     for i in range(n):
         assert discobots[i].finish() 
 
-    MHT = max([ discobots[i].maxHangTime['connect'] for i in range(n) ])
+    MHT = max([ max(discobots[i].apiCallTimes['connect']) for i in range(n) ])
     print('Highest wait time for connect = ' + str(MHT))

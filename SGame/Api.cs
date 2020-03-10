@@ -151,11 +151,14 @@ namespace SGame
             double x = (double)data.Json["x"];
             double y = (double)data.Json["y"];
 
-            int energyRequired = (int)Math.Ceiling(ship.Area * (Math.Abs(x) + Math.Abs(y)));
-            int energySpent = Math.Min(energyRequired, (int)Math.Floor(ship.Energy));
-            ship.Energy -= energySpent;
-            double accelerationApplied = (double)energySpent / (double)energyRequired;
-            ship.Velocity += Vector2.Multiply(new Vector2(x, y), accelerationApplied);
+            if( x !=0 || y != 0)
+            {
+                int energyRequired = (int)Math.Ceiling(ship.Area * (Math.Abs(x) + Math.Abs(y)));
+                int energySpent = Math.Min(energyRequired, (int)Math.Floor(ship.Energy));
+                ship.Energy -= energySpent;
+                double accelerationApplied = (double)energySpent / (double)energyRequired;
+                ship.Velocity += Vector2.Multiply(new Vector2(x, y), accelerationApplied);
+            }
 
             await response.Send(200);
         }
