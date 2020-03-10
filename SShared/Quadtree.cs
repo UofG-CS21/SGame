@@ -134,5 +134,31 @@ namespace SShared
 
             return found;
         }
+
+        /// <summary>
+        /// Get a randomly-chosen leaf of this node.
+        /// </summary>
+        public QuadTreeNode<T> RandomLeafNode()
+        {
+            Random rand = new Random();
+
+            QuadTreeNode<T> node = this;
+            QuadTreeNode<T> child = null;
+            do
+            {
+                int randQuadrant = rand.Next(0, 4);
+                for (int j = 0; j < 4; j++)
+                {
+                    if ((child = node._children[(randQuadrant + j) % 4]) != null)
+                    {
+                        break;
+                    }
+                }
+                node = child ?? node;
+            } while (child != null);
+
+            return node;
+        }
+
     }
 }

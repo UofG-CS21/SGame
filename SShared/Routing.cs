@@ -104,7 +104,6 @@ namespace SShared
             this.Sent = false;
         }
 
-
         /// <summary>
         /// The flag to check if the response has already been sent 
         /// </summary>
@@ -135,6 +134,18 @@ namespace SShared
             await output.WriteAsync(buffer, 0, buffer.Length);
             output.Close();
             this.Sent = true;
+        }
+
+        /// <summary>
+        /// Redirect the request to another address.
+        /// </summary>
+        public Task Redirect(string url)
+        {
+            return new Task(() =>
+            {
+                response.Redirect(url);
+                this.Sent = true;
+            });
         }
     }
 }

@@ -6,53 +6,33 @@ using System.Threading.Tasks;
 
 namespace SArbiter
 {
-    class ArbiterTreeNode
+    internal class ArbiterTreeItem : IQuadBounded
     {
-        public ArbiterTreeNode Parent { get; private set; }
+        public string token;
 
-        public uint Depth { get; private set; }
+        public Quad Bounds => throw new NotImplementedException();
+    }
 
-        public Quad Bounds { get; private set; }
+    internal class ArbiterTreeNode : QuadTreeNode<ArbiterTreeItem>
+    {
+        public string ApiUrl { get; set; }
 
-        public NetPeer SGamePeer { get; private set; }
+        public NetPeer Peer { get; set; }
 
-        public ArbiterTreeNode[] Children = new ArbiterTreeNode[4] { null, null, null, null };
-
-        public ArbiterTreeNode()
+        public ArbiterTreeNode(string apiUrl, NetPeer peer)
+            : base(null, new Quad(0.0, 0.0, Double.MaxValue), 0)
         {
-            Parent = null;
-            Bounds = new Quad(0.0, 0.0, Double.MaxValue);
-            Depth = 0;
+            this.ApiUrl = apiUrl;
+            this.Peer = peer;
         }
 
-        public ArbiterTreeNode(ArbiterTreeNode parent, Quadrant quadrant)
+        public ArbiterTreeNode(QuadTreeNode<ArbiterTreeItem> parent, Quad bounds, uint depth, string apiUrl, NetPeer peer)
+            : base(parent, bounds, depth)
         {
-            Parent = parent;
-            parent.Children[(int)quadrant] = this;
-            Bounds = parent.Bounds.QuadrantBounds(quadrant);
-            Depth = parent.Depth + 1;
+            this.ApiUrl = apiUrl;
+            this.Peer = peer;
         }
 
-        public ArbiterTreeNode RandomLeafNode()
-        {
-            Random rand = new Random();
-
-            ArbiterTreeNode node = this;
-            ArbiterTreeNode child = null;
-            do
-            {
-                int randQuadrant = rand.Next(0, 4);
-                for (int j = 0; j < 4; j++)
-                {
-                    if ((child = node.Children[(randQuadrant + j) % 4]) != null)
-                    {
-                        break;
-                    }
-                }
-                node = child ?? node;
-            } while (child != null);
-
-            return node;
-        }
+        public override Task<List<ArbiterTreeItem>> CheckRangeLocal(Quad range) => throw new NotImplementedException();
     }
 }

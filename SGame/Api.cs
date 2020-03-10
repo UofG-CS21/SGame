@@ -34,6 +34,9 @@ namespace SGame
         public Api(LocalQuadTreeNode quadTreeNode)
         {
             this.gameTime = new GameTime();
+            //#if DEBUG
+            //   this.gameTime.SetElapsedMillisecondsManually(0);
+            //#endif
             this.QuadTreeNode = quadTreeNode;
             this.DeadShips = new Dictionary<string, Spaceship>();
         }
@@ -141,7 +144,6 @@ namespace SGame
         [ApiParam("y", typeof(double))]
         public async Task AcceleratePlayer(ApiResponse response, ApiData data)
         {
-            UpdateGameState();
 
             var ship = await GetLocalShip(response, data.Json);
             if (ship == null)
@@ -173,7 +175,6 @@ namespace SGame
         [ApiParam("token", typeof(string))]
         public async Task GetShipInfo(ApiResponse response, ApiData data)
         {
-            UpdateGameState();
 
             var ship = await GetLocalShip(response, data.Json);
             if (ship == null)
@@ -238,7 +239,6 @@ namespace SGame
         [ApiParam("energy", typeof(int))]
         public async Task Scan(ApiResponse response, ApiData data)
         {
-            UpdateGameState();
 
             var ship = await IntersectionParamCheck(response, data);
             if (ship == null)
@@ -301,6 +301,10 @@ namespace SGame
         [ApiParam("damage", typeof(double))]
         public async Task Shoot(ApiResponse response, ApiData data)
         {
+#if DEBUG
+            // HACK: Force game update so older tests still function
+            UpdateGameState();
+#endif
             LocalSpaceship ship = await IntersectionParamCheck(response, data, true);
             if (ship == null)
             {
@@ -410,7 +414,6 @@ namespace SGame
         /// </summary>
         private async Task<LocalSpaceship> IntersectionParamCheck(ApiResponse response, ApiData data, bool requireDamage = false)
         {
-            UpdateGameState();
             var ship = await GetLocalShip(response, data.Json);
             if (ship == null)
             {
@@ -492,7 +495,10 @@ namespace SGame
             { "posY", (api, ship, posY) => ship.Pos = new Vector2(ship.Pos.X, (double)posY) },
             { "velX", (api, ship, velX) => ship.Velocity = new Vector2((double)velX, ship.Velocity.Y) },
             { "velY", (api, ship, velY) => ship.Velocity = new Vector2(ship.Velocity.X, (double)velY) },
-            { "time", (api, ship, timeMs) => api.gameTime.SetElapsedMillisecondsManually((long)timeMs) }
+            { "time", (api, ship, timeMs) => {
+                api.gameTime.SetElapsedMillisecondsManually((long)timeMs);
+                api.UpdateGameState();
+            }}
         };
 
         /// <summary>

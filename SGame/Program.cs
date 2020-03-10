@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Timers;
 using System.IO;
 using System.Net;
 using CommandLine;
@@ -42,6 +43,9 @@ namespace SGame
         /// Routes REST API calls to Server.
         /// </summary>
         Router<Api> router;
+
+
+        private static Timer GameLoopTimer;
 
         /// <summary>
         /// Initializes an instance of the program.
@@ -89,6 +93,21 @@ namespace SGame
             return true;
         }
 
+        private void SetupTimer(int frequency)
+        {
+            GameLoopTimer = new Timer(frequency);
+
+            GameLoopTimer.Elapsed += UpdateGameState;
+            GameLoopTimer.AutoReset = true;
+            GameLoopTimer.Enabled = true;
+        }
+
+        private void UpdateGameState(Object source, ElapsedEventArgs e)
+        {
+            api.UpdateGameState();
+            //Console.WriteLine("Updated game state at {0:HH:mm:ss.fff}", e.SignalTime);
+        }
+
         /// <summary>
         /// Runs the main loop run for the HTTP/REST server.
         /// </summary>
@@ -110,6 +129,7 @@ namespace SGame
 
             // Main server loop
             listener.Start();
+            SetupTimer(30);
             Console.Error.WriteLine("Listening...");
 
             while (true)
@@ -121,6 +141,7 @@ namespace SGame
 
 
             listener.Stop();
+            GameLoopTimer.Stop();
             Console.Error.WriteLine("Stopped");
         }
 

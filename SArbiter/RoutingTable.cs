@@ -10,23 +10,31 @@ namespace SArbiter
     {
         const uint MaxDepth = SShared.QuadTreeNode<SShared.Spaceship>.MaxDepth;
 
-        ArbiterTreeNode _root = new ArbiterTreeNode();
-
         Dictionary<string, ArbiterTreeNode> _nodeByShipToken = new Dictionary<string, ArbiterTreeNode>();
 
         HashSet<string> _shipPublicIds = new HashSet<string>();
+
+        public ArbiterTreeNode RootNode { get; set; }
+
+        public NetNode BusMaster { get; set; }
+
+        public RoutingTable(NetNode busMaster, ArbiterTreeNode rootNode)
+        {
+            this.BusMaster = busMaster;
+            this.RootNode = rootNode;
+        }
 
         public ArbiterTreeNode NodeWithShip(string token)
         {
             return _nodeByShipToken.GetValueOrDefault(token, null);
         }
 
-        internal string AddShipToken()
+        private string AddShipToken()
         {
             string token, pid;
             do
             {
-                token = new Guid().ToString();
+                token = Guid.NewGuid().ToString();
                 pid = token.Substring(token.Length - 8);
             }
             while (_shipPublicIds.Contains(pid));
@@ -35,10 +43,10 @@ namespace SArbiter
             return token;
         }
 
-        internal string AddNewShip(out ArbiterTreeNode parentNode)
+        public string AddNewShip(out ArbiterTreeNode parentNode)
         {
             string token = AddShipToken();
-            parentNode = _root.RandomLeafNode();
+            parentNode = (ArbiterTreeNode)RootNode.RandomLeafNode();
             _nodeByShipToken[token] = parentNode;
             return token;
         }

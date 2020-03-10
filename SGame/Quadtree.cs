@@ -63,7 +63,7 @@ namespace SGame
             ScanShootResults results = new ScanShootResults();
 
             // 1) Search ships locally (but only if affected by the scan)
-            bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds , msg);
+            bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds, msg);
             if (affected)
             {
                 Vector2 leftPoint = MathUtils.DirVec(msg.Direction + msg.Width) * msg.Radius;
@@ -150,6 +150,7 @@ namespace SGame
     class RemoteQuadTreeNode : SGameQuadTreeNode
     {
         public static readonly TimeSpan REPLYTIMEOUT = new TimeSpan(1500);
+
         public RemoteQuadTreeNode(SGameQuadTreeNode parent, Quad bounds, uint depth, NetNode bus, LiteNetLib.NetPeer nodePeer)
             : base(parent, bounds, depth)
         {
@@ -176,7 +177,7 @@ namespace SGame
 
         public override async Task<ScanShootResults> ScanShootRecur(Messages.ScanShoot msg)
         {
-            bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds , msg);
+            bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds, msg);
             if (affected)
             {
                 Bus.SendMessage(msg, NodePeer);
