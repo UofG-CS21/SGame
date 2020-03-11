@@ -31,6 +31,29 @@ namespace SShared.Messages
     }
 
     /// <summary>
+    /// A message sent to the arbiter when a ship needs to be transferred to its parent node.
+    /// </summary>
+    public class ShipTransferred : IMessage
+    {
+        /// <summary>
+        /// The token of the ship who must be moved
+        /// </summary>
+        public Spaceship Ship;
+
+        // -- INetSerializable -------------------------------------------------
+
+        public void Serialize(NetDataWriter writer)
+        {
+            Ship.Serialize(writer);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            Ship.Deserialize(reader);
+        }
+    }
+
+    /// <summary>
     /// A message about a `ScanShoot` operation striking a ship.
     /// </summary>
     public class Struck : IMessage
@@ -215,7 +238,8 @@ namespace SShared.Messages
             processor.RegisterNestedType<Struck>(() => new Struck());
             processor.RegisterNestedType<ShipConnected>(() => new ShipConnected());
             processor.RegisterNestedType<ShipDisconnected>(() => new ShipDisconnected());
-            processor.RegisterNestedType<MoveShipUp>(()=> new MoveShipUp());
+            processor.RegisterNestedType<MoveShipUp>(() => new MoveShipUp());
+            processor.RegisterNestedType<ShipTransferred>(() => new ShipTransferred());
         }
     }
 }
