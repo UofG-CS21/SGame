@@ -43,7 +43,7 @@ namespace SShared
         /// <summary>
         /// A serializer that can be used to serialize / deserialize any `BusMsgs.*`.
         /// </summary>
-        public NetPacketProcessor PacketProcessor { get; private set; }
+        public NetNodePacketProcessor PacketProcessor { get; private set; }
 
         /// <summary>
         /// Initializes a bus node.
@@ -73,7 +73,7 @@ namespace SShared
 
             _writer = new NetDataWriter();
 
-            PacketProcessor = new NetPacketProcessor();
+            PacketProcessor = new NetNodePacketProcessor();
             Messages.Serialization.RegisterAllSerializers(PacketProcessor);
         }
 
@@ -142,7 +142,7 @@ namespace SShared
 
         private void NetworkReceivedHandler(NetPeer peer, NetPacketReader reader, DeliveryMethod deliveryMethod)
         {
-            PacketProcessor.ReadAllPackets(reader, peer);
+            PacketProcessor.ReadAllPackets(peer, reader);
             reader.Recycle();
         }
     }
@@ -150,7 +150,7 @@ namespace SShared
     /// <summary>
     /// Waits for a message of type T from a NetNode.
     /// </summary>
-    public class MessageWaiter<T> where T : class, IMessage
+    public class MessageWaiter<T> where T : class, IMessage, new()
     {
         TaskCompletionSource<T> _completionSrc;
 
@@ -164,25 +164,24 @@ namespace SShared
             Node = node;
             Peer = peer;
             _completionSrc = new TaskCompletionSource<T>();
-            // TODO!! Node.OnMessageReceived += OnMessageReceived;
+            Node.PacketProcessor.Events<T>().OnMessageReceived += OnMessageReceived;
         }
 
-        // TODO! internal void OnMessageReceived(object sender, MessageEventArgs e)
-        // TODO! {
-        // TODO!     if (Peer == null || e.Sender == Peer)
-        // TODO!     {
-        // TODO!         var tMsg = e.Message as T;
-        // TODO!         if (tMsg != null && (Filter == null || Filter(tMsg)))
-        // TODO!         {
-        // TODO!             Node.OnMessageReceived -= OnMessageReceived;
-        // TODO!             _completionSrc.SetResult(tMsg);
-        // TODO!         }
-        // TODO!     }
-        // TODO! }
-        // TODO! ~MessageWaiter()
-        // TODO! {
-        // TODO!     Node.OnMessageReceived -= OnMessageReceived;
-        // TODO! }
+        internal void OnMessageReceived(NetPeer sender, T message)
+        {
+            if (Peer == null || sender == Peer)
+            {
+                if (Filter == null || Filter(message))
+                {
+                    Node.PacketProcessor.Events<T>().OnMessageReceived -= OnMessageReceived;
+                    _completionSrc.SetResult(message);
+                }
+            }
+        }
+        ~MessageWaiter()
+        {
+            Node.PacketProcessor.Events<T>().OnMessageReceived -= OnMessageReceived;
+        }
 
         public NetNode Node { get; private set; }
 
