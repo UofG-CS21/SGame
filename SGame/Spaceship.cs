@@ -9,11 +9,6 @@ namespace SGame
     class LocalSpaceship : Spaceship
     {
         /// <summary>
-        /// Velocity of the spaceship.
-        /// </summary>
-        public Vector2 Velocity { get; set; }
-
-        /// <summary>
         /// The game timer used for this spaceship. 
         /// </summary>
         public GameTime GameTime { get; set; }
@@ -37,8 +32,22 @@ namespace SGame
             : base(token)
         {
             this.GameTime = gameTime;
+            this.LastUpdate = gameTime.ElapsedMilliseconds;
+            this.LastCombat = this.LastUpdate;
+        }
 
-            this.Velocity = new Vector2(0, 0);
+        public LocalSpaceship(Spaceship transferredSpaceship, GameTime gameTime)
+        {
+            this.Area = transferredSpaceship.Area;
+            this.Energy = transferredSpaceship.Energy;
+            this.KillReward = transferredSpaceship.KillReward;
+            this.Pos = transferredSpaceship.Pos;
+            this.ShieldDir = transferredSpaceship.ShieldDir;
+            this.ShieldWidth = transferredSpaceship.ShieldWidth;
+            this.Token = transferredSpaceship.Token;
+            this.Velocity = transferredSpaceship.Velocity;
+
+            this.GameTime = gameTime;
             this.LastUpdate = gameTime.ElapsedMilliseconds;
             this.LastCombat = this.LastUpdate;
         }
