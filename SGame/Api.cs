@@ -124,13 +124,8 @@ namespace SGame
             Console.WriteLine($"Creating ship for player (token={msg.Token})");
 
             LocalSpaceship ship = new LocalSpaceship(msg.Token, gameTime);
-#if !DEBUG
             var randomShipBounds = MathUtils.RandomQuadInQuad(QuadTreeNode.Bounds, ship.Radius());
             ship.Pos = new Vector2(randomShipBounds.CentreX, randomShipBounds.CentreY);
-#else
-            // FIXME - this is to make tests still work!
-            ship.Pos = new Vector2(0, 0);
-#endif
             QuadTreeNode.ShipsByToken.Add(msg.Token, ship);
 
             Bus.SendMessage(new Messages.ShipConnected() { Token = msg.Token }, Bus.FirstPeer);
