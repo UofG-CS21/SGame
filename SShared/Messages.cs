@@ -12,31 +12,9 @@ namespace SShared.Messages
     /// </summary>
     public class MoveShipUp : IMessage
     {
+
         /// <summary>
-        /// The token of the ship who must be moved
-        /// </summary>
-        public string ShipToken;
-
-        // -- INetSerializable -------------------------------------------------
-
-        public void Serialize(NetDataWriter writer)
-        {
-            writer.Put(ShipToken);
-        }
-
-        public void Deserialize(NetDataReader reader)
-        {
-            ShipToken = reader.GetString();
-        }
-    }
-
-    /// <summary>
-    /// A message sent to the arbiter when a ship needs to be transferred to its parent node.
-    /// </summary>
-    public class ShipTransferred : IMessage
-    {
-        /// <summary>
-        /// The token of the ship who must be moved
+        /// The ship being transferred
         /// </summary>
         public Spaceship Ship;
 
@@ -44,6 +22,31 @@ namespace SShared.Messages
 
         public void Serialize(NetDataWriter writer)
         {
+
+            Ship.Serialize(writer);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            Ship.Deserialize(reader);
+        }
+    }
+
+    /// <summary>
+    /// A message sent to a node when a ship has been transferred to it.
+    /// </summary>
+    public class ShipTransferred : IMessage
+    {
+        /// <summary>
+        /// The ship being transferred
+        /// </summary>
+        public Spaceship Ship;
+
+        // -- INetSerializable -------------------------------------------------
+
+        public void Serialize(NetDataWriter writer)
+        {
+
             Ship.Serialize(writer);
         }
 
