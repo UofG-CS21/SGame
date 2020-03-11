@@ -36,6 +36,11 @@ namespace SShared
         /// </summary>
         public Vector2 Pos { get; set; }
 
+        /// <summary>
+        /// Velocity of the spaceship.
+        /// </summary>
+        public Vector2 Velocity { get; set; }
+
         private double _shieldDir;
 
         /// <summary>
