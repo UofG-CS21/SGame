@@ -94,7 +94,23 @@ namespace SGame
             foreach (var ship in QuadTreeNode.ShipsByToken.Values)
             {
                 ship.UpdateState();
+
+                LocalQuadTreeNode node = QuadTreeNode;
+                //TODO: Handle case where ships are outside of world bounds
+                if (!QuadTreeNode.Bounds.ContainsShip(ship))
+                {
+                    Messages.MoveShipUp msg = new Messages.MoveShipUp() { Ship = ship };
+                    Bus.SendMessage(msg, Bus.Host.First());
+                }
+
             }
+        }
+
+        public void OnShipTransferred(Messages.ShipTransferred msg, NetPeer peer)
+        {
+
+            LocalSpaceship localShip = new LocalSpaceship(msg.Ship, gameTime);
+            QuadTreeNode.ShipsByToken.Add(msg.Ship.Token, localShip);
         }
 
         /// <summary>
