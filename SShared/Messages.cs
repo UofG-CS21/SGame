@@ -8,62 +8,25 @@ namespace SShared.Messages
 {
 
     /// <summary>
-    /// A message sent when a scanning or shooting action is requested.
+    /// A message sent to the arbiter when a ship needs to be transferred to its parent node.
     /// </summary>
-    public class ScanShoot : IMessage
+    public class MoveShipUp : IMessage
     {
         /// <summary>
-        /// The token of the ship who initiated the scan/shoot operation.
+        /// The token of the ship who must be moved
         /// </summary>
-        public string Originator;
-
-        /// <summary>
-        /// The origin of the scan.
-        /// </summary>
-        public Vector2 Origin;
-
-        /// <summary>
-        /// World-space direction of the center of the scan **in radians**.
-        /// </summary>
-        public double Direction;
-
-        /// <summary>
-        /// Half-width of the scan cone, **in radians**.
-        /// </summary>
-        public double Width;
-
-        /// <summary>
-        /// Radius of the scan cone.
-        /// </summary>
-        public double Radius;
-
-        /// <summary>
-        /// `energy * scalingFactor` for a shot; Zero for just scanning
-        /// </summary>
-        public double ScaledShotEnergy;
+        public string ShipToken;
 
         // -- INetSerializable -------------------------------------------------
 
         public void Serialize(NetDataWriter writer)
         {
-            writer.Put(Originator);
-            writer.Put(Origin.X);
-            writer.Put(Origin.Y);
-            writer.Put(Direction);
-            writer.Put(Width);
-            writer.Put(Radius);
-            writer.Put(ScaledShotEnergy);
+            writer.Put(ShipToken);
         }
 
         public void Deserialize(NetDataReader reader)
         {
-            Originator = reader.GetString();
-            Origin.X = reader.GetDouble();
-            Origin.Y = reader.GetDouble();
-            Direction = reader.GetDouble();
-            Width = reader.GetDouble();
-            Radius = reader.GetDouble();
-            ScaledShotEnergy = reader.GetDouble();
+            ShipToken = reader.GetString();
         }
     }
 
@@ -128,6 +91,68 @@ namespace SShared.Messages
     }
 
     /// <summary>
+    /// A message sent when a scanning or shooting action is requested.
+    /// </summary>
+    public class ScanShoot : IMessage
+    {
+        /// <summary>
+        /// The token of the ship who initiated the scan/shoot operation.
+        /// </summary>
+        public string Originator;
+
+        /// <summary>
+        /// The origin of the scan.
+        /// </summary>
+        public Vector2 Origin;
+
+        /// <summary>
+        /// World-space direction of the center of the scan **in radians**.
+        /// </summary>
+        public double Direction;
+
+        /// <summary>
+        /// Half-width of the scan cone, **in radians**.
+        /// </summary>
+        public double Width;
+
+        /// <summary>
+        /// Radius of the scan cone.
+        /// </summary>
+        public double Radius;
+
+        /// <summary>
+        /// `energy * scalingFactor` for a shot; Zero for just scanning
+        /// </summary>
+        public double ScaledShotEnergy;
+
+        // -- INetSerializable -------------------------------------------------
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(Originator);
+            writer.Put(Origin.X);
+            writer.Put(Origin.Y);
+            writer.Put(Direction);
+            writer.Put(Width);
+            writer.Put(Radius);
+            writer.Put(ScaledShotEnergy);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            Originator = reader.GetString();
+            Origin.X = reader.GetDouble();
+            Origin.Y = reader.GetDouble();
+            Direction = reader.GetDouble();
+            Width = reader.GetDouble();
+            Radius = reader.GetDouble();
+            ScaledShotEnergy = reader.GetDouble();
+        }
+    }
+
+
+
+    /// <summary>
     /// A message about a ship connecting to the SArbiter.
     /// </summary>
     public class ShipConnected : IMessage
@@ -190,6 +215,7 @@ namespace SShared.Messages
             processor.RegisterNestedType<Struck>(() => new Struck());
             processor.RegisterNestedType<ShipConnected>(() => new ShipConnected());
             processor.RegisterNestedType<ShipDisconnected>(() => new ShipDisconnected());
+            processor.RegisterNestedType<MoveShipUp>(()=> new MoveShipUp());
         }
     }
 }
