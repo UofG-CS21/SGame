@@ -143,7 +143,9 @@ namespace SShared
         /// </summary>
         public async Task Redirect(string url)
         {
-            response.Redirect(url);
+            response.RedirectLocation = url;
+            response.StatusCode = 307;
+            response.StatusDescription = "Temporary Redirect";
             response.Close();
             this.Sent = true;
         }
