@@ -107,6 +107,11 @@ namespace SShared
             peer.Send(_writer, delivery);
         }
 
+        /// <summary>
+        /// Convenience alias for `Host.FirstPeer`.
+        /// </summary>
+        public NetPeer FirstPeer { get { return Host.FirstPeer; } }
+
         // ===== Dispose pattern =======================================================================================
 
         protected virtual void Dispose(bool disposing)

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using LiteNetLib.Utils;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace SShared.Messages
 {
@@ -243,6 +245,29 @@ namespace SShared.Messages
             processor.RegisterNestedType<ShipDisconnected>(() => new ShipDisconnected());
             processor.RegisterNestedType<MoveShipUp>(() => new MoveShipUp());
             processor.RegisterNestedType<ShipTransferred>(() => new ShipTransferred());
+        }
+    }
+
+    /// <summary>
+    /// A sudo call. 
+    /// </summary>
+    public class Sudo : IMessage
+    {
+        /// <summary>
+        /// JSON payload of the call.
+        /// </summary>
+        public JObject Json { get; set; }
+
+        // -- INetSerializable -------------------------------------------------
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(Json.ToString(Formatting.None));
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            Json = JObject.Parse(reader.GetString());
         }
     }
 }

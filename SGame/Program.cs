@@ -88,7 +88,7 @@ namespace SGame
 
             // FIXME: Assuming the local SGame node manages the whole universe for now
             //        (this will change when multiple nodes are connected to a SArbiter)
-            var quadtree = new LocalQuadTreeNode(null, new SShared.Quad(0.0, 0.0, double.MaxValue), 0);
+            var quadtree = new LocalQuadTreeNode(null, new SShared.Quad(0.0, 0.0, 1 << 31), 0);
             this.api = new Api(quadtree, bus);
             this.router = new Router<Api>(api);
         }

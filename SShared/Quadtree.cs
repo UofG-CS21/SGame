@@ -160,5 +160,16 @@ namespace SShared
             return node;
         }
 
+        /// <summary>
+        /// Apply a function to all nodes recursively (preorder traversal).
+        /// </summary>
+        public void ApplyRecur(Action<QuadTreeNode<T>> action)
+        {
+            action(this);
+            foreach (var child in _children)
+            {
+                if (child != null) child.ApplyRecur(action);
+            }
+        }
     }
 }

@@ -50,6 +50,9 @@ namespace SGame
 
             this.Bus.PacketProcessor.Events<Messages.ShipConnected>().OnMessageReceived += OnShipConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipDisconnected>().OnMessageReceived += OnShipDisconnected;
+#if DEBUG
+            this.Bus.PacketProcessor.Events<Messages.Sudo>().OnMessageReceived += OnSudo;
+#endif
         }
 
         /// <summary>
@@ -121,9 +124,16 @@ namespace SGame
             Console.WriteLine($"Creating ship for player (token={msg.Token})");
 
             LocalSpaceship ship = new LocalSpaceship(msg.Token, gameTime);
+#if !DEBUG
             var randomShipBounds = MathUtils.RandomQuadInQuad(QuadTreeNode.Bounds, ship.Radius());
             ship.Pos = new Vector2(randomShipBounds.CentreX, randomShipBounds.CentreY);
+#else
+            // FIXME - this is to make tests still work!
+            ship.Pos = new Vector2(0, 0);
+#endif
             QuadTreeNode.ShipsByToken.Add(msg.Token, ship);
+
+            Bus.SendMessage(new Messages.ShipConnected() { Token = msg.Token }, Bus.FirstPeer);
         }
 
         /// <summary>
@@ -133,8 +143,11 @@ namespace SGame
         {
             Console.WriteLine($"Disconnecting player (token={msg.Token})");
 
-            // TODO: Serialize ship state here?
-            QuadTreeNode.ShipsByToken.Remove(msg.Token);
+            if (QuadTreeNode.ShipsByToken.Remove(msg.Token))
+            {
+                // TODO: Serialize ship state here?
+                Bus.SendMessage(new Messages.ShipDisconnected() { Token = msg.Token }, Bus.FirstPeer);
+            }
         }
 
         /// <summary>
@@ -178,6 +191,10 @@ namespace SGame
         [ApiParam("token", typeof(string))]
         public async Task GetShipInfo(ApiResponse response, ApiData data)
         {
+#if DEBUG
+            // HACK: Force sudo params to be applied
+            Bus.Update();
+#endif
 
             var ship = await GetLocalShip(response, data.Json);
             if (ship == null)
@@ -505,14 +522,12 @@ namespace SGame
         };
 
         /// <summary>
-        /// "SuperUser DO"; debug-only endpoint used to forcefully set attributes of a connected ship via REST.
+        /// "SuperUser DO"; debug-only message used to forcefully set attributes of a connected ship.
         /// </summary>
-        /// <param name="data">The JSON payload of the request, containing the token of the ship.</param>
-        /// <param name="response">The HTTP response to the client.</param>
-        [ApiRoute("sudo")]
-        [ApiParam("token", typeof(string), Optional = true)]
-        public async Task Sudo(ApiResponse response, ApiData data)
+        public void OnSudo(NetPeer peer, Messages.Sudo data)
         {
+            Console.WriteLine("Sudo: {0}", data.Json.ToString());
+
             LocalSpaceship ship = null;
 
             if (data.Json.ContainsKey("token"))
@@ -521,8 +536,6 @@ namespace SGame
                 ship = QuadTreeNode.ShipsByToken.GetValueOrDefault(token, null);
                 if (ship == null)
                 {
-                    response.Data["error"] = "Ship not found for given token.";
-                    await response.Send(500);
                     return;
                 }
             }
@@ -534,8 +547,7 @@ namespace SGame
                 AttributeSetter setter = SUDO_SETTER_MAP.GetValueOrDefault(kv.Key, null);
                 if (setter == null)
                 {
-                    response.Data["error"] = "Unrecognized attribute `" + kv.Key + "`";
-                    await response.Send(500);
+                    Console.Error.WriteLine("Sudo: Unrecognized attribute `" + kv.Key + "`");
                     return;
                 }
 
@@ -545,13 +557,13 @@ namespace SGame
                 }
                 catch (Exception exc)
                 {
-                    response.Data["error"] = "Failed to set attribute `" + kv.Key + "`: " + exc.ToString();
-                    await response.Send(500);
+                    Console.Error.WriteLine("Sudo: Failed to set attribute `" + kv.Key + "`: " + exc.ToString());
                     return;
                 }
             }
 
-            await response.Send(200);
+            // Send the same sudo back to the arbiter as ACK
+            Bus.SendMessage(data, Bus.FirstPeer, LiteNetLib.DeliveryMethod.ReliableOrdered);
         }
 #endif
 
