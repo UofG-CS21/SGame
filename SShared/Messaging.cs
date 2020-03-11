@@ -43,7 +43,7 @@ namespace SShared
         /// <summary>
         /// A serializer that can be used to serialize / deserialize any `BusMsgs.*`.
         /// </summary>
-        public NetPacketProcessor PacketProcessor { get; private set; }
+        public NetNodePacketProcessor PacketProcessor { get; private set; }
 
         /// <summary>
         /// Initializes a bus node.
@@ -73,7 +73,7 @@ namespace SShared
 
             _writer = new NetDataWriter();
 
-            PacketProcessor = new NetPacketProcessor();
+            PacketProcessor = new NetNodePacketProcessor();
             Messages.Serialization.RegisterAllSerializers(PacketProcessor);
         }
 
@@ -142,7 +142,7 @@ namespace SShared
 
         private void NetworkReceivedHandler(NetPeer peer, NetPacketReader reader, DeliveryMethod deliveryMethod)
         {
-            PacketProcessor.ReadAllPackets(reader, peer);
+            PacketProcessor.ReadAllPackets(peer, reader);
             reader.Recycle();
         }
     }

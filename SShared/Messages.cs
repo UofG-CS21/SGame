@@ -181,7 +181,7 @@ namespace SShared.Messages
         /// <summary>
         /// Registers serializers for all bus message types.
         /// </summary>
-        public static void RegisterAllSerializers(NetPacketProcessor processor)
+        public static void RegisterAllSerializers(NetNodePacketProcessor processor)
         {
             // v--- Extra types to be registered ---v
             processor.RegisterNestedType<Spaceship>(() => new Spaceship(null));

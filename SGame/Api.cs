@@ -48,8 +48,8 @@ namespace SGame
             this.Bus = bus;
             this.DeadShips = new Dictionary<string, Spaceship>();
 
-            this.Bus.PacketProcessor.SubscribeReusable<Messages.ShipConnected, NetPeer>(OnShipConnected);
-            this.Bus.PacketProcessor.SubscribeReusable<Messages.ShipDisconnected, NetPeer>(OnShipDisconnected);
+            this.Bus.PacketProcessor.Events<Messages.ShipConnected>().OnMessageReceived += OnShipConnected;
+            this.Bus.PacketProcessor.Events<Messages.ShipDisconnected>().OnMessageReceived += OnShipDisconnected;
         }
 
         /// <summary>
@@ -100,7 +100,7 @@ namespace SGame
         /// <summary>
         /// Handles a "ship connected" bus message.
         /// </summary>
-        public void OnShipConnected(Messages.ShipConnected msg, NetPeer peer)
+        public void OnShipConnected(NetPeer sender, Messages.ShipConnected msg)
         {
             Console.WriteLine($"Creating ship for player (token={msg.Token})");
 
@@ -113,7 +113,7 @@ namespace SGame
         /// <summary>
         /// Handles a "ship disconnected" bus message.
         /// </summary>
-        public void OnShipDisconnected(Messages.ShipDisconnected msg, NetPeer peer)
+        public void OnShipDisconnected(NetPeer sender, Messages.ShipDisconnected msg)
         {
             Console.WriteLine($"Disconnecting player (token={msg.Token})");
 
@@ -132,7 +132,6 @@ namespace SGame
         [ApiParam("y", typeof(double))]
         public async Task AcceleratePlayer(ApiResponse response, ApiData data)
         {
-
             var ship = await GetLocalShip(response, data.Json);
             if (ship == null)
             {
