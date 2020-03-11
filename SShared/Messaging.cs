@@ -19,25 +19,9 @@ namespace SShared
     }
 
     /// <summary>
-    /// Arguments to an event involving a bus message. 
-    /// </summary>
-    public class MessageEventArgs : EventArgs
-    {
-        public MessageEventArgs(NetPeer sender, IMessage message)
-        {
-            Sender = sender;
-            Message = message;
-        }
-
-        public NetPeer Sender { get; private set; }
-
-        public IMessage Message { get; private set; }
-    };
-
-    /// <summary>
     /// A node on the message bus system.
     /// </summary>
-    public class NetNode : INetEventListener, IDisposable
+    public class NetNode : EventBasedNetListener, IDisposable
     {
         /// <summary>
         /// Key used to authenticate clients on the bus.
@@ -59,7 +43,7 @@ namespace SShared
         /// <summary>
         /// A serializer that can be used to serialize / deserialize any `BusMsgs.*`.
         /// </summary>
-        public NetSerializer Serializer { get; private set; }
+        public NetPacketProcessor PacketProcessor { get; private set; }
 
         /// <summary>
         /// Initializes a bus node.
@@ -68,6 +52,11 @@ namespace SShared
         /// <param name="port">The port to connect to (or bind to for server nodes).</param>
         public NetNode(string hostname, int port)
         {
+            this.ConnectionRequestEvent += ConnectionRequestHandler;
+            this.PeerConnectedEvent += PeerConnectedHandler;
+            this.PeerDisconnectedEvent += PeerDisconnectedHandler;
+            this.NetworkReceiveEvent += NetworkReceivedHandler;
+
             Host = new NetManager(this);
             if (hostname != null)
             {
@@ -84,8 +73,8 @@ namespace SShared
 
             _writer = new NetDataWriter();
 
-            Serializer = new NetSerializer();
-            Messages.Serialization.RegisterAllSerializers(Serializer);
+            PacketProcessor = new NetPacketProcessor();
+            Messages.Serialization.RegisterAllSerializers(PacketProcessor);
         }
 
         /// <summary>
@@ -97,18 +86,13 @@ namespace SShared
         }
 
         /// <summary>
-        /// An event that is triggered when a message is received by this node.
-        /// </summary>
-        public event EventHandler<MessageEventArgs> OnMessageReceived;
-
-        /// <summary>
         /// Sends a bus message to every peer connected to this node.
         /// </summary>
         public void BroadcastMessage<T>(T message, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered)
             where T : class, IMessage, new()
         {
             _writer.Reset();
-            Serializer.Serialize<T>(_writer, message);
+            PacketProcessor.Write<T>(_writer, message);
             Host.SendToAll(_writer, delivery);
         }
 
@@ -119,7 +103,7 @@ namespace SShared
             where T : class, IMessage, new()
         {
             _writer.Reset();
-            Serializer.Serialize<T>(_writer, message);
+            PacketProcessor.Write<T>(_writer, message);
             peer.Send(_writer, delivery);
         }
 
@@ -140,60 +124,26 @@ namespace SShared
 
         // ===== LiteNetLib event handlers =============================================================================
 
-        public void OnConnectionRequest(ConnectionRequest request)
+        private void ConnectionRequestHandler(ConnectionRequest request)
         {
             Console.WriteLine($"Bus: connecting {request.RemoteEndPoint}");
             request.AcceptIfKey(Secret);
         }
 
-        public void OnPeerConnected(NetPeer peer)
+        private void PeerConnectedHandler(NetPeer peer)
         {
             Console.WriteLine($"Bus: {peer.EndPoint} connected");
-            // TODO IMPLEMENT: Add peer to routing table and notify the other peers of this
         }
 
-        public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
+        private void PeerDisconnectedHandler(NetPeer peer, DisconnectInfo disconnectInfo)
         {
             Console.WriteLine($"Bus: {peer.EndPoint} disconnected ({disconnectInfo})");
         }
 
-        public void OnNetworkError(IPEndPoint endPoint, SocketError socketError)
+        private void NetworkReceivedHandler(NetPeer peer, NetPacketReader reader, DeliveryMethod deliveryMethod)
         {
-            Console.Error.WriteLine($"Bus: {endPoint} error: {socketError}");
-        }
-
-        public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, DeliveryMethod deliveryMethod)
-        {
-            // Read the packet and deserialize a bus message from it...
-            ushort msgId;
-            if (reader.TryGetUShort(out msgId))
-            {
-                Type msgType;
-                if (Messages.Serialization.MessageTypes.TryGetValue(msgId, out msgType))
-                {
-                    // Expand the appropriate `NetSerializer.Deserialize<TMessage>()` and call it to deserialize the message
-                    // See: https://stackoverflow.com/a/3958029
-                    var typelessDeserialize = typeof(NetSerializer).GetMethod("Deserialize");
-                    var deserialize = typelessDeserialize.MakeGenericMethod(msgType);
-                    var message = (IMessage)deserialize.Invoke(Serializer, new object[] { reader });
-                    // Dispatch the event
-                    OnMessageReceived.Invoke(this, new MessageEventArgs(peer, message));
-                }
-                // else: unknown message type, ignore
-            }
-            // else: broken message, ignore
-
+            PacketProcessor.ReadAllPackets(reader, peer);
             reader.Recycle();
-        }
-
-        public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
-        {
-            // TODO IMPLEMENT: Do something when a message is received from a not-connected peer (?)
-        }
-
-        public void OnNetworkLatencyUpdate(NetPeer peer, int latency)
-        {
-            // TODO: Log the new ping for the peer?
         }
     }
 
@@ -214,25 +164,25 @@ namespace SShared
             Node = node;
             Peer = peer;
             _completionSrc = new TaskCompletionSource<T>();
-            Node.OnMessageReceived += OnMessageReceived;
+            // TODO!! Node.OnMessageReceived += OnMessageReceived;
         }
 
-        internal void OnMessageReceived(object sender, MessageEventArgs e)
-        {
-            if (Peer == null || e.Sender == Peer)
-            {
-                var tMsg = e.Message as T;
-                if (tMsg != null && (Filter == null || Filter(tMsg)))
-                {
-                    Node.OnMessageReceived -= OnMessageReceived;
-                    _completionSrc.SetResult(tMsg);
-                }
-            }
-        }
-        ~MessageWaiter()
-        {
-            Node.OnMessageReceived -= OnMessageReceived;
-        }
+        // TODO! internal void OnMessageReceived(object sender, MessageEventArgs e)
+        // TODO! {
+        // TODO!     if (Peer == null || e.Sender == Peer)
+        // TODO!     {
+        // TODO!         var tMsg = e.Message as T;
+        // TODO!         if (tMsg != null && (Filter == null || Filter(tMsg)))
+        // TODO!         {
+        // TODO!             Node.OnMessageReceived -= OnMessageReceived;
+        // TODO!             _completionSrc.SetResult(tMsg);
+        // TODO!         }
+        // TODO!     }
+        // TODO! }
+        // TODO! ~MessageWaiter()
+        // TODO! {
+        // TODO!     Node.OnMessageReceived -= OnMessageReceived;
+        // TODO! }
 
         public NetNode Node { get; private set; }
 

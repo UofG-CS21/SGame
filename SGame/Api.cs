@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using LiteNetLib;
 using System.Threading.Tasks;
 using SShared;
+using Messages = SShared.Messages;
 
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
@@ -26,19 +28,28 @@ namespace SGame
         public LocalQuadTreeNode QuadTreeNode { get; set; }
 
         /// <summary>
+        /// The host that represents this SGame node on the bus.
+        /// </summary>
+        public NetNode Bus { get; set; }
+
+        /// <summary>
         /// All ships who died in this node. F.
         /// </summary>
         public Dictionary<string, Spaceship> DeadShips { get; set; }
 
         // start the gameTime stopwatch on API creation
-        public Api(LocalQuadTreeNode quadTreeNode)
+        public Api(LocalQuadTreeNode quadTreeNode, NetNode bus)
         {
             this.gameTime = new GameTime();
             //#if DEBUG
             //   this.gameTime.SetElapsedMillisecondsManually(0);
             //#endif
             this.QuadTreeNode = quadTreeNode;
+            this.Bus = bus;
             this.DeadShips = new Dictionary<string, Spaceship>();
+
+            this.Bus.PacketProcessor.SubscribeReusable<Messages.ShipConnected, NetPeer>(OnShipConnected);
+            this.Bus.PacketProcessor.SubscribeReusable<Messages.ShipDisconnected, NetPeer>(OnShipDisconnected);
         }
 
         /// <summary>
@@ -87,50 +98,27 @@ namespace SGame
         }
 
         /// <summary>
-        /// Handles a "connect" REST request, connecting a player to the server.
-        /// Responds with a fresh spaceship ID and player token for that spaceship.
+        /// Handles a "ship connected" bus message.
         /// </summary>
-        /// <param name="response">The HTTP response to the client.</param>
-        [ApiRoute("connect")]
-        public async Task ConnectPlayer(ApiResponse response, ApiData data)
+        public void OnShipConnected(Messages.ShipConnected msg, NetPeer peer)
         {
-            // TODO: For persistency, if a player passes a pre-existing token the ship
-            //       needs to be deserialized
+            Console.WriteLine($"Creating ship for player (token={msg.Token})");
 
-            string playerToken;
-            do
-            {
-                playerToken = Guid.NewGuid().ToString();
-            }
-            while (QuadTreeNode.ShipsByToken.ContainsKey(playerToken));
-
-            QuadTreeNode.ShipsByToken[playerToken] = new LocalSpaceship(playerToken, gameTime);
-            Console.WriteLine($"Connected player #{QuadTreeNode.ShipsByToken.Count} (token={playerToken})");
-
-            response.Data["token"] = playerToken;
-            await response.Send();
+            LocalSpaceship ship = new LocalSpaceship(msg.Token, gameTime);
+            var randomShipBounds = MathUtils.RandomQuadInQuad(QuadTreeNode.Bounds, ship.Radius());
+            ship.Pos = new Vector2(randomShipBounds.CentreX, randomShipBounds.CentreY);
+            QuadTreeNode.ShipsByToken.Add(msg.Token, ship);
         }
 
         /// <summary>
-        /// Handles a "disconnect" REST request, disconnecting a player from the server.
+        /// Handles a "ship disconnected" bus message.
         /// </summary>
-        /// <param name="data">The JSON payload of the request, containing the token of the ship to disconnect.</param>
-        /// <param name="response">The HTTP response to the client.</param>
-        [ApiRoute("disconnect")]
-        [ApiParam("token", typeof(string))]
-        public async Task DisconnectPlayer(ApiResponse response, ApiData data)
+        public void OnShipDisconnected(Messages.ShipDisconnected msg, NetPeer peer)
         {
-            var ship = await GetLocalShip(response, data.Json);
-            if (ship == null)
-            {
-                return;
-            }
+            Console.WriteLine($"Disconnecting player (token={msg.Token})");
 
-            // TODO: For persistency, need to serialize the ship to database
-
-            Console.WriteLine($"Disconnecting player (token={ship.Token})");
-            QuadTreeNode.ShipsByToken.Remove(ship.Token);
-            await response.Send(200);
+            // TODO: Serialize ship state here?
+            QuadTreeNode.ShipsByToken.Remove(msg.Token);
         }
 
         /// <summary>
@@ -153,7 +141,7 @@ namespace SGame
             double x = (double)data.Json["x"];
             double y = (double)data.Json["y"];
 
-            if( x !=0 || y != 0)
+            if (x != 0 || y != 0)
             {
                 int energyRequired = (int)Math.Ceiling(ship.Area * (Math.Abs(x) + Math.Abs(y)));
                 int energySpent = Math.Min(energyRequired, (int)Math.Floor(ship.Energy));

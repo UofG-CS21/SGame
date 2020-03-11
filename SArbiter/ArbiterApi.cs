@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using SShared;
+using Messages = SShared.Messages;
 
 namespace SArbiter
 {
@@ -18,6 +19,7 @@ namespace SArbiter
         {
             ArbiterTreeNode shipNode = null;
             var token = RoutingTable.AddNewShip(out shipNode);
+
             response.Data["token"] = token;
             await response.Send(200);
         }
@@ -26,6 +28,9 @@ namespace SArbiter
         [ApiParam("token", typeof(string))]
         public async Task DisconnectPlayer(ApiResponse response, ApiData data)
         {
+            var token = (string)data.Json["token"];
+
+            RoutingTable.RemoveShip(token);
             await response.Send(200);
         }
 
@@ -40,7 +45,7 @@ namespace SArbiter
             }
             else
             {
-                var url = $"{node.ApiUrl}/{route}";
+                var url = $"{node.ApiUrl}{route}";
                 await response.Redirect(url);
             }
         }

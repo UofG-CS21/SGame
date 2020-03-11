@@ -32,15 +32,9 @@ namespace SArbiter
         public uint ClientPort { get; set; }
 
         /// <summary>
-        /// The hostname to bind to for the master event bus.
-        /// </summary>
-        [Option("bus-host", Default = "localhost", Required = false, HelpText = "The hostname to bind to for the master event bus.")]
-        public string BusHost { get; set; }
-
-        /// <summary>
         /// The UDP port to use for the master event bus.
         /// </summary>
-        [Option("bus-port", Default = 3000u, Required = false, HelpText = "The UDP port to use for the master event bus.")]
+        [Option("bus-port", Default = 4242u, Required = false, HelpText = "The UDP port to use for the master event bus.")]
         public uint BusPort { get; set; }
 
         /// <summary>
@@ -62,9 +56,13 @@ namespace SArbiter
 
         internal Program(CmdLineOptions options)
         {
-            _busMaster = new NetNode(options.BusHost, (int)options.BusPort);
+            _busMaster = new NetNode(null, (int)options.BusPort);
             _routingTable = new RoutingTable(_busMaster, null);
             _apiRouter = new Router<ArbiterApi>(new ArbiterApi(_routingTable));
+
+            // FIXME - test!
+            _routingTable.RootNode = new ArbiterTreeNode("http://localhost:9001/", null);
+            _busMaster.PeerConnectedEvent += (LiteNetLib.NetPeer peer) => _routingTable.RootNode.Peer = peer;
 
             _updateTimer = new Timer(1000.0 / options.Tickrate);
             _updateTimer.AutoReset = true;

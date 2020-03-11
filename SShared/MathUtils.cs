@@ -773,7 +773,20 @@ namespace SShared
             Vector2 rightPoint = new Vector2(msg.Radius * Math.Cos(msg.Direction - msg.Width), msg.Radius * Math.Sin(msg.Direction - msg.Width));
 
             //Console.WriteLine("Quad affected: " + quadCentre + " " + msg.Origin maximumQuadRadius + " " + CircleSegmentIntersection(quadCentre, maximumQuadRadius, msg.Origin, msg.Radius, msg.Direction, msg.Width));
-           return CircleTriangleIntersection(quadCentre, maximumQuadRadius, msg.Origin, leftPoint, rightPoint) || CircleSegmentIntersection(quadCentre, maximumQuadRadius, msg.Origin, msg.Radius, msg.Direction, msg.Width);
+            return CircleTriangleIntersection(quadCentre, maximumQuadRadius, msg.Origin, leftPoint, rightPoint) || CircleSegmentIntersection(quadCentre, maximumQuadRadius, msg.Origin, msg.Radius, msg.Direction, msg.Width);
+        }
+
+        public static double RandomInRange(double min, double max)
+        {
+            Random random = new Random();
+            return min + random.NextDouble() * (max - min);
+        }
+
+        public static Quad RandomQuadInQuad(Quad quad, double radius)
+        {
+            double centreX = RandomInRange(quad.X + radius, quad.X2 - radius);
+            double centreY = RandomInRange(quad.Y2 + radius, quad.Y - radius);
+            return new Quad(centreX, centreY, radius);
         }
     }
 }

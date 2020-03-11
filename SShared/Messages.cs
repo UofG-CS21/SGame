@@ -12,8 +12,6 @@ namespace SShared.Messages
     /// </summary>
     public class ScanShoot : IMessage
     {
-        public static ushort Id { get { return 0x0010; } }
-
         /// <summary>
         /// The token of the ship who initiated the scan/shoot operation.
         /// </summary>
@@ -48,7 +46,6 @@ namespace SShared.Messages
 
         public void Serialize(NetDataWriter writer)
         {
-            // NOTE: Id omitted - it gets [de]serialized by the bus
             writer.Put(Originator);
             writer.Put(Origin.X);
             writer.Put(Origin.Y);
@@ -60,7 +57,6 @@ namespace SShared.Messages
 
         public void Deserialize(NetDataReader reader)
         {
-            // NOTE: Id omitted - it gets [de]serialized by the bus
             Originator = reader.GetString();
             Origin.X = reader.GetDouble();
             Origin.Y = reader.GetDouble();
@@ -76,24 +72,22 @@ namespace SShared.Messages
     /// </summary>
     public class Struck : IMessage
     {
-        public static ushort Id { get { return 0x0002; } }
-
         /// <summary>
         /// The token of the ship who initiated the scan/shoot operation.
         /// </summary>
-        public string Originator = null;
+        public string Originator { get; set; }
 
         public class ShipInfo
         {
             /// <summary>
             /// The struck ship.
             /// </summary>
-            public Spaceship Ship;
+            public Spaceship Ship { get; set; }
 
             /// <summary>
             /// Area gain for the originator of the shot, if any. If negative, it means the shot was fatal.
             /// </summary>
-            public double AreaGain;
+            public double AreaGain { get; set; }
         }
 
         /// <summary>
@@ -105,7 +99,6 @@ namespace SShared.Messages
 
         public void Serialize(NetDataWriter writer)
         {
-            // NOTE: Id omitted - it gets [de]serialized by the bus
             writer.Put(Originator);
 
             writer.Put(ShipsInfo.Count);
@@ -118,7 +111,6 @@ namespace SShared.Messages
 
         public void Deserialize(NetDataReader reader)
         {
-            // NOTE: Id omitted - it gets [de]serialized by the bus
             Originator = reader.GetString(64);
 
             int infoCount = reader.GetInt();
@@ -136,46 +128,68 @@ namespace SShared.Messages
     }
 
     /// <summary>
+    /// A message about a ship connecting to the SArbiter.
+    /// </summary>
+    public class ShipConnected : IMessage
+    {
+        /// <summary>
+        /// Token of the ship.
+        /// </summary>
+        public string Token = null;
+
+        // -- INetSerializable -------------------------------------------------
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(Token);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            Token = reader.GetString();
+        }
+    }
+
+    /// <summary>
+    /// A message about a ship disconnecting from the SArbiter.
+    /// </summary>
+    public class ShipDisconnected : IMessage
+    {
+        /// <summary>
+        /// Token of the ship.
+        /// </summary>
+        public string Token = null;
+
+        // -- INetSerializable -------------------------------------------------
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(Token);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            Token = reader.GetString();
+        }
+    }
+
+    /// <summary>
     /// Serialization utilities.
     /// </summary>
     public static class Serialization
     {
         /// <summary>
-        /// Maps message type Ids to the underlying type.
-        /// </summary>
-        static Dictionary<ushort, Type> _msgTypes = new Dictionary<ushort, Type>();
-
-        static Serialization()
-        {
-            // v--- Register all message types here ---v
-            _msgTypes[ScanShoot.Id] = typeof(ScanShoot);
-            _msgTypes[Struck.Id] = typeof(Struck);
-        }
-
-        /// <summary>
-        /// A table of (message type id -> underlying Type) for all known bus message types.
-        /// </summary>
-        public static Dictionary<ushort, Type> MessageTypes { get { return _msgTypes; } }
-
-        /// <summary>
         /// Registers serializers for all bus message types.
         /// </summary>
-        public static void RegisterAllSerializers(NetSerializer serializer)
+        public static void RegisterAllSerializers(NetPacketProcessor processor)
         {
             // v--- Extra types to be registered ---v
-            serializer.RegisterNestedType<Spaceship>(() => new Spaceship(null));
-
-            foreach (var (id, type) in _msgTypes)
-            {
-                // See: https://stackoverflow.com/a/3958029
-                // Equivalent to `serializer.RegisterNestedType<MsgType>(() => new MsgType())`
-                var genericRegistrar = typeof(NetSerializer).GetMethods()
-                    .First(method => method.Name == "RegisterNestedType" && method.IsGenericMethod && method.GetParameters().Length == 1);
-                var registrar = genericRegistrar.MakeGenericMethod(type);
-                var constructor = type.GetConstructor(Type.EmptyTypes);
-                var constructorLambda = Expression.Lambda(Expression.New(constructor)).Compile();
-                registrar.Invoke(serializer, new[] { constructorLambda });
-            }
+            processor.RegisterNestedType<Spaceship>(() => new Spaceship(null));
+            // v--- Register types here ---v
+            processor.RegisterNestedType<ScanShoot>(() => new ScanShoot());
+            processor.RegisterNestedType<Struck>(() => new Struck());
+            processor.RegisterNestedType<ShipConnected>(() => new ShipConnected());
+            processor.RegisterNestedType<ShipDisconnected>(() => new ShipDisconnected());
         }
     }
 }

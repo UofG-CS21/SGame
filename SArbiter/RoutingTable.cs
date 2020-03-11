@@ -3,6 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using SShared;
 using LiteNetLib;
+using Messages = SShared.Messages;
 
 namespace SArbiter
 {
@@ -29,13 +30,15 @@ namespace SArbiter
             return _nodeByShipToken.GetValueOrDefault(token, null);
         }
 
+        private static string PublicIdFromToken(string token) => token.Substring(token.Length - 8);
+
         private string AddShipToken()
         {
             string token, pid;
             do
             {
                 token = Guid.NewGuid().ToString();
-                pid = token.Substring(token.Length - 8);
+                pid = PublicIdFromToken(token);
             }
             while (_shipPublicIds.Contains(pid));
 
@@ -48,7 +51,23 @@ namespace SArbiter
             string token = AddShipToken();
             parentNode = (ArbiterTreeNode)RootNode.RandomLeafNode();
             _nodeByShipToken[token] = parentNode;
+
+            BusMaster.SendMessage(new Messages.ShipConnected() { Token = token }, parentNode.Peer);
+
             return token;
+        }
+
+        public bool RemoveShip(string token)
+        {
+            if (!_nodeByShipToken.Remove(token))
+            {
+                _shipPublicIds.Remove(PublicIdFromToken(token));
+                return false;
+            }
+
+            BusMaster.BroadcastMessage(new Messages.ShipDisconnected() { Token = token });
+
+            return true;
         }
     }
 }
