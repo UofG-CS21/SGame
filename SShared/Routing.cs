@@ -133,19 +133,19 @@ namespace SShared
             System.IO.Stream output = response.OutputStream;
             await output.WriteAsync(buffer, 0, buffer.Length);
             output.Close();
+
+            response.Close();
             this.Sent = true;
         }
 
         /// <summary>
         /// Redirect the request to another address.
         /// </summary>
-        public Task Redirect(string url)
+        public async Task Redirect(string url)
         {
-            return new Task(() =>
-            {
-                response.Redirect(url);
-                this.Sent = true;
-            });
+            response.Redirect(url);
+            response.Close();
+            this.Sent = true;
         }
     }
 }
