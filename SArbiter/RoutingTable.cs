@@ -57,6 +57,20 @@ namespace SArbiter
             return token;
         }
 
+        public bool MoveShip(Spaceship ship, ArbiterTreeNode transferNode){
+            string token = ship.Token;
+            if (!_nodeByShipToken.Remove(token)){
+                return false;
+            }
+
+            _nodeByShipToken[token] = transferNode;
+            
+            Messages.ShipTransferred msg = new Messages.ShipTransferred() { Ship = ship };
+            BusMaster.SendMessage(msg, transferNode.Peer);
+            return true;
+
+        }
+
         public bool RemoveShip(string token)
         {
             if (!_nodeByShipToken.Remove(token))
