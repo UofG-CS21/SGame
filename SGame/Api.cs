@@ -33,19 +33,26 @@ namespace SGame
         public NetNode Bus { get; set; }
 
         /// <summary>
+        /// Link to the persistence to use to store/reload ships. Null to disable.
+        /// </summary>
+        public Persistence Persistence { get; set; }
+
+        /// <summary>
         /// All ships who died in this node. F.
         /// </summary>
         public Dictionary<string, Spaceship> DeadShips { get; set; }
 
         // start the gameTime stopwatch on API creation
-        public Api(LocalQuadTreeNode quadTreeNode, NetNode bus)
+        public Api(LocalQuadTreeNode quadTreeNode, NetNode bus, Persistence persistence)
         {
             this.gameTime = new GameTime();
             //#if DEBUG
             //   this.gameTime.SetElapsedMillisecondsManually(0);
             //#endif
+
             this.QuadTreeNode = quadTreeNode;
             this.Bus = bus;
+            this.Persistence = persistence;
             this.DeadShips = new Dictionary<string, Spaceship>();
 
             this.Bus.PacketProcessor.Events<Messages.ShipConnected>().OnMessageReceived += OnShipConnected;
@@ -111,7 +118,6 @@ namespace SGame
 
         public void OnShipTransferred(Messages.ShipTransferred msg, NetPeer peer)
         {
-
             LocalSpaceship localShip = new LocalSpaceship(msg.Ship, gameTime);
             QuadTreeNode.ShipsByToken.Add(msg.Ship.Token, localShip);
         }
@@ -121,13 +127,23 @@ namespace SGame
         /// </summary>
         public void OnShipConnected(NetPeer sender, Messages.ShipConnected msg)
         {
-            Console.WriteLine($"Creating ship for player (token={msg.Token})");
+            LocalSpaceship ship = null;
+            if (Persistence != null)
+            {
+                Console.WriteLine($"Fetch persisted ship with token={msg.Token}");
+                var shipFetcher = Persistence.GetShip(msg.Token, gameTime);
+                shipFetcher.Wait();
+                ship = shipFetcher.Result;
+            }
+            if (ship == null)
+            {
+                Console.WriteLine($"Create a new ship for token={msg.Token}");
+                ship = new LocalSpaceship(msg.Token, gameTime);
+                var randomShipBounds = MathUtils.RandomQuadInQuad(QuadTreeNode.Bounds, ship.Radius());
+                ship.Pos = new Vector2(randomShipBounds.CentreX, randomShipBounds.CentreY);
+            }
 
-            LocalSpaceship ship = new LocalSpaceship(msg.Token, gameTime);
-            var randomShipBounds = MathUtils.RandomQuadInQuad(QuadTreeNode.Bounds, ship.Radius());
-            ship.Pos = new Vector2(randomShipBounds.CentreX, randomShipBounds.CentreY);
             QuadTreeNode.ShipsByToken.Add(msg.Token, ship);
-
             Bus.SendMessage(new Messages.ShipConnected() { Token = msg.Token }, Bus.FirstPeer);
         }
 
@@ -138,9 +154,16 @@ namespace SGame
         {
             Console.WriteLine($"Disconnecting player (token={msg.Token})");
 
-            if (QuadTreeNode.ShipsByToken.Remove(msg.Token))
+            LocalSpaceship ship = null;
+            if (QuadTreeNode.ShipsByToken.Remove(msg.Token, out ship))
             {
-                // TODO: Serialize ship state here?
+                if (Persistence != null)
+                {
+                    Console.WriteLine($"Persist disconnected ship with token={msg.Token}");
+                    var shipSaver = Persistence.PutShip(ship);
+                    shipSaver.Wait();
+                }
+
                 Bus.SendMessage(new Messages.ShipDisconnected() { Token = msg.Token }, Bus.FirstPeer);
             }
         }

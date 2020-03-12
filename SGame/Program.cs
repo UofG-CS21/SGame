@@ -41,6 +41,12 @@ namespace SGame
         public uint BusPort { get; set; }
 
         /// <summary>
+        /// The URL of the ElasticSearch server used for persistence.
+        /// </summary>
+        [Option("persistence", Default = null, Required = false, HelpText = "URL of the ElasticSearch server used for persistence (optional)")]
+        public string PersistenceUrl { get; set; }
+
+        /// <summary>
         /// SGame's tickrate, i.e. the updates-per-second of the main loop.
         /// </summary>
         [Option('T', "tickrate", Default = 30u, Required = false, HelpText = "SGame tickrate (updates per second).")]
@@ -78,18 +84,24 @@ namespace SGame
         NetNode bus;
 
         /// <summary>
+        /// Connected to the ElasticSearch master used to persist ship.
+        /// </summary>
+        Persistence persistence;
+
+        /// <summary>
         /// Initializes an instance of the program.
         /// </summary>
         Program(CmdLineOptions options)
         {
             this.options = options;
-
             this.bus = new NetNode(options.Arbiter, (int)options.BusPort);
+            this.persistence = options.PersistenceUrl != null ? new Persistence(options.PersistenceUrl) : null;
 
             // FIXME: Assuming the local SGame node manages the whole universe for now
             //        (this will change when multiple nodes are connected to a SArbiter)
             var quadtree = new LocalQuadTreeNode(null, new SShared.Quad(0.0, 0.0, 1 << 31), 0);
-            this.api = new Api(quadtree, bus);
+
+            this.api = new Api(quadtree, bus, persistence);
             this.router = new Router<Api>(api);
         }
 

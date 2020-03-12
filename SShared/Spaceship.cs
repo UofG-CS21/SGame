@@ -1,4 +1,5 @@
 using System;
+using Newtonsoft.Json.Linq;
 using LiteNetLib.Utils;
 
 namespace SShared
@@ -124,6 +125,38 @@ namespace SShared
         public double Radius()
         {
             return System.Math.Sqrt(Area / System.Math.PI);
+        }
+
+        /// <summary>
+        /// Read a spaceship from its `ToJson()` representation.
+        /// </summary>
+        public static Spaceship FromJson(JObject json)
+        {
+            Spaceship ship = new Spaceship();
+            ship.Token = (string)json["token"];
+            ship.Energy = (double)json["energy"];
+            ship.Area = (double)json["area"];
+            ship.Pos = new Vector2((double)json["posX"], (double)json["posY"]);
+            ship.ShieldDir = (double)json["shieldDir"];
+            ship.ShieldWidth = (double)json["shieldWidth"];
+            ship.KillReward = (double)json["killReward"];
+            return ship;
+        }
+
+        /// <summary>
+        /// Dump a spaceship to Json.
+        /// </summary>
+        public JObject ToJson()
+        {
+            JObject json = new JObject();
+            json["token"] = Token;
+            json["energy"] = Energy;
+            json["area"] = Area;
+            json["posX"] = Pos.X; json["posY"] = Pos.Y;
+            json["shieldDir"] = ShieldDir;
+            json["shieldWidth"] = ShieldWidth;
+            json["killReward"] = KillReward;
+            return json;
         }
 
         // ===== INetSerializable ==============================================

@@ -227,28 +227,6 @@ namespace SShared.Messages
     }
 
     /// <summary>
-    /// Serialization utilities.
-    /// </summary>
-    public static class Serialization
-    {
-        /// <summary>
-        /// Registers serializers for all bus message types.
-        /// </summary>
-        public static void RegisterAllSerializers(NetNodePacketProcessor processor)
-        {
-            // v--- Extra types to be registered ---v
-            processor.RegisterNestedType<Spaceship>(() => new Spaceship(null));
-            // v--- Register types here ---v
-            processor.RegisterNestedType<ScanShoot>(() => new ScanShoot());
-            processor.RegisterNestedType<Struck>(() => new Struck());
-            processor.RegisterNestedType<ShipConnected>(() => new ShipConnected());
-            processor.RegisterNestedType<ShipDisconnected>(() => new ShipDisconnected());
-            processor.RegisterNestedType<MoveShipUp>(() => new MoveShipUp());
-            processor.RegisterNestedType<ShipTransferred>(() => new ShipTransferred());
-        }
-    }
-
-    /// <summary>
     /// A sudo call. 
     /// </summary>
     public class Sudo : IMessage
@@ -268,6 +246,29 @@ namespace SShared.Messages
         public void Deserialize(NetDataReader reader)
         {
             Json = JObject.Parse(reader.GetString());
+        }
+    }
+
+    /// <summary>
+    /// Serialization utilities.
+    /// </summary>
+    public static class Serialization
+    {
+        /// <summary>
+        /// Registers serializers for all bus message types.
+        /// </summary>
+        public static void RegisterAllSerializers(NetNodePacketProcessor processor)
+        {
+            // v--- Extra types to be registered ---v
+            processor.RegisterNestedType<Spaceship>(() => new Spaceship(null));
+            // v--- Register types here ---v
+            processor.RegisterNestedType<ScanShoot>(() => new ScanShoot());
+            processor.RegisterNestedType<Struck>(() => new Struck());
+            processor.RegisterNestedType<ShipConnected>(() => new ShipConnected());
+            processor.RegisterNestedType<ShipDisconnected>(() => new ShipDisconnected());
+            processor.RegisterNestedType<MoveShipUp>(() => new MoveShipUp());
+            processor.RegisterNestedType<ShipTransferred>(() => new ShipTransferred());
+            processor.RegisterNestedType<Sudo>(() => new Sudo());
         }
     }
 }
