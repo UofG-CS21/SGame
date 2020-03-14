@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 using SShared;
 using Messages = SShared.Messages;
@@ -19,8 +20,11 @@ namespace SArbiter
         {
             ArbiterTreeNode shipNode = null;
             var token = RoutingTable.AddNewShip(out shipNode);
-
             response.Data["token"] = token;
+
+            // TODO: Add a timeout in case we don't get a reply from the SGame node?
+            await new MessageWaiter<Messages.ShipConnected>(RoutingTable.BusMaster, shipNode.Peer, (msg) => msg.Token == token).Wait;
+
             await response.Send(200);
         }
 
@@ -66,10 +70,40 @@ namespace SArbiter
         [ApiParam("token", typeof(string))]
         public Task Shield(ApiResponse response, ApiData data) => ForwardRequest("shield", response, data);
 
+        [ApiRoute("shoot")]
+        [ApiParam("token", typeof(string))]
+        public Task Shoot(ApiResponse response, ApiData data) => ForwardRequest("shoot", response, data);
+
 #if DEBUG
         [ApiRoute("sudo")]
-        [ApiParam("token", typeof(string))]
-        public Task Sudo(ApiResponse response, ApiData data) => ForwardRequest("sudo", response, data);
+        public async Task Sudo(ApiResponse response, ApiData data)
+        {
+            var message = new Messages.Sudo() { Json = data.Json };
+            ArbiterTreeNode shipNode = null;
+            if (data.Json.ContainsKey("token"))
+            {
+                var shipToken = (string)data.Json["token"];
+                shipNode = RoutingTable.NodeWithShip(shipToken);
+                if (shipNode == null)
+                {
+                    response.Data["error"] = $"No ship with token: {shipToken}";
+                    await response.Send(500);
+                }
+                RoutingTable.BusMaster.SendMessage(message, shipNode.Peer, LiteNetLib.DeliveryMethod.ReliableOrdered);
+            }
+            else
+            {
+                RoutingTable.BusMaster.BroadcastMessage(message);
+                // Wait for the root node to ACK sudo. No good reason to pick the root, it's just guaranteed to exist.
+                shipNode = RoutingTable.RootNode;
+            }
+
+            // Wait for the sudo to bounce back from the node
+            await new MessageWaiter<Messages.Sudo>(RoutingTable.BusMaster, shipNode.Peer,
+                (sudo) => sudo.Json.Equals(message.Json)).Wait;
+
+            await response.Send(200);
+        }
 #endif
 
     }
