@@ -97,7 +97,7 @@ namespace SGame
             }
         }
 
-        //TODO: Finish garbage collector
+        //TODO: Finish garbage collector. Left for now to create PathString for shipTransfer message.
         internal void GarbageCollect()
         {
             foreach (var ship in QuadTreeNode.ShipsByToken.Values)
