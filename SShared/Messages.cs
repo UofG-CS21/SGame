@@ -7,16 +7,18 @@ using LiteNetLib.Utils;
 namespace SShared.Messages
 {
 
+
     /// <summary>
     /// A message sent to the arbiter when a ship needs to be transferred to its parent node.
     /// </summary>
-    public class MoveShipUp : IMessage
+    public class TransferShip : IMessage
     {
 
         /// <summary>
         /// The ship being transferred
         /// </summary>
         public Spaceship Ship;
+
 
         // -- INetSerializable -------------------------------------------------
 
@@ -241,7 +243,7 @@ namespace SShared.Messages
             processor.RegisterNestedType<Struck>(() => new Struck());
             processor.RegisterNestedType<ShipConnected>(() => new ShipConnected());
             processor.RegisterNestedType<ShipDisconnected>(() => new ShipDisconnected());
-            processor.RegisterNestedType<MoveShipUp>(() => new MoveShipUp());
+            processor.RegisterNestedType<TransferShip>(() => new TransferShip());
             processor.RegisterNestedType<ShipTransferred>(() => new ShipTransferred());
         }
     }

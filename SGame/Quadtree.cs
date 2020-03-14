@@ -25,8 +25,9 @@ namespace SGame
 
     abstract class SGameQuadTreeNode : QuadTreeNode<Spaceship>
     {
-        public SGameQuadTreeNode(QuadTreeNode<Spaceship> parent, Quad bounds, uint depth) : base(parent, bounds, depth)
-        { }
+        public SGameQuadTreeNode(QuadTreeNode<Spaceship> parent, Quadrant quadrant, uint depth) : base(parent, quadrant, depth) { }
+
+        public SGameQuadTreeNode(Quad bounds, uint depth) : base(bounds, depth) { }
 
         /// <summary>
         /// Returns a (area gain for shooter, list of struck ships) pair.
@@ -36,7 +37,12 @@ namespace SGame
 
     class LocalQuadTreeNode : SGameQuadTreeNode
     {
-        public LocalQuadTreeNode(QuadTreeNode<Spaceship> parent, Quad bounds, uint depth) : base(parent, bounds, depth)
+        public LocalQuadTreeNode(QuadTreeNode<Spaceship> parent, Quadrant quadrant, uint depth) : base(parent, quadrant, depth)
+        {
+            this.ShipsByToken = new Dictionary<string, LocalSpaceship>();
+        }
+
+        public LocalQuadTreeNode(Quad bounds, uint depth) : base(bounds, depth)
         {
             this.ShipsByToken = new Dictionary<string, LocalSpaceship>();
         }
@@ -151,8 +157,8 @@ namespace SGame
     {
         public static readonly TimeSpan REPLYTIMEOUT = new TimeSpan(1500);
 
-        public RemoteQuadTreeNode(SGameQuadTreeNode parent, Quad bounds, uint depth, NetNode bus, LiteNetLib.NetPeer nodePeer)
-            : base(parent, bounds, depth)
+        public RemoteQuadTreeNode(SGameQuadTreeNode parent, Quadrant quadrant, uint depth, NetNode bus, LiteNetLib.NetPeer nodePeer)
+            : base(parent, quadrant, depth)
         {
             this.Bus = bus;
             this.NodePeer = nodePeer;

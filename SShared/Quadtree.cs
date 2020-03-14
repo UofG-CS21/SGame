@@ -4,9 +4,126 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using LiteNetLib.Utils;
 
 namespace SShared
 {
+    /// <summary>
+    /// PathString holds a list of quandrants representing choices when traversing a quadtree.
+    /// It can convert this list to a bit string representation where every 2 bits represent a Quadrant.
+    /// This bitstring representation can then be converted to a byte array representation to allow effiecient transfer of the data through serialization.
+    /// PathString can be initilaized as empty or it can be given a List<Quadrant>.
+    /// </summary>
+    public class PathString : INetSerializable
+    {
+
+        public List<Quadrant> QuadrantList = new List<Quadrant>();
+
+        private byte[] ByteForm;
+
+
+        public int NumberOfChoices;
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(this.NumberOfChoices);
+            writer.PutBytesWithLength(this.ByteForm, 0, this.ByteForm.Length);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            this.NumberOfChoices = reader.GetInt();
+            this.ByteForm = reader.GetBytesWithLength();
+            this.QuadrantList = PathString.ByteArrayToQuadrantList(this.ByteForm, this.NumberOfChoices);
+
+        }
+
+        public PathString()
+        {
+            this.NumberOfChoices = 0;
+            this.QuadrantList = new List<Quadrant>();
+        }
+
+        public PathString(List<Quadrant> choiceList)
+        {
+            this.QuadrantList = choiceList;
+            this.NumberOfChoices = QuadrantList.Count();
+            this.ByteForm = this.ToByteArray();
+        }
+
+        public void AddChoice(Quadrant quadrant)
+        {
+            this.NumberOfChoices += 1;
+            this.QuadrantList.Add(quadrant);
+        }
+
+        public byte[] ToByteArray()
+        {
+            List<Byte> ByteArray = new List<Byte>();
+            string bitstring = this.ToString();
+
+            for (int i = 0; i < NumberOfChoices; i += 4)
+            {
+                string bits = bitstring.Substring(i * 2, 8).PadRight(8, '0');
+                ByteArray.Add(Convert.ToByte(bits, 2));
+            }
+
+            return ByteArray.ToArray();
+        }
+
+        public static List<Quadrant> ByteArrayToQuadrantList(byte[] byteArray, int numChoices)
+        {
+            List<Quadrant> quadrantList = new List<Quadrant>();
+            for (int i = 0; (i * 4) < numChoices; i++)
+            {
+                string bitstring = Convert.ToString(byteArray[i], 2);
+                for (int j = 0; j < 4; j++)
+                {
+                    string bits = bitstring.Substring(j * 2, 2);
+                    switch (bits)
+                    {
+                        case "00":
+                            quadrantList.Add(Quadrant.NW);
+                            break;
+                        case "01":
+                            quadrantList.Add(Quadrant.NE);
+                            break;
+                        case "10":
+                            quadrantList.Add(Quadrant.SW);
+                            break;
+                        case "11":
+                            quadrantList.Add(Quadrant.SE);
+                            break;
+                        default:
+                            Console.WriteLine("Error: Invalid Input in PathString.ByteArrayToQuadrantList");
+                            break;
+                    }
+                }
+            }
+            return quadrantList;
+
+
+        }
+
+        public override string ToString()
+        {
+            string bitstring = "";
+            foreach (Quadrant choice in this.QuadrantList)
+            {
+                if ((int)choice < 2)
+                {
+                    bitstring += Convert.ToString(0, 2);
+                }
+                bitstring += Convert.ToString((int)choice, 2);
+            }
+
+
+            return bitstring;
+        }
+
+
+    }
+
     /// <summary>
     /// Something bounded by a worldspace quad.
     /// </summary>
@@ -40,6 +157,11 @@ namespace SShared
         public QuadTreeNode<T> Parent { get; private set; }
 
         /// <summary>
+        /// Enum representing which of the possible four child quadrants this node manages
+        /// </summary>
+        public Quadrant Quadrant { get; private set; }
+
+        /// <summary>
         /// The depth of this quadtree node (root has Depth=0).
         /// </summary>
         public uint Depth { get; private set; }
@@ -51,9 +173,18 @@ namespace SShared
         /// </summary>
         public Quad Bounds { get { return _bounds; } }
 
-        public QuadTreeNode(QuadTreeNode<T> parent, Quad bounds, uint depth)
+        public QuadTreeNode(QuadTreeNode<T> parent, Quadrant quadrant, uint depth)
         {
             this.Parent = parent;
+            this._bounds = parent.Bounds.QuadrantBounds(quadrant);
+            this.Quadrant = quadrant;
+            this.Depth = depth;
+            this._children = new QuadTreeNode<T>[4] { null, null, null, null };
+        }
+
+        public QuadTreeNode(Quad bounds, uint depth)
+        {
+            this.Parent = null;
             this._bounds = bounds;
             this.Depth = depth;
             this._children = new QuadTreeNode<T>[4] { null, null, null, null };
@@ -160,5 +291,36 @@ namespace SShared
             return node;
         }
 
+        public QuadTreeNode<T> SmallestNodeWhichContainsShip(Spaceship ship)
+        {
+            QuadTreeNode<T> node = this;
+            QuadTreeNode<T> child = null;
+            QuadTreeNode<T> validChild = node;
+            if (!node.Bounds.ContainsQuad(ship.Bounds))
+            {
+                return null;
+            }
+
+            do
+            {
+                node = validChild;
+                validChild = null;
+                for (int j = 0; j < 4; j++)
+                {
+                    if ((child = node._children[j]) != null && child.Bounds.ContainsQuad(ship.Bounds))
+                    {
+                        validChild = child;
+                    }
+                }
+            } while (validChild != null);
+
+            return node;
+
+        }
+
+
+
     }
 }
+
+

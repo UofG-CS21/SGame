@@ -94,15 +94,20 @@ namespace SGame
             foreach (var ship in QuadTreeNode.ShipsByToken.Values)
             {
                 ship.UpdateState();
+            }
+        }
 
-                LocalQuadTreeNode node = QuadTreeNode;
-                //TODO: Handle case where ships are outside of world bounds
-                if (!QuadTreeNode.Bounds.ContainsShip(ship))
-                {
-                    Messages.MoveShipUp msg = new Messages.MoveShipUp() { Ship = ship };
-                    Bus.SendMessage(msg, Bus.Host.First());
+        //TODO: Finish garbage collector
+        internal void GarbageCollect()
+        {
+            foreach (var ship in QuadTreeNode.ShipsByToken.Values)
+            {
+                LocalQuadTreeNode currentNode = QuadTreeNode;
+                QuadTreeNode<Spaceship> bestFitNode = currentNode.SmallestNodeWhichContainsShip(ship);
+                if (bestFitNode == null){
+                    // Messages.MoveS
+                    // Bus.SendMessage()
                 }
-
             }
         }
 

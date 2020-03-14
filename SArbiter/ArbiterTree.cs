@@ -20,14 +20,14 @@ namespace SArbiter
         public NetPeer Peer { get; set; }
 
         public ArbiterTreeNode(string apiUrl, NetPeer peer)
-            : base(null, new Quad(0.0, 0.0, Double.MaxValue), 0)
+            : base(new Quad(0.0, 0.0, Double.MaxValue), 0)
         {
             this.ApiUrl = apiUrl;
             this.Peer = peer;
         }
 
-        public ArbiterTreeNode(QuadTreeNode<ArbiterTreeItem> parent, Quad bounds, uint depth, string apiUrl, NetPeer peer)
-            : base(parent, bounds, depth)
+        public ArbiterTreeNode(QuadTreeNode<ArbiterTreeItem> parent, Quadrant quadrant, uint depth, string apiUrl, NetPeer peer)
+            : base(parent, quadrant, depth)
         {
             this.ApiUrl = apiUrl;
             this.Peer = peer;
