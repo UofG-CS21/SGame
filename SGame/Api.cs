@@ -18,14 +18,24 @@ namespace SGame
     class Api
     {
         /// <summary>
+        /// The HTTP address this REST Api is being served on.
+        /// </summary>
+        public string ApiUrl { get; set; }
+
+        /// <summary>
         /// Manges the elapsed in-game time.
         /// </summary>
-        internal GameTime gameTime;
+        internal GameTime _gameTime;
 
         /// <summary>
         /// The quadtree node managed by this SGame API instance.
         /// </summary>
         public LocalQuadTreeNode QuadTreeNode { get; set; }
+
+        /// <summary>
+        /// The root node of the SGame network ("routing table").
+        /// </summary>
+        public SGameQuadTreeNode RootNode { get; set; }
 
         /// <summary>
         /// The host that represents this SGame node on the bus.
@@ -35,21 +45,25 @@ namespace SGame
         /// <summary>
         /// All ships who died in this node. F.
         /// </summary>
-        public Dictionary<string, Spaceship> DeadShips { get; set; }
+        internal Dictionary<string, Spaceship> DeadShips { get; set; }
 
         // start the gameTime stopwatch on API creation
-        public Api(LocalQuadTreeNode quadTreeNode, NetNode bus)
+        public Api(string apiUrl, SGameQuadTreeNode rootNode, LocalQuadTreeNode quadTreeNode, NetNode bus)
         {
-            this.gameTime = new GameTime();
+            this.ApiUrl = apiUrl;
+            this._gameTime = new GameTime();
             //#if DEBUG
             //   this.gameTime.SetElapsedMillisecondsManually(0);
             //#endif
+            this.RootNode = rootNode;
             this.QuadTreeNode = quadTreeNode;
             this.Bus = bus;
             this.DeadShips = new Dictionary<string, Spaceship>();
 
+            this.Bus.PeerConnectedEvent += OnPeerConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipConnected>().OnMessageReceived += OnShipConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipDisconnected>().OnMessageReceived += OnShipDisconnected;
+            this.Bus.PacketProcessor.Events<Messages.NodeConfig>().OnMessageReceived += OnNodeConfigReceived;
 #if DEBUG
             this.Bus.PacketProcessor.Events<Messages.Sudo>().OnMessageReceived += OnSudo;
 #endif
@@ -92,7 +106,7 @@ namespace SGame
         /// <summary>
         /// Updates each spaceship's state (energy, position, ...) based on time it was not updated
         /// </summary>
-        internal void UpdateGameState()
+        public void UpdateGameState()
         {
             foreach (var ship in QuadTreeNode.ShipsByToken.Values)
             {
@@ -101,7 +115,7 @@ namespace SGame
         }
 
         //TODO: Finish garbage collector. Left for now to create PathString for shipTransfer message.
-        internal void GarbageCollect()
+        private void GarbageCollect()
         {
             foreach (var ship in QuadTreeNode.ShipsByToken.Values)
             {
@@ -115,10 +129,77 @@ namespace SGame
             }
         }
 
-        public void OnShipTransferred(Messages.ShipTransferred msg, NetPeer peer)
+        /// <summary>
+        /// Called when a peer (node or arbiter) connects to us; sends the current config of this node to the peer.
+        /// </summary>
+        private void OnPeerConnected(LiteNetLib.NetPeer peer)
         {
+            // WARNING: Ensure that ApiUrl is visible from outside - otherwise, all requests will fail to be forwarded to this node!
+            var currentConfig = new SShared.Messages.NodeConfig()
+            {
+                BusAddress = NetNode.LocalIPs.First(),
+                ApiUrl = this.ApiUrl,
+                Bounds = QuadTreeNode.Bounds,
+                Path = QuadTreeNode.Path(),
+            };
+            this.Bus.SendMessage(currentConfig, peer);
+        }
 
-            LocalSpaceship localShip = new LocalSpaceship(msg.Ship, gameTime);
+        /// <summary>
+        /// Called when node configuration is received from the Arbiter, either for us (which means we need to apply it)
+        /// or for another node (which means that we need to update our routing table)
+        /// </summary>
+        private void OnNodeConfigReceived(NetPeer arbiterPeer, Messages.NodeConfig msg)
+        {
+            var nodeToReplace = RootNode.NodeAtPath(msg.Path, () => new DummyQuadTreeNode());
+
+            SGameQuadTreeNode replacementNode;
+            if (msg.ApiUrl == this.ApiUrl)
+            {
+                Console.Error.WriteLine(">>> This node is now at {0} <<<", msg.Path);
+
+                replacementNode = QuadTreeNode;
+            }
+            else
+            {
+                Console.Error.WriteLine(">>> The node {0} is now at {1} <<<", msg.ApiUrl, msg.Path);
+
+                int busPort = Bus.Host.LocalPort;
+                var busNetPeer = Bus.Host.ConnectedPeerList.Where((peer) => peer.EndPoint.Address == msg.BusAddress).FirstOrDefault();
+                if (busNetPeer == null)
+                {
+                    Console.Error.WriteLine("Estabilishing direct bus connection to {0}:{1}", msg.BusAddress.ToString(), busPort);
+                    busNetPeer = Bus.Host.Connect(msg.BusAddress.ToString(), busPort, NetNode.Secret);
+                }
+
+                replacementNode = new RemoteQuadTreeNode(new Quad(0, 0, 0), Bus, busNetPeer, msg.ApiUrl);
+            }
+
+            if (nodeToReplace.Parent != null)
+            {
+                nodeToReplace.Parent.SetChild(nodeToReplace.Quadrant, nodeToReplace);
+            }
+            else
+            {
+                SGameQuadTreeNode[] rootChildren = new SGameQuadTreeNode[4] { null, null, null, null };
+                if (RootNode != null)
+                {
+                    for (int i = 0; i < 4; i++)
+                    {
+                        rootChildren[i] = (SGameQuadTreeNode)RootNode.Child((Quadrant)i);
+                    }
+                }
+                RootNode = replacementNode;
+                for (int i = 0; i < 4; i++)
+                {
+                    RootNode.SetChild((Quadrant)i, rootChildren[i]);
+                }
+            }
+        }
+
+        private void OnShipTransferred(Messages.ShipTransferred msg, NetPeer peer)
+        {
+            LocalSpaceship localShip = new LocalSpaceship(msg.Ship, _gameTime);
             QuadTreeNode.ShipsByToken.Add(msg.Ship.Token, localShip);
         }
 
@@ -129,7 +210,7 @@ namespace SGame
         {
             Console.WriteLine($"Creating ship for player (token={msg.Token})");
 
-            LocalSpaceship ship = new LocalSpaceship(msg.Token, gameTime);
+            LocalSpaceship ship = new LocalSpaceship(msg.Token, _gameTime);
             var randomShipBounds = MathUtils.RandomQuadInQuad(QuadTreeNode.Bounds, ship.Radius());
             ship.Pos = new Vector2(randomShipBounds.CentreX, randomShipBounds.CentreY);
             QuadTreeNode.ShipsByToken.Add(msg.Token, ship);
@@ -517,7 +598,7 @@ namespace SGame
             { "velX", (api, ship, velX) => ship.Velocity = new Vector2((double)velX, ship.Velocity.Y) },
             { "velY", (api, ship, velY) => ship.Velocity = new Vector2(ship.Velocity.X, (double)velY) },
             { "time", (api, ship, timeMs) => {
-                api.gameTime.SetElapsedMillisecondsManually((long)timeMs);
+                api._gameTime.SetElapsedMillisecondsManually((long)timeMs);
                 api.UpdateGameState();
             }}
         };

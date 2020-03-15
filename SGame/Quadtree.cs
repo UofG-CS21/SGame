@@ -27,7 +27,7 @@ namespace SGame
     {
         public SGameQuadTreeNode(QuadTreeNode<Spaceship> parent, Quadrant quadrant, uint depth) : base(parent, quadrant, depth) { }
 
-        public SGameQuadTreeNode(Quad bounds, uint depth) : base(bounds, depth) { }
+        public SGameQuadTreeNode(Quad bounds, uint depth = 0) : base(bounds, depth) { }
 
         /// <summary>
         /// Returns a (area gain for shooter, list of struck ships) pair.
@@ -157,13 +157,6 @@ namespace SGame
     {
         public static readonly TimeSpan REPLYTIMEOUT = new TimeSpan(1500);
 
-        public RemoteQuadTreeNode(SGameQuadTreeNode parent, Quadrant quadrant, uint depth, NetNode bus, LiteNetLib.NetPeer nodePeer)
-            : base(parent, quadrant, depth)
-        {
-            this.Bus = bus;
-            this.NodePeer = nodePeer;
-        }
-
         /// <summary>
         /// The message bus to the other nodes.
         /// </summary>
@@ -173,6 +166,28 @@ namespace SGame
         /// The network peer managing this quadtree node.
         /// </summary>
         public LiteNetLib.NetPeer NodePeer { get; set; }
+
+        /// <summary>
+        /// The REST API URL of the remote SGame node.
+        /// </summary>
+        /// <value></value>
+        public string ApiUrl { get; set; }
+
+        public RemoteQuadTreeNode(Quad bounds, NetNode bus, LiteNetLib.NetPeer nodePeer, string apiUrl)
+            : base(bounds)
+        {
+            this.Bus = bus;
+            this.NodePeer = nodePeer;
+            this.ApiUrl = ApiUrl;
+        }
+
+        public RemoteQuadTreeNode(SGameQuadTreeNode parent, Quadrant quadrant, uint depth, NetNode bus, LiteNetLib.NetPeer nodePeer, string apiUrl)
+            : base(parent, quadrant, depth)
+        {
+            this.Bus = bus;
+            this.NodePeer = nodePeer;
+            this.ApiUrl = ApiUrl;
+        }
 
         public override Task<List<Spaceship>> CheckRangeLocal(Quad range)
         {
@@ -204,6 +219,29 @@ namespace SGame
             {
                 return null;
             }
+        }
+    }
+
+    class DummyQuadTreeNode : SGameQuadTreeNode
+    {
+        public DummyQuadTreeNode()
+            : base(new Quad(0, 0, 0))
+        {
+        }
+
+        public DummyQuadTreeNode(SGameQuadTreeNode parent, Quadrant quadrant, uint depth)
+            : base(parent, quadrant, depth)
+        {
+        }
+
+        public override Task<List<Spaceship>> CheckRangeLocal(Quad range)
+        {
+            return new Task<List<Spaceship>>(() => new List<Spaceship>());
+        }
+
+        public override Task<ScanShootResults> ScanShootRecur(Messages.ScanShoot msg)
+        {
+            return new Task<ScanShootResults>(() => new ScanShootResults());
         }
     }
 }

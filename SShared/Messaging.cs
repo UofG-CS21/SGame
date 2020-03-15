@@ -1,6 +1,9 @@
 using System;
+using System.Linq;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 using LiteNetLib;
 using LiteNetLib.Utils;
@@ -88,12 +91,19 @@ namespace SShared
         /// <summary>
         /// Sends a bus message to every peer connected to this node.
         /// </summary>
-        public void BroadcastMessage<T>(T message, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered)
+        public void BroadcastMessage<T>(T message, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered, NetPeer excludedPeer = null)
             where T : class, IMessage, new()
         {
             _writer.Reset();
             PacketProcessor.Write<T>(_writer, message);
-            Host.SendToAll(_writer, delivery);
+            if (excludedPeer == null)
+            {
+                Host.SendToAll(_writer, delivery);
+            }
+            else
+            {
+                Host.SendToAll(_writer, delivery, excludedPeer);
+            }
         }
 
         /// <summary>
@@ -111,6 +121,20 @@ namespace SShared
         /// Convenience alias for `Host.FirstPeer`.
         /// </summary>
         public NetPeer FirstPeer { get { return Host.FirstPeer; } }
+
+        /// <summary>
+        /// Queries the local host's IP addresses.
+        /// </summary>
+        public static List<IPAddress> LocalIPs
+        {
+            get
+            {
+                return NetworkInterface.GetAllNetworkInterfaces()
+                    .Where(iface => iface.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                    .SelectMany(iface => iface.GetIPProperties().UnicastAddresses, (iface, ip) => ip.Address)
+                    .ToList();
+            }
+        }
 
         // ===== Dispose pattern =======================================================================================
 
@@ -142,7 +166,7 @@ namespace SShared
 
         private void PeerDisconnectedHandler(NetPeer peer, DisconnectInfo disconnectInfo)
         {
-            Console.WriteLine($"Bus: {peer.EndPoint} disconnected ({disconnectInfo})");
+            Console.WriteLine($"Bus: {peer.EndPoint} disconnected ({disconnectInfo.Reason})");
         }
 
         private void NetworkReceivedHandler(NetPeer peer, NetPacketReader reader, DeliveryMethod deliveryMethod)

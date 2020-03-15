@@ -15,22 +15,26 @@ namespace SArbiter
 
     internal class ArbiterTreeNode : QuadTreeNode<ArbiterTreeItem>
     {
-        public string ApiUrl { get; set; }
-
         public NetPeer Peer { get; set; }
 
-        public ArbiterTreeNode(string apiUrl, NetPeer peer)
+        public string ApiUrl { get; set; }
+
+        public uint ShipCount { get; set; }
+
+        public ArbiterTreeNode(NetPeer peer, string apiUrl)
             : base(new Quad(0.0, 0.0, Double.MaxValue), 0)
         {
             this.ApiUrl = apiUrl;
             this.Peer = peer;
+            this.ShipCount = 0;
         }
 
-        public ArbiterTreeNode(QuadTreeNode<ArbiterTreeItem> parent, Quadrant quadrant, uint depth, string apiUrl, NetPeer peer)
+        public ArbiterTreeNode(QuadTreeNode<ArbiterTreeItem> parent, Quadrant quadrant, uint depth, NetPeer peer, string apiUrl)
             : base(parent, quadrant, depth)
         {
             this.ApiUrl = apiUrl;
             this.Peer = peer;
+            this.ShipCount = 0;
         }
 
         public override Task<List<ArbiterTreeItem>> CheckRangeLocal(Quad range) => throw new NotImplementedException();

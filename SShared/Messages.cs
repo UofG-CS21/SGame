@@ -1,14 +1,62 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Linq.Expressions;
+using LiteNetLib;
 using LiteNetLib.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace SShared.Messages
 {
+    /// <summary>
+    /// A message sent from a node to the arbiter to publish information about itself,
+    /// or sent from the arbiter to nodes to let them know when configuration changes for themselves / another node.
+    /// </summary>
+    public class NodeConfig : IMessage
+    {
+        /// <summary>
+        /// The bounds of the quadtree node managed by the node in question.
+        /// </summary>
+        public Quad Bounds { get; set; }
 
+        /// <summary>
+        /// The path to the node in question from the root node of the tree.
+        /// </summary>
+        public PathString Path { get; set; }
+
+        /// <summary>
+        /// Externally-visible IP address of the `NetNode` for the node in question
+        /// - used both for the event bus and the HTTP REST API.
+        /// </summary>
+        public IPAddress BusAddress { get; set; }
+
+        /// <summary>
+        /// Externally-visible HTTP address the SGame REST API is being served on for the node in question.
+        /// </summary>
+        public string ApiUrl { get; set; }
+
+        // -- INetSerializable -------------------------------------------------
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(Bounds.CentreX); writer.Put(Bounds.CentreY); writer.Put(Bounds.Radius);
+            Path.Serialize(writer);
+            writer.PutBytesWithLength(BusAddress.GetAddressBytes());
+            writer.Put(ApiUrl);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            Bounds = new Quad(reader.GetDouble(), reader.GetDouble(), reader.GetDouble());
+            Path = new PathString();
+            Path.Deserialize(reader);
+            byte[] ipBytes = reader.GetBytesWithLength();
+            BusAddress = new IPAddress(ipBytes);
+            ApiUrl = reader.GetString();
+        }
+    }
 
     /// <summary>
     /// A message sent to the arbiter when a ship needs to be transferred to its parent node.
@@ -21,12 +69,10 @@ namespace SShared.Messages
         /// </summary>
         public Spaceship Ship;
 
-
         // -- INetSerializable -------------------------------------------------
 
         public void Serialize(NetDataWriter writer)
         {
-
             Ship.Serialize(writer);
         }
 
@@ -247,6 +293,7 @@ namespace SShared.Messages
             processor.RegisterNestedType<ShipDisconnected>(() => new ShipDisconnected());
             processor.RegisterNestedType<TransferShip>(() => new TransferShip());
             processor.RegisterNestedType<ShipTransferred>(() => new ShipTransferred());
+            processor.RegisterNestedType<NodeConfig>(() => new NodeConfig());
         }
     }
 

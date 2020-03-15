@@ -76,7 +76,17 @@ namespace SShared
             return list;
         }
 
-        public override string ToString() => string.Join(", ", this.QuadrantList);
+        public override string ToString()
+        {
+            if (this.QuadrantList.Any())
+            {
+                return string.Join(", ", this.QuadrantList);
+            }
+            else
+            {
+                return "root";
+            }
+        }
     }
 
     /// <summary>
@@ -290,6 +300,37 @@ namespace SShared
             }
             path.Reverse();
             return new PathString(path);
+        }
+
+        /// <summary>
+        /// Returns a reference to the node at the given path from this node.
+        /// If `nodeFactory` is not null, any missing nodes (from this to the path's destination) will be created by
+        /// `nodeFactory()`; otherwise, the function returns null if it cannot find the node.
+        /// </summary>
+        public QuadTreeNode<T> NodeAtPath(PathString path, Func<QuadTreeNode<T>> nodeFactory = null)
+        {
+            QuadTreeNode<T> node = this;
+            foreach (Quadrant quadrant in path.QuadrantList)
+            {
+                var child = node.Child(quadrant);
+                if (child == null)
+                {
+                    if (nodeFactory == null)
+                    {
+                        return null;
+                    }
+                    else
+                    {
+                        node.SetChild(quadrant, nodeFactory());
+                        node = node.Child(quadrant);
+                    }
+                }
+                else
+                {
+                    node = child;
+                }
+            }
+            return node;
         }
 
         /// <summary>
