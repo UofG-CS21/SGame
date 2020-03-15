@@ -37,9 +37,9 @@ DOTNET_TIMEOUT=30
 # Start an instance of the SArbiter server in the background (redirect stdout->stderr; sleep a bit for it to init)
 # Store the PID of the background process in a file (SArbiter.pid) to know what process to kill after.
 # (See issue #33 on why this is needed)
-backgroundrun SArbiter "--api-host ${HOST} --api-port ${SARBITER_PORT}"
+backgroundrun SArbiter "--api-url http://${HOST}:${SARBITER_PORT}/"
 # Do the same for the SGame root node that manages the outermost quad
-backgroundrun SGame "--api-port ${SGAME_PORT}"
+backgroundrun SGame "--api-url http://${HOST}:${SGAME_PORT}/"
 
 sleep 1
 

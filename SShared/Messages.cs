@@ -11,6 +11,36 @@ using Newtonsoft.Json.Linq;
 namespace SShared.Messages
 {
     /// <summary>
+    /// A message sent from a node to the arbiter when it first goes online.
+    /// </summary>
+    public class NodeOnline : IMessage
+    {
+        /// <summary>
+        /// Externally-visible IP address of the `NetNode` for the node in question
+        /// - used both for the event bus and the HTTP REST API.
+        /// </summary>
+        public IPAddress BusAddress { get; set; }
+
+        /// <summary>
+        /// Externally-visible HTTP address the SGame REST API is being served on for the node in question.
+        /// </summary>
+        public string ApiUrl { get; set; }
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.PutBytesWithLength(BusAddress.GetAddressBytes());
+            writer.Put(ApiUrl);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            byte[] ipBytes = reader.GetBytesWithLength();
+            BusAddress = new IPAddress(ipBytes);
+            ApiUrl = reader.GetString();
+        }
+    }
+
+    /// <summary>
     /// A message sent from a node to the arbiter to publish information about itself,
     /// or sent from the arbiter to nodes to let them know when configuration changes for themselves / another node.
     /// </summary>
@@ -27,13 +57,8 @@ namespace SShared.Messages
         public PathString Path { get; set; }
 
         /// <summary>
-        /// Externally-visible IP address of the `NetNode` for the node in question
-        /// - used both for the event bus and the HTTP REST API.
-        /// </summary>
-        public IPAddress BusAddress { get; set; }
-
-        /// <summary>
         /// Externally-visible HTTP address the SGame REST API is being served on for the node in question.
+        /// Used as a unique identifier for the node.
         /// </summary>
         public string ApiUrl { get; set; }
 
@@ -43,7 +68,6 @@ namespace SShared.Messages
         {
             writer.Put(Bounds.CentreX); writer.Put(Bounds.CentreY); writer.Put(Bounds.Radius);
             Path.Serialize(writer);
-            writer.PutBytesWithLength(BusAddress.GetAddressBytes());
             writer.Put(ApiUrl);
         }
 
@@ -52,8 +76,6 @@ namespace SShared.Messages
             Bounds = new Quad(reader.GetDouble(), reader.GetDouble(), reader.GetDouble());
             Path = new PathString();
             Path.Deserialize(reader);
-            byte[] ipBytes = reader.GetBytesWithLength();
-            BusAddress = new IPAddress(ipBytes);
             ApiUrl = reader.GetString();
         }
     }
@@ -293,6 +315,7 @@ namespace SShared.Messages
             processor.RegisterNestedType<ShipDisconnected>(() => new ShipDisconnected());
             processor.RegisterNestedType<TransferShip>(() => new TransferShip());
             processor.RegisterNestedType<ShipTransferred>(() => new ShipTransferred());
+            processor.RegisterNestedType<NodeOnline>(() => new NodeOnline());
             processor.RegisterNestedType<NodeConfig>(() => new NodeConfig());
         }
     }

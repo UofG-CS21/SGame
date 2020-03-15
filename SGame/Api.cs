@@ -7,7 +7,7 @@ using LiteNetLib;
 using System.Threading.Tasks;
 using SShared;
 using Messages = SShared.Messages;
-
+using System.Net;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
 namespace SGame
@@ -63,6 +63,7 @@ namespace SGame
             this.Bus.PeerConnectedEvent += OnPeerConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipConnected>().OnMessageReceived += OnShipConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipDisconnected>().OnMessageReceived += OnShipDisconnected;
+            this.Bus.PacketProcessor.Events<Messages.NodeOnline>().OnMessageReceived += OnNodeOnlineReceived;
             this.Bus.PacketProcessor.Events<Messages.NodeConfig>().OnMessageReceived += OnNodeConfigReceived;
 #if DEBUG
             this.Bus.PacketProcessor.Events<Messages.Sudo>().OnMessageReceived += OnSudo;
@@ -130,19 +131,34 @@ namespace SGame
         }
 
         /// <summary>
-        /// Called when a peer (node or arbiter) connects to us; sends the current config of this node to the peer.
+        /// Called when a node (arbiter or SGame) connects to us; sends the current config of the local node to it.
         /// </summary>
         private void OnPeerConnected(LiteNetLib.NetPeer peer)
         {
-            // WARNING: Ensure that ApiUrl is visible from outside - otherwise, all requests will fail to be forwarded to this node!
-            var currentConfig = new SShared.Messages.NodeConfig()
+            if (peer == Bus.FirstPeer)
             {
-                BusAddress = NetNode.LocalIPs.First(),
-                ApiUrl = this.ApiUrl,
-                Bounds = QuadTreeNode.Bounds,
-                Path = QuadTreeNode.Path(),
-            };
-            this.Bus.SendMessage(currentConfig, peer);
+                // Only send NodeOnline when connecting to the arbiter...
+
+                // WARNING: Ensure that ApiUrl is visible from outside - otherwise, all requests will fail to be forwarded to this node!
+                var currentConfig = new SShared.Messages.NodeOnline()
+                {
+                    ApiUrl = this.ApiUrl,
+                    BusAddress = NetNode.LocalIPs.First(),
+                };
+                this.Bus.SendMessage(currentConfig, peer);
+            }
+        }
+
+        /// <summary>
+        /// Called when a node goes online and the arbiter broadcasts its "node online" message.
+        /// </summary>
+        private void OnNodeOnlineReceived(NetPeer arbiterPeer, Messages.NodeOnline msg)
+        {
+            var endpoint = new IPEndPoint(msg.BusAddress, 4242); // FIXME: The port is different between nodes!!
+            Console.Error.WriteLine("Estabilishing direct bus connection to {0}", endpoint);
+
+            NetPeer peer = Bus.Host.Connect(endpoint, NetNode.Secret);
+            peer.Tag = msg.ApiUrl;
         }
 
         /// <summary>
@@ -151,6 +167,12 @@ namespace SGame
         /// </summary>
         private void OnNodeConfigReceived(NetPeer arbiterPeer, Messages.NodeConfig msg)
         {
+            if (arbiterPeer != Bus.FirstPeer)
+            {
+                // Do not accept configuration not from the arbiter
+                return;
+            }
+
             var nodeToReplace = RootNode.NodeAtPath(msg.Path, () => new DummyQuadTreeNode());
 
             SGameQuadTreeNode replacementNode;
@@ -164,12 +186,10 @@ namespace SGame
             {
                 Console.Error.WriteLine(">>> The node {0} is now at {1} <<<", msg.ApiUrl, msg.Path);
 
-                int busPort = Bus.Host.LocalPort;
-                var busNetPeer = Bus.Host.ConnectedPeerList.Where((peer) => peer.EndPoint.Address == msg.BusAddress).FirstOrDefault();
+                var busNetPeer = Bus.Host.ConnectedPeerList.Where((peer) => (string)peer.Tag == msg.ApiUrl).FirstOrDefault();
                 if (busNetPeer == null)
                 {
-                    Console.Error.WriteLine("Estabilishing direct bus connection to {0}:{1}", msg.BusAddress.ToString(), busPort);
-                    busNetPeer = Bus.Host.Connect(msg.BusAddress.ToString(), busPort, NetNode.Secret);
+                    throw new WebException($"Expected a `NodeOnline` before the respective `NodeConfig` for the node at {msg.ApiUrl}");
                 }
 
                 replacementNode = new RemoteQuadTreeNode(new Quad(0, 0, 0), Bus, busNetPeer, msg.ApiUrl);
@@ -177,7 +197,7 @@ namespace SGame
 
             if (nodeToReplace.Parent != null)
             {
-                nodeToReplace.Parent.SetChild(nodeToReplace.Quadrant, nodeToReplace);
+                nodeToReplace.Parent.SetChild(nodeToReplace.Quadrant, replacementNode);
             }
             else
             {
