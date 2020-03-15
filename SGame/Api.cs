@@ -106,8 +106,9 @@ namespace SGame
             foreach (var ship in QuadTreeNode.ShipsByToken.Values)
             {
                 LocalQuadTreeNode currentNode = QuadTreeNode;
-                QuadTreeNode<Spaceship> bestFitNode = currentNode.SmallestNodeWhichContainsShip(ship);
-                if (bestFitNode == null){
+                QuadTreeNode<Spaceship> bestFitNode = currentNode.SmallestNodeWhichContains(ship.Bounds);
+                if (bestFitNode == null)
+                {
                     // Messages.MoveS
                     // Bus.SendMessage()
                 }

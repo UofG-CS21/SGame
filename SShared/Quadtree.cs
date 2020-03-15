@@ -16,112 +16,67 @@ namespace SShared
     /// </summary>
     public class PathString : INetSerializable
     {
-
         public List<Quadrant> QuadrantList = new List<Quadrant>();
-
-        private byte[] ByteForm;
-
-
-        public int NumberOfChoices;
 
         public void Serialize(NetDataWriter writer)
         {
-            writer.Put(this.NumberOfChoices);
-            writer.PutBytesWithLength(this.ByteForm, 0, this.ByteForm.Length);
+            writer.Put(QuadrantList.Count);
+            writer.Put(this.ToByteArray());
         }
 
         public void Deserialize(NetDataReader reader)
         {
-            this.NumberOfChoices = reader.GetInt();
-            this.ByteForm = reader.GetBytesWithLength();
-            this.QuadrantList = PathString.ByteArrayToQuadrantList(this.ByteForm, this.NumberOfChoices);
-
+            int numQuadrants = reader.GetInt();
+            byte[] bytes = new byte[ByteLength(numQuadrants)];
+            reader.GetBytes(bytes, bytes.Length);
+            this.QuadrantList = ByteArrayToQuadrantList(bytes, numQuadrants);
         }
 
         public PathString()
         {
-            this.NumberOfChoices = 0;
             this.QuadrantList = new List<Quadrant>();
         }
 
         public PathString(List<Quadrant> choiceList)
         {
             this.QuadrantList = choiceList;
-            this.NumberOfChoices = QuadrantList.Count();
-            this.ByteForm = this.ToByteArray();
         }
 
-        public void AddChoice(Quadrant quadrant)
+        public static int ByteLength(int numQuadrants)
         {
-            this.NumberOfChoices += 1;
-            this.QuadrantList.Add(quadrant);
+            return (numQuadrants + 3) / 4;
         }
 
         public byte[] ToByteArray()
         {
-            List<Byte> ByteArray = new List<Byte>();
-            string bitstring = this.ToString();
+            byte[] byteArray = new byte[ByteLength(QuadrantList.Count)];
 
-            for (int i = 0; i < NumberOfChoices; i += 4)
+            int iBit = 0;
+            for (int i = 0; i < QuadrantList.Count; i++)
             {
-                string bits = bitstring.Substring(i * 2, 8).PadRight(8, '0');
-                ByteArray.Add(Convert.ToByte(bits, 2));
+                int mask = ((int)QuadrantList[i]) << iBit;
+                byteArray[i / 4] |= (byte)mask;
+                iBit += 2;
+                if (iBit == 8) iBit = 0;
             }
-
-            return ByteArray.ToArray();
+            return byteArray;
         }
 
         public static List<Quadrant> ByteArrayToQuadrantList(byte[] byteArray, int numChoices)
         {
-            List<Quadrant> quadrantList = new List<Quadrant>();
-            for (int i = 0; (i * 4) < numChoices; i++)
+            List<Quadrant> list = new List<Quadrant>();
+            int iBit = 0;
+            for (int i = 0; i < numChoices; i++)
             {
-                string bitstring = Convert.ToString(byteArray[i], 2);
-                for (int j = 0; j < 4; j++)
-                {
-                    string bits = bitstring.Substring(j * 2, 2);
-                    switch (bits)
-                    {
-                        case "00":
-                            quadrantList.Add(Quadrant.NW);
-                            break;
-                        case "01":
-                            quadrantList.Add(Quadrant.NE);
-                            break;
-                        case "10":
-                            quadrantList.Add(Quadrant.SW);
-                            break;
-                        case "11":
-                            quadrantList.Add(Quadrant.SE);
-                            break;
-                        default:
-                            Console.WriteLine("Error: Invalid Input in PathString.ByteArrayToQuadrantList");
-                            break;
-                    }
-                }
+                int quadrant = (byteArray[i / 4] >> iBit) & 0b11;
+                list.Add((Quadrant)quadrant);
+                iBit += 2;
+                if (iBit == 8) iBit = 0;
             }
-            return quadrantList;
-
-
+            return list;
         }
 
-        public override string ToString()
-        {
-            string bitstring = "";
-            foreach (Quadrant choice in this.QuadrantList)
-            {
-                if ((int)choice < 2)
-                {
-                    bitstring += Convert.ToString(0, 2);
-                }
-                bitstring += Convert.ToString((int)choice, 2);
-            }
-
-
-            return bitstring;
-        }
-
-
+        public override string ToString() => string.Join(", ", this.QuadrantList);
     }
 
     /// <summary>
@@ -214,6 +169,7 @@ namespace SShared
             {
                 child._bounds = Bounds.QuadrantBounds(pos);
                 child.Parent = this;
+                child.Quadrant = pos;
                 child.Depth = Depth + 1;
             }
             _children[(int)pos] = child;
@@ -291,12 +247,15 @@ namespace SShared
             return node;
         }
 
-        public QuadTreeNode<T> SmallestNodeWhichContainsShip(Spaceship ship)
+        /// <summary>
+        /// Returns the smallest child capable of containing `bounds`.  
+        /// </summary>
+        public QuadTreeNode<T> SmallestNodeWhichContains(Quad bounds)
         {
             QuadTreeNode<T> node = this;
             QuadTreeNode<T> child = null;
             QuadTreeNode<T> validChild = node;
-            if (!node.Bounds.ContainsQuad(ship.Bounds))
+            if (!node.Bounds.ContainsQuad(bounds))
             {
                 return null;
             }
@@ -307,7 +266,7 @@ namespace SShared
                 validChild = null;
                 for (int j = 0; j < 4; j++)
                 {
-                    if ((child = node._children[j]) != null && child.Bounds.ContainsQuad(ship.Bounds))
+                    if ((child = node._children[j]) != null && child.Bounds.ContainsQuad(bounds))
                     {
                         validChild = child;
                     }
@@ -315,21 +274,57 @@ namespace SShared
             } while (validChild != null);
 
             return node;
-
         }
 
-
+        /// <summary>
+        /// Returns the PathString from the root to this node.
+        /// </summary>
+        public PathString Path()
+        {
+            QuadTreeNode<T> node = this;
+            List<Quadrant> path = new List<Quadrant>();
+            while (node.Parent != null)
+            {
+                path.Add(node.Quadrant);
+                node = node.Parent;
+            }
+            path.Reverse();
+            return new PathString(path);
+        }
 
         /// <summary>
-        /// Apply a function to all nodes recursively (preorder traversal).
+        /// Visit all nodes recursively.
         /// </summary>
-        public void ApplyRecur(Action<QuadTreeNode<T>> action)
+        public IEnumerable<QuadTreeNode<T>> Traverse()
         {
-            action(this);
-            foreach (var child in _children)
+            Stack<QuadTreeNode<T>> stack = new Stack<QuadTreeNode<T>>();
+            stack.Push(this);
+            while (stack.Any())
             {
-                if (child != null) child.ApplyRecur(action);
+                var node = stack.Pop();
+                yield return node;
+
+                foreach (var child in node._children)
+                {
+                    if (child != null) stack.Push(child);
+                }
             }
+        }
+
+        /// <summary>
+        /// Set the given child to null if it is present.
+        /// </summary>
+        public bool EraseChild(QuadTreeNode<T> child)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                if (_children[i] == child)
+                {
+                    _children[i] = null;
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }
