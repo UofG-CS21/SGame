@@ -24,9 +24,12 @@ namespace SArbiter
             response.Data["token"] = token;
 
             Console.Error.WriteLine("connect {0} to {1}", token, shipNode.ApiUrl);
+            Console.Error.WriteLine("expecting a message from {0}...", shipNode.Peer.EndPoint);
 
             // TODO: Add a timeout in case we don't get a reply from the SGame node?
             await new MessageWaiter<Messages.ShipConnected>(RoutingTable.BusMaster, shipNode.Peer, (msg) => msg.Token == token).Wait;
+
+            Console.Error.WriteLine("OK: {0} is on {1}", token, shipNode.ApiUrl);
 
             await response.Send(200);
         }

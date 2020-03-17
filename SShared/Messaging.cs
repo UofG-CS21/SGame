@@ -131,11 +131,6 @@ namespace SShared
         }
 
         /// <summary>
-        /// Convenience alias for `Host.FirstPeer`.
-        /// </summary>
-        public NetPeer FirstPeer { get { return Host.FirstPeer; } }
-
-        /// <summary>
         /// Queries the local host's IP addresses.
         /// </summary>
         public static List<IPAddress> LocalIPs

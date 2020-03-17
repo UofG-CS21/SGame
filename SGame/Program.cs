@@ -91,13 +91,13 @@ namespace SGame
         {
             this.options = options;
             this.bus = new NetNode(listenPort: (int)options.LocalBusPort);
-            this.bus.Connect(options.Arbiter, (int)options.ArbiterBusPort);
+            LiteNetLib.NetPeer arbiterPeer = this.bus.Connect(options.Arbiter, (int)options.ArbiterBusPort);
 
             // On startup, the local SGame node assumes it manages the whole universe.
             var localTree = new LocalQuadTreeNode(new SShared.Quad(0.0, 0.0, UniverseSize), 0);
             var rootNode = localTree;
 
-            this.api = new Api(options.ApiUrl, rootNode, localTree, bus, options.LocalBusPort);
+            this.api = new Api(options.ApiUrl, rootNode, localTree, bus, arbiterPeer, options.LocalBusPort);
             this.router = new Router<Api>(api);
         }
 

@@ -43,6 +43,11 @@ namespace SGame
         public NetNode Bus { get; set; }
 
         /// <summary>
+        /// The NetPeer corresponding to the arbiter.
+        /// </summary>
+        public NetPeer ArbiterPeer { get; set; }
+
+        /// <summary>
         /// The UDP port the local event bus is running on.
         /// </summary>
         public uint LocalBusPort { get; set; }
@@ -53,7 +58,7 @@ namespace SGame
         internal Dictionary<string, Spaceship> DeadShips { get; set; }
 
         // start the gameTime stopwatch on API creation
-        public Api(string apiUrl, SGameQuadTreeNode rootNode, LocalQuadTreeNode quadTreeNode, NetNode bus, uint localBusPort)
+        public Api(string apiUrl, SGameQuadTreeNode rootNode, LocalQuadTreeNode quadTreeNode, NetNode bus, NetPeer arbiterPeer, uint localBusPort)
         {
             this.ApiUrl = apiUrl;
             this._gameTime = new GameTime();
@@ -63,6 +68,7 @@ namespace SGame
             this.RootNode = rootNode;
             this.QuadTreeNode = quadTreeNode;
             this.Bus = bus;
+            this.ArbiterPeer = arbiterPeer;
             this.LocalBusPort = localBusPort;
             this.DeadShips = new Dictionary<string, Spaceship>();
 
@@ -141,7 +147,7 @@ namespace SGame
         /// </summary>
         private void OnPeerConnected(LiteNetLib.NetPeer peer)
         {
-            if (peer == Bus.FirstPeer)
+            if (peer == ArbiterPeer)
             {
                 // Only send NodeOnline when connecting to the arbiter...
 
@@ -173,7 +179,7 @@ namespace SGame
         /// </summary>
         private void OnNodeConfigReceived(NetPeer arbiterPeer, Messages.NodeConfig msg)
         {
-            if (arbiterPeer != Bus.FirstPeer)
+            if (arbiterPeer != this.ArbiterPeer)
             {
                 // Do not accept configuration not from the arbiter
                 return;
@@ -241,9 +247,9 @@ namespace SGame
             ship.Pos = new Vector2(randomShipBounds.CentreX, randomShipBounds.CentreY);
             QuadTreeNode.ShipsByToken.Add(msg.Token, ship);
 
-            Console.WriteLine($"Send message from {ApiUrl}...");
+            Console.WriteLine($"Send message from {ApiUrl} to {ArbiterPeer.EndPoint}...");
 
-            Bus.SendMessage(new Messages.ShipConnected() { Token = msg.Token }, Bus.FirstPeer);
+            Bus.SendMessage(new Messages.ShipConnected() { Token = msg.Token }, ArbiterPeer);
         }
 
         /// <summary>
@@ -256,7 +262,7 @@ namespace SGame
             if (QuadTreeNode.ShipsByToken.Remove(msg.Token))
             {
                 // TODO: Serialize ship state here?
-                Bus.SendMessage(new Messages.ShipDisconnected() { Token = msg.Token }, Bus.FirstPeer);
+                Bus.SendMessage(new Messages.ShipDisconnected() { Token = msg.Token }, ArbiterPeer);
             }
         }
 
@@ -673,7 +679,7 @@ namespace SGame
             }
 
             // Send the same sudo back to the arbiter as ACK
-            Bus.SendMessage(data, Bus.FirstPeer, LiteNetLib.DeliveryMethod.ReliableOrdered);
+            Bus.SendMessage(data, ArbiterPeer, LiteNetLib.DeliveryMethod.ReliableOrdered);
         }
 #endif
 
