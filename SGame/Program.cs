@@ -31,10 +31,16 @@ namespace SGame
 
 
         /// <summary>
-        /// The UDP port of the master event bus.
+        /// The UDP port of the arbiter's master event bus.
         /// </summary>
-        [Option("bus-port", Default = 4242u, Required = false, HelpText = "(Internal) UDP port of the master event bus.")]
-        public uint BusPort { get; set; }
+        [Option("arbiter-bus-port", Default = 4242u, Required = false, HelpText = "Externally-visible UDP port of the arbiter's event bus.")]
+        public uint ArbiterBusPort { get; set; }
+
+        /// <summary>
+        /// The UDP port of this node's master event bus.
+        /// </summary>
+        [Option("local-bus-port", Default = 4242u, Required = false, HelpText = "Externally-visible UDP port of this node's event bus.")]
+        public uint LocalBusPort { get; set; }
 
         /// <summary>
         /// SGame's tickrate, i.e. the updates-per-second of the main loop.
@@ -84,13 +90,14 @@ namespace SGame
         Program(CmdLineOptions options)
         {
             this.options = options;
-            this.bus = new NetNode(options.Arbiter, (int)options.BusPort);
+            this.bus = new NetNode(listenPort: (int)options.LocalBusPort);
+            this.bus.Connect(options.Arbiter, (int)options.ArbiterBusPort);
 
             // On startup, the local SGame node assumes it manages the whole universe.
             var localTree = new LocalQuadTreeNode(new SShared.Quad(0.0, 0.0, UniverseSize), 0);
             var rootNode = localTree;
 
-            this.api = new Api(options.ApiUrl, rootNode, localTree, bus);
+            this.api = new Api(options.ApiUrl, rootNode, localTree, bus, options.LocalBusPort);
             this.router = new Router<Api>(api);
         }
 

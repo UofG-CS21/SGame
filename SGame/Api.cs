@@ -43,12 +43,17 @@ namespace SGame
         public NetNode Bus { get; set; }
 
         /// <summary>
+        /// The UDP port the local event bus is running on.
+        /// </summary>
+        public uint LocalBusPort { get; set; }
+
+        /// <summary>
         /// All ships who died in this node. F.
         /// </summary>
         internal Dictionary<string, Spaceship> DeadShips { get; set; }
 
         // start the gameTime stopwatch on API creation
-        public Api(string apiUrl, SGameQuadTreeNode rootNode, LocalQuadTreeNode quadTreeNode, NetNode bus)
+        public Api(string apiUrl, SGameQuadTreeNode rootNode, LocalQuadTreeNode quadTreeNode, NetNode bus, uint localBusPort)
         {
             this.ApiUrl = apiUrl;
             this._gameTime = new GameTime();
@@ -58,6 +63,7 @@ namespace SGame
             this.RootNode = rootNode;
             this.QuadTreeNode = quadTreeNode;
             this.Bus = bus;
+            this.LocalBusPort = localBusPort;
             this.DeadShips = new Dictionary<string, Spaceship>();
 
             this.Bus.PeerConnectedEvent += OnPeerConnected;
@@ -131,7 +137,7 @@ namespace SGame
         }
 
         /// <summary>
-        /// Called when a node (arbiter or SGame) connects to us; sends the current config of the local node to it.
+        /// Called when a a peer connects to us; sends a `NodeOnline` message, but only to the arbiter.
         /// </summary>
         private void OnPeerConnected(LiteNetLib.NetPeer peer)
         {
@@ -144,6 +150,7 @@ namespace SGame
                 {
                     ApiUrl = this.ApiUrl,
                     BusAddress = NetNode.LocalIPs.First(),
+                    BusPort = this.LocalBusPort,
                 };
                 this.Bus.SendMessage(currentConfig, peer);
             }
@@ -154,9 +161,8 @@ namespace SGame
         /// </summary>
         private void OnNodeOnlineReceived(NetPeer arbiterPeer, Messages.NodeOnline msg)
         {
-            var endpoint = new IPEndPoint(msg.BusAddress, 4242); // FIXME: The port is different between nodes!!
+            var endpoint = new IPEndPoint(msg.BusAddress, (int)msg.BusPort);
             Console.Error.WriteLine("Estabilishing direct bus connection to {0}", endpoint);
-
             NetPeer peer = Bus.Host.Connect(endpoint, NetNode.Secret);
             peer.Tag = msg.ApiUrl;
         }
@@ -234,6 +240,8 @@ namespace SGame
             var randomShipBounds = MathUtils.RandomQuadInQuad(QuadTreeNode.Bounds, ship.Radius());
             ship.Pos = new Vector2(randomShipBounds.CentreX, randomShipBounds.CentreY);
             QuadTreeNode.ShipsByToken.Add(msg.Token, ship);
+
+            Console.WriteLine($"Send message from {ApiUrl}...");
 
             Bus.SendMessage(new Messages.ShipConnected() { Token = msg.Token }, Bus.FirstPeer);
         }

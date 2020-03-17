@@ -88,7 +88,12 @@ namespace SShared
         /// </summary>
         public Quad Bounds => new Quad(Pos.X, Pos.Y, Radius());
 
-        public Spaceship(string token = null)
+        public Spaceship()
+            : this(null)
+        {
+        }
+
+        public Spaceship(string token)
         {
             this.Token = token;
 

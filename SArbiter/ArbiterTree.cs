@@ -19,20 +19,24 @@ namespace SArbiter
 
         public string ApiUrl { get; set; }
 
+        public uint BusPort { get; set; }
+
         public uint ShipCount { get; set; }
 
-        public ArbiterTreeNode(NetPeer peer, string apiUrl)
+        public ArbiterTreeNode(NetPeer peer, uint busPort, string apiUrl)
             : base(new Quad(0.0, 0.0, Double.MaxValue), 0)
         {
             this.ApiUrl = apiUrl;
+            this.BusPort = busPort;
             this.Peer = peer;
             this.ShipCount = 0;
         }
 
-        public ArbiterTreeNode(QuadTreeNode<ArbiterTreeItem> parent, Quadrant quadrant, uint depth, NetPeer peer, string apiUrl)
+        public ArbiterTreeNode(QuadTreeNode<ArbiterTreeItem> parent, Quadrant quadrant, uint depth, NetPeer peer, uint busPort, string apiUrl)
             : base(parent, quadrant, depth)
         {
             this.ApiUrl = apiUrl;
+            this.BusPort = busPort;
             this.Peer = peer;
             this.ShipCount = 0;
         }

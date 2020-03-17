@@ -86,6 +86,8 @@ namespace SShared
                     .Where(field => field.Name == "OnMessageReceived").First();
                 var evtDelegate = (MulticastDelegate)evtField.GetValue(TEventDelegates);
 
+                if (evtDelegate == null) return; // No events attached yet
+
                 foreach (var evtHandler in evtDelegate.GetInvocationList())
                 {
                     evtHandler.Method.Invoke(evtHandler.Target, new object[] { sender, arg });
@@ -141,34 +143,15 @@ namespace SShared
         }
 
         /// <summary>
-        /// Register nested property type
+        /// Register a type of message into the messaging system.
         /// </summary>
         /// <typeparam name="T">INetSerializable structure</typeparam>
         /// <returns>True - if register successful, false - if type already registered</returns>
-        public bool RegisterNestedType<T>() where T : struct, INetSerializable
+        public bool RegisterNestedType<T>() where T : class, INetSerializable, new()
         {
-            return _netSerializer.RegisterNestedType<T>();
-        }
-
-        /// <summary>
-        /// Register nested property type
-        /// </summary>
-        /// <param name="writeDelegate"></param>
-        /// <param name="readDelegate"></param>
-        /// <returns>True - if register successful, false - if type already registered</returns>
-        public bool RegisterNestedType<T>(Action<NetDataWriter, T> writeDelegate, Func<NetDataReader, T> readDelegate)
-        {
-            return _netSerializer.RegisterNestedType<T>(writeDelegate, readDelegate);
-        }
-
-        /// <summary>
-        /// Register nested property type
-        /// </summary>
-        /// <typeparam name="T">INetSerializable class</typeparam>
-        /// <returns>True - if register successful, false - if type already registered</returns>
-        public bool RegisterNestedType<T>(Func<T> constructor) where T : class, INetSerializable
-        {
-            return _netSerializer.RegisterNestedType(constructor);
+            bool ok = _netSerializer.RegisterNestedType<T>(() => new T());
+            Events<T>(); //< Force creation of the event handlers
+            return ok;
         }
 
         /// <summary>

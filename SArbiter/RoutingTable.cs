@@ -25,11 +25,11 @@ namespace SArbiter
             this.RootNode = rootNode;
         }
 
-        public ArbiterTreeNode AddSGameNode(NetPeer peer, string apiUrl)
+        public ArbiterTreeNode AddSGameNode(NetPeer peer, uint busPort, string apiUrl)
         {
             if (this.RootNode == null)
             {
-                this.RootNode = new ArbiterTreeNode(peer, apiUrl);
+                this.RootNode = new ArbiterTreeNode(peer, busPort, apiUrl);
                 return this.RootNode;
             }
             else
@@ -45,7 +45,7 @@ namespace SArbiter
                         var quadrant = (Quadrant)((randomQuadrant + i) % 4);
                         if (parent.Child(quadrant) == null)
                         {
-                            var node = new ArbiterTreeNode(peer, apiUrl);
+                            var node = new ArbiterTreeNode(peer, busPort, apiUrl);
                             parent.SetChild(quadrant, node);
                             return node;
                         }

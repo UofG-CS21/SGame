@@ -37,9 +37,9 @@ namespace SShared
         public NetManager Host { get; private set; }
 
         /// <summary>
-        /// True if this node is a server node, false if it's a client.
+        /// True if this node is listening to a local port; false othwerise.
         /// </summary>
-        public bool IsServer { get; private set; }
+        public bool IsListening { get; private set; }
 
         NetDataWriter _writer;
 
@@ -51,9 +51,8 @@ namespace SShared
         /// <summary>
         /// Initializes a bus node.
         /// </summary>
-        /// <param name="hostname">If not null, connect to the given hostname/address; if null, start a server node.</param>
-        /// <param name="port">The port to connect to (or bind to for server nodes).</param>
-        public NetNode(string hostname, int port)
+        /// <param name="listenPort">If a valid UDP port number, start listening on this port.<param>
+        public NetNode(int listenPort = -1)
         {
             this.ConnectionRequestEvent += ConnectionRequestHandler;
             this.PeerConnectedEvent += PeerConnectedHandler;
@@ -61,23 +60,31 @@ namespace SShared
             this.NetworkReceiveEvent += NetworkReceivedHandler;
 
             Host = new NetManager(this);
-            if (hostname != null)
+            if (listenPort > 0)
             {
-                IsServer = false;
-                Host.Start();
-                Host.Connect(hostname, port, Secret);
+                Host.Start(listenPort);
             }
             else
             {
-                IsServer = true;
-                Host.Start(port);
-                //_netHost.BroadcastReceiveEnable = true;
+                Host.Start();
             }
-
             _writer = new NetDataWriter();
+
+#if DEBUG
+            // FIXME - juist for testing!
+            Host.DisconnectTimeout = 1_000_000;
+#endif
 
             PacketProcessor = new NetNodePacketProcessor();
             Messages.Serialization.RegisterAllSerializers(PacketProcessor);
+        }
+
+        /// <summary>
+        /// Connects to the given host:port.
+        /// </summary>
+        public NetPeer Connect(string host, int port, string key = Secret)
+        {
+            return Host.Connect(host, port, Secret);
         }
 
         /// <summary>
@@ -94,15 +101,18 @@ namespace SShared
         public void BroadcastMessage<T>(T message, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered, NetPeer excludedPeer = null)
             where T : class, IMessage, new()
         {
-            _writer.Reset();
-            PacketProcessor.Write<T>(_writer, message);
-            if (excludedPeer == null)
+            lock (_writer)
             {
-                Host.SendToAll(_writer, delivery);
-            }
-            else
-            {
-                Host.SendToAll(_writer, delivery, excludedPeer);
+                _writer.Reset();
+                PacketProcessor.Write<T>(_writer, message);
+                if (excludedPeer == null)
+                {
+                    Host.SendToAll(_writer, delivery);
+                }
+                else
+                {
+                    Host.SendToAll(_writer, delivery, excludedPeer);
+                }
             }
         }
 
@@ -112,9 +122,12 @@ namespace SShared
         public void SendMessage<T>(T message, NetPeer peer, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered)
             where T : class, IMessage, new()
         {
-            _writer.Reset();
-            PacketProcessor.Write<T>(_writer, message);
-            peer.Send(_writer, delivery);
+            lock (_writer)
+            {
+                _writer.Reset();
+                PacketProcessor.Write<T>(_writer, message);
+                peer.Send(_writer, delivery);
+            }
         }
 
         /// <summary>

@@ -54,7 +54,7 @@ namespace SArbiter
 
         internal Program(CmdLineOptions options)
         {
-            _busMaster = new NetNode(null, (int)options.BusPort);
+            _busMaster = new NetNode(listenPort: (int)options.BusPort);
             _busPort = options.BusPort;
             _routingTable = new RoutingTable(_busMaster, null);
             _apiRouter = new Router<ArbiterApi>(new ArbiterApi(_routingTable));
@@ -75,10 +75,10 @@ namespace SArbiter
 
         private void OnSGameConnected(NetPeer peer)
         {
-            var newNodeInfo = new MessageWaiter<SShared.Messages.NodeOnline>(_busMaster, peer).Wait;
-            newNodeInfo.Wait();
+            var newNodeInfoWaiter = new MessageWaiter<SShared.Messages.NodeOnline>(_busMaster, peer).Wait;
+            newNodeInfoWaiter.Wait();
 
-            var newNode = _routingTable.AddSGameNode(peer, newNodeInfo.Result.ApiUrl);
+            var newNode = _routingTable.AddSGameNode(peer, newNodeInfoWaiter.Result.BusPort, newNodeInfoWaiter.Result.ApiUrl);
             Console.Error.WriteLine(">>> SGame node {0} (API: {1}) connected at {2} <<<", peer.EndPoint, newNode.ApiUrl, newNode.Path());
 
             // IMPORTANT: Send the whole network topology (as of now) to the new node (so that it can build a routing table for itself)
@@ -89,6 +89,7 @@ namespace SArbiter
                 var nodeOnline = new SShared.Messages.NodeOnline()
                 {
                     BusAddress = treeNode.Peer.EndPoint.Address,
+                    BusPort = treeNode.BusPort,
                     ApiUrl = treeNode.ApiUrl,
                 };
                 _busMaster.SendMessage(nodeOnline, peer, DeliveryMethod.ReliableOrdered);
@@ -106,9 +107,10 @@ namespace SArbiter
             var newNodeOnline = new SShared.Messages.NodeOnline()
             {
                 BusAddress = newNode.Peer.EndPoint.Address,
+                BusPort = newNode.BusPort,
                 ApiUrl = newNode.ApiUrl,
             };
-            _busMaster.BroadcastMessage(newNodeOnline, DeliveryMethod.ReliableOrdered);
+            _busMaster.BroadcastMessage(newNodeOnline, DeliveryMethod.ReliableOrdered, excludedPeer: newNode.Peer);
 
             var newNodeConfig = new SShared.Messages.NodeConfig()
             {
@@ -116,7 +118,7 @@ namespace SArbiter
                 Path = newNode.Path(),
                 ApiUrl = newNode.ApiUrl,
             };
-            _busMaster.BroadcastMessage(newNodeConfig, DeliveryMethod.ReliableOrdered);
+            _busMaster.BroadcastMessage(newNodeConfig, DeliveryMethod.ReliableOrdered, excludedPeer: newNode.Peer);
         }
 
         private void OnSGameDisconnected(NetPeer peer, DisconnectInfo info)
@@ -172,7 +174,7 @@ namespace SArbiter
             }
 
             using (HttpListener listener = new HttpListener())
-            using (NetNode busMaster = new NetNode(null, (int)options.BusPort))
+            using (NetNode busMaster = new NetNode(listenPort: (int)options.BusPort))
             {
                 listener.Prefixes.Add(options.ApiUrl);
 

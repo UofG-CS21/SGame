@@ -22,6 +22,11 @@ namespace SShared.Messages
         public IPAddress BusAddress { get; set; }
 
         /// <summary>
+        /// Externally-visible UDP port of the event bus of the node in question.
+        /// </summary>
+        public uint BusPort { get; set; }
+
+        /// <summary>
         /// Externally-visible HTTP address the SGame REST API is being served on for the node in question.
         /// </summary>
         public string ApiUrl { get; set; }
@@ -29,6 +34,7 @@ namespace SShared.Messages
         public void Serialize(NetDataWriter writer)
         {
             writer.PutBytesWithLength(BusAddress.GetAddressBytes());
+            writer.Put(BusPort);
             writer.Put(ApiUrl);
         }
 
@@ -36,6 +42,7 @@ namespace SShared.Messages
         {
             byte[] ipBytes = reader.GetBytesWithLength();
             BusAddress = new IPAddress(ipBytes);
+            BusPort = reader.GetUInt();
             ApiUrl = reader.GetString();
         }
     }
@@ -307,16 +314,16 @@ namespace SShared.Messages
         public static void RegisterAllSerializers(NetNodePacketProcessor processor)
         {
             // v--- Extra types to be registered ---v
-            processor.RegisterNestedType<Spaceship>(() => new Spaceship(null));
+            processor.RegisterNestedType<Spaceship>();
             // v--- Register types here ---v
-            processor.RegisterNestedType<ScanShoot>(() => new ScanShoot());
-            processor.RegisterNestedType<Struck>(() => new Struck());
-            processor.RegisterNestedType<ShipConnected>(() => new ShipConnected());
-            processor.RegisterNestedType<ShipDisconnected>(() => new ShipDisconnected());
-            processor.RegisterNestedType<TransferShip>(() => new TransferShip());
-            processor.RegisterNestedType<ShipTransferred>(() => new ShipTransferred());
-            processor.RegisterNestedType<NodeOnline>(() => new NodeOnline());
-            processor.RegisterNestedType<NodeConfig>(() => new NodeConfig());
+            processor.RegisterNestedType<ScanShoot>();
+            processor.RegisterNestedType<Struck>();
+            processor.RegisterNestedType<ShipConnected>();
+            processor.RegisterNestedType<ShipDisconnected>();
+            processor.RegisterNestedType<TransferShip>();
+            processor.RegisterNestedType<ShipTransferred>();
+            processor.RegisterNestedType<NodeOnline>();
+            processor.RegisterNestedType<NodeConfig>();
         }
     }
 
