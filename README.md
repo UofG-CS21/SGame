@@ -1,6 +1,6 @@
 # Team CS21 Main Project - Team Project 3 Course 2019-20
 
-The main focus of this project was to create a space game in which clients will use a REST api to command their spaceship. The server would respond with vague information so the client would then need to interpet make appropriate judgments and decisions. The idea behind this game would be that clients can be automated and act as loadtest clients for the server. The secondary idea is to also allow the more developed client to have a competitive edge over less developed clients. The system should be able to scale horizontally.
+The main focus of the project was to create a space game in which clients will use a REST api to command their spaceship. The server would respond with vague information so the client would then need to interpret and make appropriate judgments and decisions. The idea behind this game would be that clients can be automated and act as loadtest clients for the server. The secondary idea is to also allow the more developed client to have a competitive edge over less developed clients. The system should be able to scale horizontally.
 
 ## API Documentation
 
