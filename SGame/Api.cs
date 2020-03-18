@@ -403,7 +403,7 @@ namespace SGame
                 Radius = MathUtils.ScanShootRadius(MathUtils.Deg2Rad(widthDeg), energy),
             };
 
-            ScanShootResults results = await QuadTreeNode.ScanShootLocal(scanMsg);
+            ScanShootResults results = QuadTreeNode.ScanShootLocal(scanMsg);
 
             Bus.BroadcastMessage(scanMsg, excludedPeer: ArbiterPeer);
             var resultWaiters = Bus.Host.ConnectedPeerList
@@ -479,7 +479,7 @@ namespace SGame
                 Radius = MathUtils.ScanShootRadius(MathUtils.Deg2Rad(widthDeg), energy),
             };
 
-            ScanShootResults results = await QuadTreeNode.ScanShootLocal(shootMsg);
+            ScanShootResults results = QuadTreeNode.ScanShootLocal(shootMsg);
 
             Bus.BroadcastMessage(shootMsg, excludedPeer: ArbiterPeer);
             var resultWaiters = Bus.Host.ConnectedPeerList

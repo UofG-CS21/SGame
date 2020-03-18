@@ -21,7 +21,7 @@ namespace SGame
             }
             return this;
         }
-    };
+    }
 
     abstract class SGameQuadTreeNode : QuadTreeNode<Spaceship>
     {
@@ -32,7 +32,7 @@ namespace SGame
         /// <summary>
         /// Returns a (area gain for shooter, list of struck ships) pair.
         /// </summary>
-        public abstract Task<ScanShootResults> ScanShootLocal(Messages.ScanShoot msg);
+        public abstract ScanShootResults ScanShootLocal(Messages.ScanShoot msg);
     }
 
     class LocalQuadTreeNode : SGameQuadTreeNode
@@ -64,7 +64,7 @@ namespace SGame
         /// </summary>
         private const double MINIMUM_AREA = 0.75;
 
-        public override async Task<ScanShootResults> ScanShootLocal(Messages.ScanShoot msg)
+        public override ScanShootResults ScanShootLocal(Messages.ScanShoot msg)
         {
             ScanShootResults results = new ScanShootResults();
 
@@ -123,7 +123,6 @@ namespace SGame
                     }
                 }
             }
-
             return results;
         }
     }
@@ -171,7 +170,7 @@ namespace SGame
             throw new NotImplementedException();
         }
 
-        public override async Task<ScanShootResults> ScanShootLocal(Messages.ScanShoot msg)
+        public override ScanShootResults ScanShootLocal(Messages.ScanShoot msg)
         {
             bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds, msg);
             if (affected)
@@ -214,9 +213,9 @@ namespace SGame
             return new Task<List<Spaceship>>(() => new List<Spaceship>());
         }
 
-        public override Task<ScanShootResults> ScanShootLocal(Messages.ScanShoot msg)
+        public override ScanShootResults ScanShootLocal(Messages.ScanShoot msg)
         {
-            return new Task<ScanShootResults>(() => new ScanShootResults());
+            return new ScanShootResults();
         }
     }
 }
