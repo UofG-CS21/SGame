@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using SShared;
@@ -20,11 +21,16 @@ namespace SArbiter
         public async Task ConnectPlayer(ApiResponse response, ApiData data)
         {
             ArbiterTreeNode shipNode = null;
-            var token = RoutingTable.AddNewShip(out shipNode, data.Json["token"]);
+            var token = RoutingTable.AddNewShip(out shipNode, (string)data.Json["token"]);
             response.Data["token"] = token;
+
+            Console.Error.WriteLine("connect {0} to {1}", token, shipNode.ApiUrl);
+            Console.Error.WriteLine("expecting a message from {0}...", shipNode.Peer.EndPoint);
 
             // TODO: Add a timeout in case we don't get a reply from the SGame node?
             await new MessageWaiter<Messages.ShipConnected>(RoutingTable.BusMaster, shipNode.Peer, (msg) => msg.Token == token).Wait;
+
+            Console.Error.WriteLine("OK: {0} is on {1}", token, shipNode.ApiUrl);
 
             await response.Send(200);
         }
@@ -34,6 +40,8 @@ namespace SArbiter
         public async Task DisconnectPlayer(ApiResponse response, ApiData data)
         {
             var token = (string)data.Json["token"];
+
+            Console.Error.WriteLine("disconnect {0}", token);
 
             RoutingTable.RemoveShip(token);
             await response.Send(200);
@@ -50,6 +58,7 @@ namespace SArbiter
             }
             else
             {
+                Console.Error.WriteLine("{0} -> {1}", route, node.ApiUrl);
                 var url = $"{node.ApiUrl}{route}";
                 await response.Redirect(url);
             }
@@ -80,28 +89,31 @@ namespace SArbiter
         public async Task Sudo(ApiResponse response, ApiData data)
         {
             var message = new Messages.Sudo() { Json = data.Json };
-            ArbiterTreeNode shipNode = null;
             if (data.Json.ContainsKey("token"))
             {
                 var shipToken = (string)data.Json["token"];
-                shipNode = RoutingTable.NodeWithShip(shipToken);
+                var shipNode = RoutingTable.NodeWithShip(shipToken);
                 if (shipNode == null)
                 {
                     response.Data["error"] = $"No ship with token: {shipToken}";
                     await response.Send(500);
                 }
                 RoutingTable.BusMaster.SendMessage(message, shipNode.Peer, LiteNetLib.DeliveryMethod.ReliableOrdered);
+
+                // Wait for the sudo to bounce back from the node
+                await new MessageWaiter<Messages.Sudo>(RoutingTable.BusMaster, shipNode.Peer,
+                    (sudo) => sudo.Json.Equals(message.Json)).Wait;
             }
             else
             {
                 RoutingTable.BusMaster.BroadcastMessage(message);
-                // Wait for the root node to ACK sudo. No good reason to pick the root, it's just guaranteed to exist.
-                shipNode = RoutingTable.RootNode;
-            }
 
-            // Wait for the sudo to bounce back from the node
-            await new MessageWaiter<Messages.Sudo>(RoutingTable.BusMaster, shipNode.Peer,
-                (sudo) => sudo.Json.Equals(message.Json)).Wait;
+                // Wait for ALL nodes to ACK sudo...
+                var waiters = RoutingTable.BusMaster.Host.ConnectedPeerList
+                    .Select((peer) => new MessageWaiter<Messages.Sudo>(RoutingTable.BusMaster, peer, (sudo) => sudo.Json.Equals(message.Json)).Wait)
+                    .ToArray();
+                Task.WaitAll(waiters);
+            }
 
             await response.Send(200);
         }

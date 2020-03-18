@@ -1,18 +1,75 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Linq.Expressions;
+using LiteNetLib;
 using LiteNetLib.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace SShared.Messages
 {
+    /// <summary>
+    /// A message sent from a node to the arbiter to publish information about itself,
+    /// or sent from the arbiter to nodes to let them know when configuration changes for themselves / another node.
+    /// </summary>
+    public class NodeConfig : IMessage
+    {
+        /// <summary>
+        /// The bounds of the quadtree node managed by the node in question.
+        /// </summary>
+        public Quad Bounds { get; set; }
+
+        /// <summary>
+        /// The path to the node in question from the root node of the tree.
+        /// </summary>
+        public PathString Path { get; set; }
+
+        /// <summary>
+        /// Externally-visible IP address of the `NetNode` for the node in question
+        /// - used both for the event bus and the HTTP REST API.
+        /// </summary>
+        public IPAddress BusAddress { get; set; }
+
+        /// <summary>
+        /// Externally-visible UDP port of the event bus of the node in question.
+        /// </summary>
+        public uint BusPort { get; set; }
+
+        /// <summary>
+        /// Externally-visible HTTP address the SGame REST API is being served on for the node in question.
+        /// Used as a unique identifier for the node.
+        /// </summary>
+        public string ApiUrl { get; set; }
+
+        // -- INetSerializable -------------------------------------------------
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(Bounds.CentreX); writer.Put(Bounds.CentreY); writer.Put(Bounds.Radius);
+            Path.Serialize(writer);
+            writer.PutBytesWithLength(BusAddress.GetAddressBytes());
+            writer.Put(BusPort);
+            writer.Put(ApiUrl);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            Bounds = new Quad(reader.GetDouble(), reader.GetDouble(), reader.GetDouble());
+            Path = new PathString();
+            Path.Deserialize(reader);
+            byte[] ipBytes = reader.GetBytesWithLength();
+            BusAddress = new IPAddress(ipBytes);
+            BusPort = reader.GetUInt();
+            ApiUrl = reader.GetString();
+        }
+    }
 
     /// <summary>
     /// A message sent to the arbiter when a ship needs to be transferred to its parent node.
     /// </summary>
-    public class MoveShipUp : IMessage
+    public class TransferShip : IMessage
     {
 
         /// <summary>
@@ -24,7 +81,6 @@ namespace SShared.Messages
 
         public void Serialize(NetDataWriter writer)
         {
-
             Ship.Serialize(writer);
         }
 
@@ -227,6 +283,29 @@ namespace SShared.Messages
     }
 
     /// <summary>
+    /// Serialization utilities.
+    /// </summary>
+    public static class Serialization
+    {
+        /// <summary>
+        /// Registers serializers for all bus message types.
+        /// </summary>
+        public static void RegisterAllSerializers(NetNodePacketProcessor processor)
+        {
+            // v--- Extra types to be registered ---v
+            processor.RegisterNestedType<Spaceship>();
+            // v--- Register types here ---v
+            processor.RegisterNestedType<ScanShoot>();
+            processor.RegisterNestedType<Struck>();
+            processor.RegisterNestedType<ShipConnected>();
+            processor.RegisterNestedType<ShipDisconnected>();
+            processor.RegisterNestedType<TransferShip>();
+            processor.RegisterNestedType<ShipTransferred>();
+            processor.RegisterNestedType<NodeConfig>();
+        }
+    }
+
+    /// <summary>
     /// A sudo call. 
     /// </summary>
     public class Sudo : IMessage
@@ -246,29 +325,6 @@ namespace SShared.Messages
         public void Deserialize(NetDataReader reader)
         {
             Json = JObject.Parse(reader.GetString());
-        }
-    }
-
-    /// <summary>
-    /// Serialization utilities.
-    /// </summary>
-    public static class Serialization
-    {
-        /// <summary>
-        /// Registers serializers for all bus message types.
-        /// </summary>
-        public static void RegisterAllSerializers(NetNodePacketProcessor processor)
-        {
-            // v--- Extra types to be registered ---v
-            processor.RegisterNestedType<Spaceship>(() => new Spaceship(null));
-            // v--- Register types here ---v
-            processor.RegisterNestedType<ScanShoot>(() => new ScanShoot());
-            processor.RegisterNestedType<Struck>(() => new Struck());
-            processor.RegisterNestedType<ShipConnected>(() => new ShipConnected());
-            processor.RegisterNestedType<ShipDisconnected>(() => new ShipDisconnected());
-            processor.RegisterNestedType<MoveShipUp>(() => new MoveShipUp());
-            processor.RegisterNestedType<ShipTransferred>(() => new ShipTransferred());
-            processor.RegisterNestedType<Sudo>(() => new Sudo());
         }
     }
 }

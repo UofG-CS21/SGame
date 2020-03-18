@@ -148,7 +148,7 @@ namespace SShared
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine(ex.Message);
+                Console.Error.WriteLine($"Exception at {ex.Source}: {ex.Message}");
                 Console.Error.WriteLine(ex.StackTrace);
             }
             finally

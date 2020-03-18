@@ -111,7 +111,7 @@ namespace SShared
         /// returns true if it does other wise false
         /// See this https://math.stackexchange.com/a/190373
         /// </summary>
-        public bool ContainsShip(Spaceship ship)
+        public bool ContainsShipCentre(Spaceship ship)
         {
             Vector2 AD = BottomLeft - TopLeft;
             Vector2 AB = TopRight - TopLeft;

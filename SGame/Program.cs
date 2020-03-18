@@ -17,28 +17,30 @@ namespace SGame
     class CmdLineOptions
     {
         /// <summary>
-        /// The HTTP hostname to bind to.
-        /// </summary>
-        [Option('H', "host", Default = "localhost", Required = false, HelpText = "The hostname to bind the compute node to.")]
-        public string Host { get; set; }
-
-        /// <summary>
-        /// The HTTP TCP port to bind to.
-        /// </summary>
-        [Option('P', "port", Default = 8000u, Required = false, HelpText = "The port to bind the compute node to.")]
-        public uint Port { get; set; }
-
-        /// <summary>
         /// The hostname of the SArbiter.
         /// </summary>
-        [Option("arbiter", Default = "localhost", Required = false, HelpText = "Hostname of the SArbiter managing this compute node.")]
+        [Option("arbiter", Default = "localhost", Required = false, HelpText = "Hostname or address of the SArbiter managing this compute node.")]
         public string Arbiter { get; set; }
 
         /// <summary>
-        /// The UDP port of the master event bus.
+        /// The HTTP address to serve the SGame REST API on.
         /// </summary>
-        [Option("bus-port", Default = 4242u, Required = false, HelpText = "UDP port of the SArbiter master event bus.")]
-        public uint BusPort { get; set; }
+        [Option("api-url", Default = "http://127.0.0.1:9000/", Required = false,
+         HelpText = "The HTTP address to serve the SGame REST API on. Must be externally accessible for multinode setups!")]
+        public string ApiUrl { get; set; }
+
+
+        /// <summary>
+        /// The UDP port of the arbiter's master event bus.
+        /// </summary>
+        [Option("arbiter-bus-port", Default = 4242u, Required = false, HelpText = "Externally-visible UDP port of the arbiter's event bus.")]
+        public uint ArbiterBusPort { get; set; }
+
+        /// <summary>
+        /// The UDP port of this node's master event bus.
+        /// </summary>
+        [Option("local-bus-port", Default = 4242u, Required = false, HelpText = "Externally-visible UDP port of this node's event bus.")]
+        public uint LocalBusPort { get; set; }
 
         /// <summary>
         /// The URL of the ElasticSearch server used for persistence.
@@ -58,6 +60,11 @@ namespace SGame
     /// </summary>
     class Program : IDisposable
     {
+        /// <summary>
+        /// Size of the game universe.
+        /// </summary>
+        public const double UniverseSize = 1 << 31;
+
         /// <summary>
         /// SGame instance options.
         /// </summary>
@@ -94,14 +101,15 @@ namespace SGame
         Program(CmdLineOptions options)
         {
             this.options = options;
-            this.bus = new NetNode(options.Arbiter, (int)options.BusPort);
+            this.bus = new NetNode(listenPort: (int)options.LocalBusPort);
             this.persistence = options.PersistenceUrl != null ? new Persistence(options.PersistenceUrl) : null;
+            LiteNetLib.NetPeer arbiterPeer = this.bus.Connect(options.Arbiter, (int)options.ArbiterBusPort);
 
-            // FIXME: Assuming the local SGame node manages the whole universe for now
-            //        (this will change when multiple nodes are connected to a SArbiter)
-            var quadtree = new LocalQuadTreeNode(null, new SShared.Quad(0.0, 0.0, 1 << 31), 0);
+            // On startup, the local SGame node assumes it manages the whole universe.
+            var localTree = new LocalQuadTreeNode(new SShared.Quad(0.0, 0.0, UniverseSize), 0);
+            var rootNode = localTree;
 
-            this.api = new Api(quadtree, bus, persistence);
+            this.api = new Api(options.ApiUrl, rootNode, localTree, bus, arbiterPeer, options.LocalBusPort, persistence);
             this.router = new Router<Api>(api);
         }
 
@@ -172,12 +180,13 @@ namespace SGame
 
             using (HttpListener listener = new HttpListener())
             {
-                listener.Prefixes.Add($"http://{options.Host}:{options.Port}/");
+                listener.Prefixes.Add(options.ApiUrl);
 
                 // Main server loop
                 listener.Start();
                 SetupTimer((int)options.Tickrate);
                 Console.Error.WriteLine("Listening...");
+                Console.Error.WriteLine("(API on {0})", options.ApiUrl);
 
                 while (true)
                 {

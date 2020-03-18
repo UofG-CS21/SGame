@@ -4,9 +4,91 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using LiteNetLib.Utils;
 
 namespace SShared
 {
+    /// <summary>
+    /// PathString holds a list of quandrants representing choices when traversing a quadtree.
+    /// It can convert this list to a bit string representation where every 2 bits represent a Quadrant.
+    /// This bitstring representation can then be converted to a byte array representation to allow effiecient transfer of the data through serialization.
+    /// PathString can be initilaized as empty or it can be given a List<Quadrant>.
+    /// </summary>
+    public class PathString : INetSerializable
+    {
+        public List<Quadrant> QuadrantList = new List<Quadrant>();
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(QuadrantList.Count);
+            writer.Put(this.ToByteArray());
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            int numQuadrants = reader.GetInt();
+            byte[] bytes = new byte[ByteLength(numQuadrants)];
+            reader.GetBytes(bytes, bytes.Length);
+            this.QuadrantList = ByteArrayToQuadrantList(bytes, numQuadrants);
+        }
+
+        public PathString()
+        {
+            this.QuadrantList = new List<Quadrant>();
+        }
+
+        public PathString(List<Quadrant> choiceList)
+        {
+            this.QuadrantList = choiceList;
+        }
+
+        public static int ByteLength(int numQuadrants)
+        {
+            return (numQuadrants + 3) / 4;
+        }
+
+        public byte[] ToByteArray()
+        {
+            byte[] byteArray = new byte[ByteLength(QuadrantList.Count)];
+
+            int iBit = 0;
+            for (int i = 0; i < QuadrantList.Count; i++)
+            {
+                int mask = ((int)QuadrantList[i]) << iBit;
+                byteArray[i / 4] |= (byte)mask;
+                iBit += 2;
+                if (iBit == 8) iBit = 0;
+            }
+            return byteArray;
+        }
+
+        public static List<Quadrant> ByteArrayToQuadrantList(byte[] byteArray, int numChoices)
+        {
+            List<Quadrant> list = new List<Quadrant>();
+            int iBit = 0;
+            for (int i = 0; i < numChoices; i++)
+            {
+                int quadrant = (byteArray[i / 4] >> iBit) & 0b11;
+                list.Add((Quadrant)quadrant);
+                iBit += 2;
+                if (iBit == 8) iBit = 0;
+            }
+            return list;
+        }
+
+        public override string ToString()
+        {
+            if (this.QuadrantList.Any())
+            {
+                return string.Join(", ", this.QuadrantList);
+            }
+            else
+            {
+                return "root";
+            }
+        }
+    }
+
     /// <summary>
     /// Something bounded by a worldspace quad.
     /// </summary>
@@ -40,6 +122,11 @@ namespace SShared
         public QuadTreeNode<T> Parent { get; private set; }
 
         /// <summary>
+        /// Enum representing which of the possible four child quadrants this node manages
+        /// </summary>
+        public Quadrant Quadrant { get; private set; }
+
+        /// <summary>
         /// The depth of this quadtree node (root has Depth=0).
         /// </summary>
         public uint Depth { get; private set; }
@@ -51,9 +138,18 @@ namespace SShared
         /// </summary>
         public Quad Bounds { get { return _bounds; } }
 
-        public QuadTreeNode(QuadTreeNode<T> parent, Quad bounds, uint depth)
+        public QuadTreeNode(QuadTreeNode<T> parent, Quadrant quadrant, uint depth)
         {
             this.Parent = parent;
+            this._bounds = parent.Bounds.QuadrantBounds(quadrant);
+            this.Quadrant = quadrant;
+            this.Depth = depth;
+            this._children = new QuadTreeNode<T>[4] { null, null, null, null };
+        }
+
+        public QuadTreeNode(Quad bounds, uint depth)
+        {
+            this.Parent = null;
             this._bounds = bounds;
             this.Depth = depth;
             this._children = new QuadTreeNode<T>[4] { null, null, null, null };
@@ -83,6 +179,7 @@ namespace SShared
             {
                 child._bounds = Bounds.QuadrantBounds(pos);
                 child.Parent = this;
+                child.Quadrant = pos;
                 child.Depth = Depth + 1;
             }
             _children[(int)pos] = child;
@@ -161,15 +258,116 @@ namespace SShared
         }
 
         /// <summary>
-        /// Apply a function to all nodes recursively (preorder traversal).
+        /// Returns the smallest child capable of containing `bounds`.  
         /// </summary>
-        public void ApplyRecur(Action<QuadTreeNode<T>> action)
+        public QuadTreeNode<T> SmallestNodeWhichContains(Quad bounds)
         {
-            action(this);
-            foreach (var child in _children)
+            QuadTreeNode<T> node = this;
+            QuadTreeNode<T> child = null;
+            QuadTreeNode<T> validChild = node;
+            if (!node.Bounds.ContainsQuad(bounds))
             {
-                if (child != null) child.ApplyRecur(action);
+                return null;
             }
+
+            do
+            {
+                node = validChild;
+                validChild = null;
+                for (int j = 0; j < 4; j++)
+                {
+                    if ((child = node._children[j]) != null && child.Bounds.ContainsQuad(bounds))
+                    {
+                        validChild = child;
+                    }
+                }
+            } while (validChild != null);
+
+            return node;
+        }
+
+        /// <summary>
+        /// Returns the PathString from the root to this node.
+        /// </summary>
+        public PathString Path()
+        {
+            QuadTreeNode<T> node = this;
+            List<Quadrant> path = new List<Quadrant>();
+            while (node.Parent != null)
+            {
+                path.Add(node.Quadrant);
+                node = node.Parent;
+            }
+            path.Reverse();
+            return new PathString(path);
+        }
+
+        /// <summary>
+        /// Returns a reference to the node at the given path from this node.
+        /// If `nodeFactory` is not null, any missing nodes (from this to the path's destination) will be created by
+        /// `nodeFactory()`; otherwise, the function returns null if it cannot find the node.
+        /// </summary>
+        public QuadTreeNode<T> NodeAtPath(PathString path, Func<QuadTreeNode<T>> nodeFactory = null)
+        {
+            QuadTreeNode<T> node = this;
+            foreach (Quadrant quadrant in path.QuadrantList)
+            {
+                var child = node.Child(quadrant);
+                if (child == null)
+                {
+                    if (nodeFactory == null)
+                    {
+                        return null;
+                    }
+                    else
+                    {
+                        node.SetChild(quadrant, nodeFactory());
+                        node = node.Child(quadrant);
+                    }
+                }
+                else
+                {
+                    node = child;
+                }
+            }
+            return node;
+        }
+
+        /// <summary>
+        /// Visit all nodes recursively.
+        /// </summary>
+        public IEnumerable<QuadTreeNode<T>> Traverse()
+        {
+            Stack<QuadTreeNode<T>> stack = new Stack<QuadTreeNode<T>>();
+            stack.Push(this);
+            while (stack.Any())
+            {
+                var node = stack.Pop();
+                yield return node;
+
+                foreach (var child in node._children)
+                {
+                    if (child != null) stack.Push(child);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Set the given child to null if it is present.
+        /// </summary>
+        public bool EraseChild(QuadTreeNode<T> child)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                if (_children[i] == child)
+                {
+                    _children[i] = null;
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }
+
+
