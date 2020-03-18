@@ -363,7 +363,7 @@ namespace SGame
         /// <summary>
         /// Timeout in milliseconds after which to give up when waiting for Struck responses from a scan/shoot request.
         /// </summary>
-        public const int ScanShootTimeout = 100;
+        public const int ScanShootTimeout = 5_000;
 
         /// <summary>
         /// Handles a "Scan" REST request, returning a set of spaceships that are within the scan
@@ -403,6 +403,13 @@ namespace SGame
                 Width = MathUtils.Deg2Rad(widthDeg),
                 Radius = MathUtils.ScanShootRadius(MathUtils.Deg2Rad(widthDeg), energy),
             };
+
+            // Construct waiters BEFORE we potentially get a reply so that we know for sure it will reach us
+            var resultWaiters = Bus.Host.ConnectedPeerList
+                .Where(peer => peer != ArbiterPeer)
+                .Select(peer => new MessageWaiter<Messages.Struck>(Bus, peer, struck => struck.Originator == scanMsg.Originator).Wait)
+                .ToArray();
+
             Bus.BroadcastMessage(scanMsg, excludedPeer: ArbiterPeer);
 
             // 2) Scan locally and broadcast the results of the local scan
@@ -414,10 +421,6 @@ namespace SGame
             });
 
             // 3) Wait for the scanning results of all other nodes
-            var resultWaiters = Bus.Host.ConnectedPeerList
-                .Where(peer => peer != ArbiterPeer)
-                .Select(peer => new MessageWaiter<Messages.Struck>(Bus, peer, struck => struck.Originator == scanMsg.Originator).Wait)
-                .ToArray();
             Task.WaitAll(resultWaiters, ScanShootTimeout);
 
             // 4) Combine the results that arrived with our local ones to find the whole list of scanned ships
@@ -488,6 +491,13 @@ namespace SGame
                 Width = MathUtils.Deg2Rad(widthDeg),
                 Radius = MathUtils.ScanShootRadius(MathUtils.Deg2Rad(widthDeg), energy),
             };
+
+            // Construct waiters BEFORE we potentially get a reply so that we know for sure it will reach us
+            var resultWaiters = Bus.Host.ConnectedPeerList
+                .Where(peer => peer != ArbiterPeer)
+                .Select(peer => new MessageWaiter<Messages.Struck>(Bus, peer, struck => struck.Originator == shootMsg.Originator).Wait)
+                .ToArray();
+
             Bus.BroadcastMessage(shootMsg, excludedPeer: ArbiterPeer);
 
             // 2) Shoot locally and broadcast the results of the local shoot
@@ -499,10 +509,6 @@ namespace SGame
             });
 
             // 3) Wait for the scanning results of all other nodes
-            var resultWaiters = Bus.Host.ConnectedPeerList
-                .Where(peer => peer != ArbiterPeer)
-                .Select(peer => new MessageWaiter<Messages.Struck>(Bus, peer, struck => struck.Originator == shootMsg.Originator).Wait)
-                .ToArray();
             Task.WaitAll(resultWaiters, ScanShootTimeout);
 
             // 4) Combine the results that arrived with our local ones to find the complete list of all victims
