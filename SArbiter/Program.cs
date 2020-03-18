@@ -61,6 +61,7 @@ namespace SArbiter
 
             _busMaster.PeerConnectedEvent += OnSGameConnected;
             _busMaster.PeerDisconnectedEvent += OnSGameDisconnected;
+            _busMaster.PacketProcessor.Events<SShared.Messages.TransferShip>().OnMessageReceived += OnShipTransferRequest;
 
             _updateTimer = new Timer(1000.0 / options.Tickrate);
             _updateTimer.AutoReset = true;
@@ -73,6 +74,20 @@ namespace SArbiter
             _busMaster.Dispose();
         }
 
+        private void OnShipTransferRequest(NetPeer sender, SShared.Messages.TransferShip msg)
+        {
+            ArbiterTreeNode transferNode = (ArbiterTreeNode)_routingTable.RootNode.NodeAtPath(msg.Path);
+            bool result = _routingTable.MoveShip(msg.Ship, transferNode);
+            if (result)
+            {
+                Console.Error.WriteLine(">>> Ship transferred from node {0} to node {1} <<<", sender.EndPoint, transferNode.Peer.EndPoint);
+            }
+            else
+            {
+                Console.Error.WriteLine(">>> Failed to transfer ship from node at {0} to node at {1} <<<", sender.EndPoint, transferNode.Peer.EndPoint);
+            }
+
+        }
         private void OnSGameConnected(NetPeer peer)
         {
             var newNodeInfoWaiter = new MessageWaiter<SShared.Messages.NodeConfig>(_busMaster, peer).Wait;

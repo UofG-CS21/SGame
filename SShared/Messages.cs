@@ -67,7 +67,7 @@ namespace SShared.Messages
     }
 
     /// <summary>
-    /// A message sent to the arbiter when a ship needs to be transferred to its parent node.
+    /// A message sent to the arbiter when a ship needs to be transferred to another node.
     /// </summary>
     public class TransferShip : IMessage
     {
@@ -77,15 +77,21 @@ namespace SShared.Messages
         /// </summary>
         public Spaceship Ship;
 
+        public PathString Path;
+
         // -- INetSerializable -------------------------------------------------
 
         public void Serialize(NetDataWriter writer)
         {
+            Path.Serialize(writer);
             Ship.Serialize(writer);
         }
 
         public void Deserialize(NetDataReader reader)
         {
+            Path = new PathString();
+            Path.Deserialize(reader);
+            Ship = new Spaceship();
             Ship.Deserialize(reader);
         }
     }
@@ -104,12 +110,12 @@ namespace SShared.Messages
 
         public void Serialize(NetDataWriter writer)
         {
-
             Ship.Serialize(writer);
         }
 
         public void Deserialize(NetDataReader reader)
         {
+            Ship = new Spaceship();
             Ship.Deserialize(reader);
         }
     }

@@ -75,6 +75,7 @@ namespace SGame
             this.Bus.PeerConnectedEvent += OnPeerConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipConnected>().OnMessageReceived += OnShipConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipDisconnected>().OnMessageReceived += OnShipDisconnected;
+            this.Bus.PacketProcessor.Events<Messages.ShipTransferred>().OnMessageReceived += OnShipTransferred;
             this.Bus.PacketProcessor.Events<Messages.NodeConfig>().OnMessageReceived += OnNodeConfigReceived;
 #if DEBUG
             this.Bus.PacketProcessor.Events<Messages.Sudo>().OnMessageReceived += OnSudo;
@@ -126,18 +127,26 @@ namespace SGame
             }
         }
 
-        //TODO: Finish garbage collector. Left for now to create PathString for shipTransfer message.
         private void GarbageCollect()
         {
             foreach (var ship in QuadTreeNode.ShipsByToken.Values)
             {
                 LocalQuadTreeNode currentNode = QuadTreeNode;
                 QuadTreeNode<Spaceship> bestFitNode = currentNode.SmallestNodeWhichContains(ship.Bounds);
+                Messages.TransferShip msg;
                 if (bestFitNode == null)
                 {
-                    // Messages.MoveS
-                    // Bus.SendMessage()
+                    msg = new Messages.TransferShip() { Ship = ship, Path = currentNode.Parent.Path() };
                 }
+                else
+                {
+                    msg = new Messages.TransferShip() { Ship = ship, Path = bestFitNode.Path() };
+                }
+
+
+                Console.Error.WriteLine(">>> Transferring request for ship with token {0} and pos ({1},{2}) sent from node at {3} to node at path <<<", ship.Token, ship.Pos.X, ship.Pos.Y, this.ApiUrl, msg.Path.ToString());
+                Bus.SendMessage(msg, ArbiterPeer);
+                QuadTreeNode.ShipsByToken.Remove(ship.Token);
             }
         }
 
@@ -226,7 +235,7 @@ namespace SGame
             }
         }
 
-        private void OnShipTransferred(Messages.ShipTransferred msg, NetPeer peer)
+        private void OnShipTransferred(NetPeer sender, Messages.ShipTransferred msg)
         {
             LocalSpaceship localShip = new LocalSpaceship(msg.Ship, _gameTime);
             QuadTreeNode.ShipsByToken.Add(msg.Ship.Token, localShip);
