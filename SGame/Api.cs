@@ -553,9 +553,12 @@ namespace SGame
                 lock (results)
                 {
                     results.Struck.AddRange(waiter.Result.ShipsInfo);
-                    results.AreaGain += results.Struck.Select(res => Math.Abs(res.AreaGain)).Sum();
+                    results.AreaGain += waiter.Result.ShipsInfo.Select(res => (res.AreaGain < 0.0) ? Math.Abs(res.AreaGain) : 0.0).Sum();
                 }
             }
+
+            // 5) Apply area gain to the local shooter ship (if any)
+            ship.Area += results.AreaGain;
 
             JArray respDict = new JArray();
             foreach (var struckShip in results.Struck)
@@ -573,7 +576,6 @@ namespace SGame
                 struckShipInfo["posX"] = struckShip.Ship.Pos.X;
                 struckShipInfo["posY"] = struckShip.Ship.Pos.Y;
                 respDict.Add(struckShipInfo);
-
             }
 
             response.Data["struck"] = respDict;
