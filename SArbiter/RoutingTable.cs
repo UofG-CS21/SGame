@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Linq;
 using System.Collections.Generic;
 using SShared;
@@ -25,11 +26,11 @@ namespace SArbiter
             this.RootNode = rootNode;
         }
 
-        public ArbiterTreeNode AddSGameNode(NetPeer peer, uint busPort, string apiUrl)
+        public ArbiterTreeNode AddSGameNode(NetPeer peer, IPAddress busAddress, uint busPort, string apiUrl)
         {
             if (this.RootNode == null)
             {
-                this.RootNode = new ArbiterTreeNode(peer, busPort, apiUrl);
+                this.RootNode = new ArbiterTreeNode(peer, busAddress, busPort, apiUrl);
                 return this.RootNode;
             }
             else
@@ -45,7 +46,7 @@ namespace SArbiter
                         var quadrant = (Quadrant)((randomQuadrant + i) % 4);
                         if (parent.Child(quadrant) == null)
                         {
-                            var node = new ArbiterTreeNode(peer, busPort, apiUrl);
+                            var node = new ArbiterTreeNode(peer, busAddress, busPort, apiUrl);
                             parent.SetChild(quadrant, node);
                             return node;
                         }
@@ -102,10 +103,35 @@ namespace SArbiter
             return token;
         }
 
+#if DEBUG
+        internal int _shipCount = 0;
+#endif
+
         public string AddNewShip(out ArbiterTreeNode parentNode)
         {
             string token = AddShipToken();
+
+#if DEBUG
+            // FIXME This is just for testing - in debug mode, assume there are just two SGame nodes and round-robin ships to them
+            if ((_shipCount++) % 2 == 0)
+            {
+                parentNode = (ArbiterTreeNode)RootNode;
+            }
+            else
+            {
+                parentNode = null;
+                for (int i = 0; i < 4; i++)
+                {
+                    var q = RootNode.Child((Quadrant)i);
+                    if (q == null) continue;
+                    parentNode = (ArbiterTreeNode)q;
+                    break;
+                }
+            }
+#else
             parentNode = (ArbiterTreeNode)RootNode.RandomLeafNode();
+#endif
+
             _nodeByShipToken[token] = parentNode;
             parentNode.ShipCount++;
 

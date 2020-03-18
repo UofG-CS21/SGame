@@ -75,7 +75,6 @@ namespace SGame
             this.Bus.PeerConnectedEvent += OnPeerConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipConnected>().OnMessageReceived += OnShipConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipDisconnected>().OnMessageReceived += OnShipDisconnected;
-            this.Bus.PacketProcessor.Events<Messages.NodeOnline>().OnMessageReceived += OnNodeOnlineReceived;
             this.Bus.PacketProcessor.Events<Messages.NodeConfig>().OnMessageReceived += OnNodeConfigReceived;
 #if DEBUG
             this.Bus.PacketProcessor.Events<Messages.Sudo>().OnMessageReceived += OnSudo;
@@ -151,26 +150,21 @@ namespace SGame
             {
                 // Only send NodeOnline when connecting to the arbiter...
 
+                // TODO: Connect to http://icanhazip.org or similar to get the external IP instead?
+                var apiUri = new Uri(this.ApiUrl);
+                var externalAddress = IPAddress.Parse(apiUri.Host);
+
                 // WARNING: Ensure that ApiUrl is visible from outside - otherwise, all requests will fail to be forwarded to this node!
-                var currentConfig = new SShared.Messages.NodeOnline()
+                var currentConfig = new SShared.Messages.NodeConfig()
                 {
-                    ApiUrl = this.ApiUrl,
-                    BusAddress = NetNode.LocalIPs.First(),
+                    BusAddress = externalAddress,
                     BusPort = this.LocalBusPort,
+                    ApiUrl = this.ApiUrl,
+                    Path = QuadTreeNode.Path(),
+                    Bounds = QuadTreeNode.Bounds,
                 };
                 this.Bus.SendMessage(currentConfig, peer);
             }
-        }
-
-        /// <summary>
-        /// Called when a node goes online and the arbiter broadcasts its "node online" message.
-        /// </summary>
-        private void OnNodeOnlineReceived(NetPeer arbiterPeer, Messages.NodeOnline msg)
-        {
-            var endpoint = new IPEndPoint(msg.BusAddress, (int)msg.BusPort);
-            Console.Error.WriteLine("Estabilishing direct bus connection to {0}", endpoint);
-            NetPeer peer = Bus.Host.Connect(endpoint, NetNode.Secret);
-            peer.Tag = msg.ApiUrl;
         }
 
         /// <summary>
@@ -201,7 +195,10 @@ namespace SGame
                 var busNetPeer = Bus.Host.ConnectedPeerList.Where((peer) => (string)peer.Tag == msg.ApiUrl).FirstOrDefault();
                 if (busNetPeer == null)
                 {
-                    throw new WebException($"Expected a `NodeOnline` before the respective `NodeConfig` for the node at {msg.ApiUrl}");
+                    var endpoint = new IPEndPoint(msg.BusAddress, (int)msg.BusPort);
+                    Console.Error.WriteLine("Estabilishing direct bus connection to {0}", endpoint);
+                    busNetPeer = Bus.Host.Connect(endpoint, NetNode.Secret);
+                    busNetPeer.Tag = msg.ApiUrl;
                 }
 
                 replacementNode = new RemoteQuadTreeNode(new Quad(0, 0, 0), Bus, busNetPeer, msg.ApiUrl);

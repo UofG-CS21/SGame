@@ -75,10 +75,11 @@ namespace SArbiter
 
         private void OnSGameConnected(NetPeer peer)
         {
-            var newNodeInfoWaiter = new MessageWaiter<SShared.Messages.NodeOnline>(_busMaster, peer).Wait;
+            var newNodeInfoWaiter = new MessageWaiter<SShared.Messages.NodeConfig>(_busMaster, peer).Wait;
             newNodeInfoWaiter.Wait();
+            var newNodeInfo = newNodeInfoWaiter.Result;
 
-            var newNode = _routingTable.AddSGameNode(peer, newNodeInfoWaiter.Result.BusPort, newNodeInfoWaiter.Result.ApiUrl);
+            var newNode = _routingTable.AddSGameNode(peer, newNodeInfo.BusAddress, newNodeInfo.BusPort, newNodeInfo.ApiUrl);
             Console.Error.WriteLine(">>> SGame node {0} (API: {1}) connected at {2} <<<", peer.EndPoint, newNode.ApiUrl, newNode.Path());
 
             // IMPORTANT: Send the whole network topology (as of now) to the new node (so that it can build a routing table for itself)
@@ -86,39 +87,27 @@ namespace SArbiter
             {
                 if (treeNode.Peer == peer) continue;
 
-                var nodeOnline = new SShared.Messages.NodeOnline()
+                var otherNodeConfig = new SShared.Messages.NodeConfig()
                 {
-                    BusAddress = treeNode.Peer.EndPoint.Address,
+                    BusAddress = treeNode.BusAddress,
                     BusPort = treeNode.BusPort,
-                    ApiUrl = treeNode.ApiUrl,
-                };
-                _busMaster.SendMessage(nodeOnline, peer, DeliveryMethod.ReliableOrdered);
-
-                var nodeConfig = new SShared.Messages.NodeConfig()
-                {
                     Bounds = treeNode.Bounds,
                     Path = treeNode.Path(),
                     ApiUrl = treeNode.ApiUrl,
                 };
-                _busMaster.SendMessage(nodeConfig, peer, DeliveryMethod.ReliableOrdered);
+                _busMaster.SendMessage(otherNodeConfig, peer, DeliveryMethod.ReliableOrdered);
             }
 
-            // IMPORTANT: Broadcast that the new node is online and where it is
-            var newNodeOnline = new SShared.Messages.NodeOnline()
-            {
-                BusAddress = newNode.Peer.EndPoint.Address,
-                BusPort = newNode.BusPort,
-                ApiUrl = newNode.ApiUrl,
-            };
-            _busMaster.BroadcastMessage(newNodeOnline, DeliveryMethod.ReliableOrdered, excludedPeer: newNode.Peer);
-
+            // IMPORTANT: Broadcast that the new node is online and where it is (incl. the new node itself to tell it its path)
             var newNodeConfig = new SShared.Messages.NodeConfig()
             {
+                BusAddress = newNode.BusAddress,
+                BusPort = newNode.BusPort,
                 Bounds = newNode.Bounds,
                 Path = newNode.Path(),
                 ApiUrl = newNode.ApiUrl,
             };
-            _busMaster.BroadcastMessage(newNodeConfig, DeliveryMethod.ReliableOrdered, excludedPeer: newNode.Peer);
+            _busMaster.BroadcastMessage(newNodeConfig, DeliveryMethod.ReliableOrdered);
         }
 
         private void OnSGameDisconnected(NetPeer peer, DisconnectInfo info)
