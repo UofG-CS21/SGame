@@ -46,9 +46,12 @@ namespace SArbiter
             return token;
         }
 
-        public string AddNewShip(out ArbiterTreeNode parentNode)
+        public string AddNewShip(out ArbiterTreeNode parentNode, string token)
         {
-            string token = AddShipToken();
+            if (token == null)
+                token = AddShipToken();
+            else
+                _shipPublicIds.Add(PublicIdFromToken(token));
             parentNode = (ArbiterTreeNode)RootNode.RandomLeafNode();
             _nodeByShipToken[token] = parentNode;
 
@@ -57,14 +60,16 @@ namespace SArbiter
             return token;
         }
 
-        public bool MoveShip(Spaceship ship, ArbiterTreeNode transferNode){
+        public bool MoveShip(Spaceship ship, ArbiterTreeNode transferNode)
+        {
             string token = ship.Token;
-            if (!_nodeByShipToken.Remove(token)){
+            if (!_nodeByShipToken.Remove(token))
+            {
                 return false;
             }
 
             _nodeByShipToken[token] = transferNode;
-            
+
             Messages.ShipTransferred msg = new Messages.ShipTransferred() { Ship = ship };
             BusMaster.SendMessage(msg, transferNode.Peer);
             return true;

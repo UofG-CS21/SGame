@@ -16,10 +16,11 @@ namespace SArbiter
         }
 
         [ApiRoute("connect")]
+        [ApiParam("connect", typeof(string), Optional = true)]
         public async Task ConnectPlayer(ApiResponse response, ApiData data)
         {
             ArbiterTreeNode shipNode = null;
-            var token = RoutingTable.AddNewShip(out shipNode);
+            var token = RoutingTable.AddNewShip(out shipNode, data.Json["token"]);
             response.Data["token"] = token;
 
             // TODO: Add a timeout in case we don't get a reply from the SGame node?
