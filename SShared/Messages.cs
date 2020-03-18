@@ -130,6 +130,11 @@ namespace SShared.Messages
         /// </summary>
         public string Originator { get; set; }
 
+        /// <summary>
+        /// Total area gain for the originator of the shot; always zero if scanning.
+        /// </summary>
+        public double OriginatorAreaGain { get; set; }
+
         public class ShipInfo
         {
             /// <summary>
@@ -138,9 +143,9 @@ namespace SShared.Messages
             public Spaceship Ship { get; set; }
 
             /// <summary>
-            /// Area gain for the originator of the shot, if any. If negative, it means the shot was fatal.
+            /// Area damage from the originator of the shot, if any. If negative, it means the shot was fatal.
             /// </summary>
-            public double AreaGain { get; set; }
+            public double Damage { get; set; }
         }
 
         /// <summary>
@@ -153,18 +158,20 @@ namespace SShared.Messages
         public void Serialize(NetDataWriter writer)
         {
             writer.Put(Originator);
+            writer.Put(OriginatorAreaGain);
 
             writer.Put(ShipsInfo.Count);
             foreach (var info in ShipsInfo)
             {
                 info.Ship.Serialize(writer);
-                writer.Put(info.AreaGain);
+                writer.Put(info.Damage);
             }
         }
 
         public void Deserialize(NetDataReader reader)
         {
             Originator = reader.GetString(64);
+            OriginatorAreaGain = reader.GetDouble();
 
             int infoCount = reader.GetInt();
             ShipsInfo = Enumerable.Range(0, infoCount).Select((i) =>
@@ -174,7 +181,7 @@ namespace SShared.Messages
                 return new ShipInfo()
                 {
                     Ship = ship,
-                    AreaGain = reader.GetDouble(),
+                    Damage = reader.GetDouble(),
                 };
             }).ToList();
         }

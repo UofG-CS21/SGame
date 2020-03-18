@@ -7,22 +7,6 @@ using Messages = SShared.Messages;
 
 namespace SGame
 {
-    class ScanShootResults
-    {
-        public List<Messages.Struck.ShipInfo> Struck = new List<Messages.Struck.ShipInfo>();
-        public double AreaGain = 0.0;
-
-        public ScanShootResults Merge(ScanShootResults other)
-        {
-            if (other != null)
-            {
-                Struck.AddRange(other.Struck);
-                AreaGain += other.AreaGain;
-            }
-            return this;
-        }
-    }
-
     abstract class SGameQuadTreeNode : QuadTreeNode<Spaceship>
     {
         public SGameQuadTreeNode(QuadTreeNode<Spaceship> parent, Quadrant quadrant, uint depth) : base(parent, quadrant, depth) { }
@@ -32,7 +16,7 @@ namespace SGame
         /// <summary>
         /// Returns a (area gain for shooter, list of struck ships) pair.
         /// </summary>
-        public abstract ScanShootResults ScanShootLocal(Messages.ScanShoot msg);
+        public abstract Messages.Struck ScanShootLocal(Messages.ScanShoot msg);
     }
 
     class LocalQuadTreeNode : SGameQuadTreeNode
@@ -64,9 +48,9 @@ namespace SGame
         /// </summary>
         private const double MINIMUM_AREA = 0.75;
 
-        public override ScanShootResults ScanShootLocal(Messages.ScanShoot msg)
+        public override Messages.Struck ScanShootLocal(Messages.ScanShoot msg)
         {
-            ScanShootResults results = new ScanShootResults();
+            Messages.Struck results = new Messages.Struck();
 
             // 1) Search ships locally (but only if affected by the scan)
             //bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds, msg);
@@ -86,11 +70,11 @@ namespace SGame
                     )
                     .Select((ship) => new Messages.Struck.ShipInfo() { Ship = ship });
 
-                results.Struck.AddRange(iscanned);
+                results.ShipsInfo.AddRange(iscanned);
 
                 if (msg.ScaledShotEnergy > 0.0)
                 {
-                    foreach (var struck in results.Struck)
+                    foreach (var struck in results.ShipsInfo)
                     {
                         var ourShip = (LocalSpaceship)struck.Ship;
 
@@ -106,8 +90,8 @@ namespace SGame
                         // We have killed a ship, gain it's kill reward, and move struck ship to the graveyard
                         if (ourShip.Area - damage < MINIMUM_AREA)
                         {
-                            results.AreaGain += ourShip.KillReward;
-                            struck.AreaGain = -damage;
+                            results.OriginatorAreaGain += ourShip.KillReward;
+                            struck.Damage = -damage;
                         }
                         else // Struck ship survived - note that it's in combat
                         {
@@ -118,7 +102,7 @@ namespace SGame
                             }
                             ourShip.LastCombat = ourShip.LastUpdate;
                             ourShip.Area -= damage;
-                            struck.AreaGain = damage;
+                            struck.Damage = damage;
                         }
                     }
                 }
@@ -170,7 +154,7 @@ namespace SGame
             throw new NotImplementedException();
         }
 
-        public override ScanShootResults ScanShootLocal(Messages.ScanShoot msg)
+        public override Messages.Struck ScanShootLocal(Messages.ScanShoot msg)
         {
             bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds, msg);
             if (affected)
@@ -178,14 +162,11 @@ namespace SGame
                 Bus.SendMessage(msg, NodePeer);
 
                 var struckTask = new MessageWaiter<Messages.Struck>(Bus, NodePeer, (struck) => struck.Originator == msg.Originator).Wait;
-                ScanShootResults results = new ScanShootResults();
+                Messages.Struck results = new Messages.Struck();
                 if (Task.WaitAll(new Task[] { struckTask }, REPLYTIMEOUT))
                 {
-                    foreach (var struckInfo in struckTask.Result.ShipsInfo)
-                    {
-                        results.AreaGain += struckInfo.AreaGain;
-                        results.Struck.Add(struckInfo);
-                    }
+                    results.OriginatorAreaGain += struckTask.Result.OriginatorAreaGain;
+                    results.ShipsInfo.AddRange(struckTask.Result.ShipsInfo);
                 }
                 return results;
             }
@@ -213,9 +194,9 @@ namespace SGame
             return new Task<List<Spaceship>>(() => new List<Spaceship>());
         }
 
-        public override ScanShootResults ScanShootLocal(Messages.ScanShoot msg)
+        public override Messages.Struck ScanShootLocal(Messages.ScanShoot msg)
         {
-            return new ScanShootResults();
+            return new Messages.Struck();
         }
     }
 }
