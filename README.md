@@ -75,15 +75,11 @@ The prerequisites are as follows:
 - pytests (Testing framework used for our black box tests)
 - requests (HTTP library - Used again for testing purposes)
 
-### Data persistency
-
-- If you have elastic search installed, you can addtionally add data persistency:
-
-### Installing
+## Installing
 
 A step by step series of examples that tell you how to get a development env running
 
-## Cloning the repositroy
+### Cloning the repositroy
 
 In the directory you wish to clone the repository, run the following command:
 
@@ -95,35 +91,35 @@ git clone NEED TO ADD PUBLIC GITHUB
 
 For the gitlab instance
 
-```s
+```
 git clone https://stgit.dcs.gla.ac.uk/tp3-2019-cs21/cs21-main.git
 ```
 
-## Getting started with python
+### Python Dependencies
 
 pytests can be installed using pip as follows:
 
-```s
+```
 pip install pytest
 ```
 
 And the same for requests:
 
-```s
+```
 pip install requests
 ```
 
-## C# Dependencies
+### C# Dependencies
 
 restore C# dependencies for SGame
 
-```csharp
+```C#
 dotnet restore SGame
 ```
 
 Builds SGame
 
-```csharp
+```C#
 dotnet build SGame
 ```
 
@@ -133,19 +129,19 @@ Automated tests can be executed as such:
 
 restore C# dependencies for SGame
 
-```csharp
+```C#
 dotnet restore SGame
 ```
 
 Builds SGame (integrated FxCop analysis)
 
-```csharp
+```C#
 dotnet build SGame
 ```
 
 Running the command below runs the automated Xunit tests
 
-```csharp
+```C#
 dotnet test
 ```
 
@@ -157,7 +153,7 @@ bash ci/runtests.sh ${SGAME_HOST} ${SGAME_PORT}
 
 where SGAME_HOST is the host for the test SGame instance and SGAME_PORT is the port for the test SGame instance
 
-### Break down Xunit tests
+### Xunit tests
 
 The Xunit tests include testing on geometry (scanning, shielding and shooting) and more. The tests were created to test the internal structure of the application.
 
@@ -176,7 +172,7 @@ Below is an example Xunit test:
 
 ```
 
-### And pytest tests
+### pytest tests
 
 The pytest were created to simulate testing in live manner i.e black box test. Where we would be focus solely on the inputs and outputs with respect to our game specifcation.
 
@@ -208,19 +204,14 @@ def test_getShipInfo_intial_state(clients):
 
 Add additional notes about how to deploy this on a live system
 
+### Data persistency
+
+- If you have elastic search installed, you can addtionally add data persistency:
+
 ## Built With
 
 - [dotnet](https://dotnet.microsoft.com/download) - The framework used
-- [Maven](https://maven.apache.org/) - Dependency Management
-- [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
-
-## Contributing
-
-Please read [CONTRIBUTING.md]() for details on our code of conduct, and the process for submitting pull requests to us.
-
-## Versioning
-
-MIGHT REMOVE THIS?
+- [Gitlab](https://about.gitlab.com/) - DevOps lifecycle tool
 
 ## Authors
 
@@ -228,7 +219,7 @@ MIGHT REMOVE THIS?
 - **Samuel Gursky** - [samkogursky@gmail.com](mailto:samkogursky@gmail.com)
 - **Matthew Walker** - [mjwalker2299@gmail.com](mailto:mjwalker2299@gmail.com)
 - **Martin Nolan** - [martinnolan_1@live.co.uk](mailto:martinnolan_1@live.co.uk)
-- **Mustafaa Ahmad** - [MustafaaAhmad](mailto:mustafaa.ahmad@hotmail.co.uk)
+- **Mustafaa Ahmad** - [mustafaa.ahmad@hotmail.co.uk](mailto:mustafaa.ahmad@hotmail.co.uk)
 
 ## License
 
