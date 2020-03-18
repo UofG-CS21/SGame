@@ -65,33 +65,67 @@ The prerequisites are as follows:
 
 #### donet core 3.0
 
-- XUnit (Unit testing tool for the .NET Framework)
+- XUnit (Unit testing tool for the .NET Framework) - 2.4.0
 - LiteNetLib (Lite reliable UDP library for .NET.)
-- Newtonsoft.JSon (High-performance JSON framework for .NET.)
-- FxCopAnalyzers (Static analyser)
+- Newtonsoft.JSon (High-performance JSON framework for .NET.) - 12.0.2
+- FxCopAnalyzers (Static analyser) - 2.9.8
 
 #### Python 2.7 or above
 
 - pytests (Testing framework used for our black box tests)
 - requests (HTTP library - Used again for testing purposes)
 
+### Data persistency
+
+- If you have elastic search installed, you can addtionally add data persistency:
+
 ### Installing
 
 A step by step series of examples that tell you how to get a development env running
 
-Say what the step will be
+## Cloning the repositroy
+
+In the directory you wish to clone the repository, run the following command:
+
+For the public GitHub instance:
 
 ```
-Give the example
+git clone NEED TO ADD PUBLIC GITHUB
 ```
 
-And repeat
+For the gitlab instance
 
-```
-until finished
+```s
+git clone https://stgit.dcs.gla.ac.uk/tp3-2019-cs21/cs21-main.git
 ```
 
-End with an example of getting some data out of the system or using it for a little demo
+## Getting started with python
+
+pytests can be installed using pip as follows:
+
+```s
+pip install pytest
+```
+
+And the same for requests:
+
+```s
+pip install requests
+```
+
+## C# Dependencies
+
+restore C# dependencies for SGame
+
+```csharp
+dotnet restore SGame
+```
+
+Builds SGame
+
+```csharp
+dotnet build SGame
+```
 
 ## Running the tests
 
@@ -176,12 +210,9 @@ Add additional notes about how to deploy this on a live system
 
 ## Built With
 
-NEED TO CHANGE EXAMPLES
-
 - [dotnet](https://dotnet.microsoft.com/download) - The framework used
-
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
+- [Maven](https://maven.apache.org/) - Dependency Management
+- [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
 
 ## Contributing
 
