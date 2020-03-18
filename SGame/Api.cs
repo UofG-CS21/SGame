@@ -526,10 +526,10 @@ namespace SGame
             foreach (var waiter in resultWaiters)
             {
                 if (waiter.Status != TaskStatus.RanToCompletion) continue;
-                foreach (var result in waiter.Result.ShipsInfo)
+                lock (results)
                 {
-                    results.Struck.Append(result);
-                    results.AreaGain += Math.Abs(result.AreaGain);
+                    results.Struck.AddRange(waiter.Result.ShipsInfo);
+                    results.AreaGain += results.Struck.Select(res => Math.Abs(res.AreaGain)).Sum();
                 }
             }
 
