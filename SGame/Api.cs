@@ -393,6 +393,7 @@ namespace SGame
 
             Console.WriteLine($"Scan by {ship.PublicId}, pos={ship.Pos}, dir={directionDeg}°, width={widthDeg}°, energy spent={energy}");
 
+            // 1) Broadcast the "need to scan this" message
             var scanMsg = new SShared.Messages.ScanShoot()
             {
                 Originator = ship.Token,
@@ -402,16 +403,24 @@ namespace SGame
                 Width = MathUtils.Deg2Rad(widthDeg),
                 Radius = MathUtils.ScanShootRadius(MathUtils.Deg2Rad(widthDeg), energy),
             };
-
-            ScanShootResults results = QuadTreeNode.ScanShootLocal(scanMsg);
-
             Bus.BroadcastMessage(scanMsg, excludedPeer: ArbiterPeer);
+
+            // 2) Scan locally and broadcast the results of the local scan
+            ScanShootResults results = QuadTreeNode.ScanShootLocal(scanMsg);
+            Bus.BroadcastMessage(new Messages.Struck()
+            {
+                Originator = scanMsg.Originator,
+                ShipsInfo = results.Struck,
+            });
+
+            // 3) Wait for the scanning results of all other nodes
             var resultWaiters = Bus.Host.ConnectedPeerList
                 .Where(peer => peer != ArbiterPeer)
                 .Select(peer => new MessageWaiter<Messages.Struck>(Bus, peer, struck => struck.Originator == scanMsg.Originator).Wait)
                 .ToArray();
             Task.WaitAll(resultWaiters, ScanShootTimeout);
 
+            // 4) Combine the results that arrived with our local ones to find the whole list of scanned ships
             foreach (var waiter in resultWaiters)
             {
                 if (waiter.Status != TaskStatus.RanToCompletion) continue;
@@ -469,6 +478,7 @@ namespace SGame
 
             Console.WriteLine($"Shot by {ship.PublicId}, pos={ship.Pos}, dir={directionDeg}°, width={widthDeg}°, energy spent={energy}, scaling={damageScaling}");
 
+            // 1) Broadcast the "need to shoot this" message
             var shootMsg = new SShared.Messages.ScanShoot()
             {
                 Originator = ship.Token,
@@ -478,16 +488,24 @@ namespace SGame
                 Width = MathUtils.Deg2Rad(widthDeg),
                 Radius = MathUtils.ScanShootRadius(MathUtils.Deg2Rad(widthDeg), energy),
             };
-
-            ScanShootResults results = QuadTreeNode.ScanShootLocal(shootMsg);
-
             Bus.BroadcastMessage(shootMsg, excludedPeer: ArbiterPeer);
+
+            // 2) Shoot locally and broadcast the results of the local shoot
+            ScanShootResults results = QuadTreeNode.ScanShootLocal(shootMsg);
+            Bus.BroadcastMessage(new Messages.Struck()
+            {
+                Originator = shootMsg.Originator,
+                ShipsInfo = results.Struck,
+            });
+
+            // 3) Wait for the scanning results of all other nodes
             var resultWaiters = Bus.Host.ConnectedPeerList
                 .Where(peer => peer != ArbiterPeer)
                 .Select(peer => new MessageWaiter<Messages.Struck>(Bus, peer, struck => struck.Originator == shootMsg.Originator).Wait)
                 .ToArray();
             Task.WaitAll(resultWaiters, ScanShootTimeout);
 
+            // 4) Combine the results that arrived with our local ones to find the complete list of all victims
             foreach (var waiter in resultWaiters)
             {
                 if (waiter.Status != TaskStatus.RanToCompletion) continue;
