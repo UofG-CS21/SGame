@@ -32,7 +32,7 @@ namespace SGame
         /// <summary>
         /// Returns a (area gain for shooter, list of struck ships) pair.
         /// </summary>
-        public abstract Task<ScanShootResults> ScanShootRecur(Messages.ScanShoot msg);
+        public abstract Task<ScanShootResults> ScanShootLocal(Messages.ScanShoot msg);
     }
 
     class LocalQuadTreeNode : SGameQuadTreeNode
@@ -64,12 +64,13 @@ namespace SGame
         /// </summary>
         private const double MINIMUM_AREA = 0.75;
 
-        public override async Task<ScanShootResults> ScanShootRecur(Messages.ScanShoot msg)
+        public override async Task<ScanShootResults> ScanShootLocal(Messages.ScanShoot msg)
         {
             ScanShootResults results = new ScanShootResults();
 
             // 1) Search ships locally (but only if affected by the scan)
-            bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds, msg);
+            //bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds, msg);
+            bool affected = true; // FIXME - This is here to make sure scans always go through; ideally, though, ships would always be in the SGame node that manages them...
             if (affected)
             {
                 Vector2 leftPoint = MathUtils.DirVec(msg.Direction + msg.Width) * msg.Radius;
@@ -123,32 +124,6 @@ namespace SGame
                 }
             }
 
-            // 2) Search all siblings (always)
-            if (Parent != null)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    var sibling = (SGameQuadTreeNode)Parent.Child((Quadrant)i);
-                    if (sibling == null || sibling == this) continue;
-
-                    var resultsHere = await sibling.ScanShootRecur(msg);
-                    results.Merge(resultsHere);
-                }
-            }
-
-            // 3) Search all children (but only if the local node was affected by the scan its children could be)
-            if (affected)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    var child = (SGameQuadTreeNode)Child((Quadrant)i);
-                    if (child == null) continue;
-
-                    var resultsHere = await child.ScanShootRecur(msg);
-                    results.Merge(resultsHere);
-                }
-            }
-
             return results;
         }
     }
@@ -196,7 +171,7 @@ namespace SGame
             throw new NotImplementedException();
         }
 
-        public override async Task<ScanShootResults> ScanShootRecur(Messages.ScanShoot msg)
+        public override async Task<ScanShootResults> ScanShootLocal(Messages.ScanShoot msg)
         {
             bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds, msg);
             if (affected)
@@ -239,7 +214,7 @@ namespace SGame
             return new Task<List<Spaceship>>(() => new List<Spaceship>());
         }
 
-        public override Task<ScanShootResults> ScanShootRecur(Messages.ScanShoot msg)
+        public override Task<ScanShootResults> ScanShootLocal(Messages.ScanShoot msg)
         {
             return new Task<ScanShootResults>(() => new ScanShootResults());
         }

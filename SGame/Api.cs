@@ -361,6 +361,11 @@ namespace SGame
         }
 
         /// <summary>
+        /// Timeout in milliseconds after which to give up when waiting for Struck responses from a scan/shoot request.
+        /// </summary>
+        public const int ScanShootTimeout = 100;
+
+        /// <summary>
         /// Handles a "Scan" REST request, returning a set of spaceships that are within the scan
         /// </summary>
         /// <param name="data">The JSON payload of the request, containing the token of the ship, the angle of scanning, the width of scan, and the energy spent on the scan.true </param>
@@ -398,8 +403,20 @@ namespace SGame
                 Radius = MathUtils.ScanShootRadius(MathUtils.Deg2Rad(widthDeg), energy),
             };
 
-            ScanShootResults results = await QuadTreeNode.ScanShootRecur(scanMsg);
-            ship.Area += results.AreaGain;
+            ScanShootResults results = await QuadTreeNode.ScanShootLocal(scanMsg);
+
+            Bus.BroadcastMessage(scanMsg, excludedPeer: ArbiterPeer);
+            var resultWaiters = Bus.Host.ConnectedPeerList
+                .Where(peer => peer != ArbiterPeer)
+                .Select(peer => new MessageWaiter<Messages.Struck>(Bus, peer, struck => struck.Originator == scanMsg.Originator).Wait)
+                .ToArray();
+            Task.WaitAll(resultWaiters, ScanShootTimeout);
+
+            foreach (var waiter in resultWaiters)
+            {
+                if (waiter.Status != TaskStatus.RanToCompletion) continue;
+                results.Struck.AddRange(waiter.Result.ShipsInfo);
+            }
 
             JArray respDict = new JArray();
             foreach (var scanned in results.Struck)
@@ -462,8 +479,24 @@ namespace SGame
                 Radius = MathUtils.ScanShootRadius(MathUtils.Deg2Rad(widthDeg), energy),
             };
 
-            ScanShootResults results = await QuadTreeNode.ScanShootRecur(shootMsg);
-            ship.Area += results.AreaGain;
+            ScanShootResults results = await QuadTreeNode.ScanShootLocal(shootMsg);
+
+            Bus.BroadcastMessage(shootMsg, excludedPeer: ArbiterPeer);
+            var resultWaiters = Bus.Host.ConnectedPeerList
+                .Where(peer => peer != ArbiterPeer)
+                .Select(peer => new MessageWaiter<Messages.Struck>(Bus, peer, struck => struck.Originator == shootMsg.Originator).Wait)
+                .ToArray();
+            Task.WaitAll(resultWaiters, ScanShootTimeout);
+
+            foreach (var waiter in resultWaiters)
+            {
+                if (waiter.Status != TaskStatus.RanToCompletion) continue;
+                foreach (var result in waiter.Result.ShipsInfo)
+                {
+                    results.Struck.Append(result);
+                    results.AreaGain += Math.Abs(result.AreaGain);
+                }
+            }
 
             JArray respDict = new JArray();
             foreach (var struckShip in results.Struck)
