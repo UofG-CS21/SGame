@@ -127,7 +127,7 @@ namespace SGame
             }
         }
 
-        private void GarbageCollect()
+        public void GarbageCollect()
         {
             foreach (var ship in QuadTreeNode.ShipsByToken.Values)
             {
