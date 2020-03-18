@@ -21,6 +21,8 @@ def pytest_addoption(parser):
                      type=str, help="Host to bind the SGame server instance to")
     parser.addoption("--port", action="store", default=5000,
                      type=int, help="Port to bind the SGame server instance to")
+    parser.addoption("--persistency", action="store", default='http://localhost:9200/',
+                     type=str, help="If defined this is the address of elastic search instance")
 
 
 # Test fixtures
