@@ -1,0 +1,202 @@
+using System;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+using LiteNetLib;
+using LiteNetLib.Utils;
+
+namespace SShared
+{
+    /// <summary>
+    /// Implemented by all bus messages.
+    /// </summary>
+    public interface IMessage : INetSerializable
+    {
+        /// <summary>
+        /// A identifier code for this type of message.
+        /// </summary>
+        public static ushort Id { get; }
+    }
+
+    /// <summary>
+    /// A node on the message bus system.
+    /// </summary>
+    public class NetNode : EventBasedNetListener, IDisposable
+    {
+        /// <summary>
+        /// Key used to authenticate clients on the bus.
+        /// </summary>
+        public const string Secret = "HZWtdjPJZfJ+Oiu+i0GguGWYuRH9HWLVq2DzwQ276a4=";
+
+        /// <summary>
+        /// The underlying NetManager from LiteNetLib.
+        /// </summary>
+        public NetManager Host { get; private set; }
+
+        /// <summary>
+        /// True if this node is a server node, false if it's a client.
+        /// </summary>
+        public bool IsServer { get; private set; }
+
+        NetDataWriter _writer;
+
+        /// <summary>
+        /// A serializer that can be used to serialize / deserialize any `BusMsgs.*`.
+        /// </summary>
+        public NetNodePacketProcessor PacketProcessor { get; private set; }
+
+        /// <summary>
+        /// Initializes a bus node.
+        /// </summary>
+        /// <param name="hostname">If not null, connect to the given hostname/address; if null, start a server node.</param>
+        /// <param name="port">The port to connect to (or bind to for server nodes).</param>
+        public NetNode(string hostname, int port)
+        {
+            this.ConnectionRequestEvent += ConnectionRequestHandler;
+            this.PeerConnectedEvent += PeerConnectedHandler;
+            this.PeerDisconnectedEvent += PeerDisconnectedHandler;
+            this.NetworkReceiveEvent += NetworkReceivedHandler;
+
+            Host = new NetManager(this);
+            if (hostname != null)
+            {
+                IsServer = false;
+                Host.Start();
+                Host.Connect(hostname, port, Secret);
+            }
+            else
+            {
+                IsServer = true;
+                Host.Start(port);
+                //_netHost.BroadcastReceiveEnable = true;
+            }
+
+            _writer = new NetDataWriter();
+
+            PacketProcessor = new NetNodePacketProcessor();
+            Messages.Serialization.RegisterAllSerializers(PacketProcessor);
+        }
+
+        /// <summary>
+        /// Poll events and update other internal state.
+        /// </summary>
+        public void Update()
+        {
+            Host.PollEvents();
+        }
+
+        /// <summary>
+        /// Sends a bus message to every peer connected to this node.
+        /// </summary>
+        public void BroadcastMessage<T>(T message, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered)
+            where T : class, IMessage, new()
+        {
+            _writer.Reset();
+            PacketProcessor.Write<T>(_writer, message);
+            Host.SendToAll(_writer, delivery);
+        }
+
+        /// <summary>
+        /// Sends a bus message to a particular peer.
+        /// </summary>
+        public void SendMessage<T>(T message, NetPeer peer, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered)
+            where T : class, IMessage, new()
+        {
+            _writer.Reset();
+            PacketProcessor.Write<T>(_writer, message);
+            peer.Send(_writer, delivery);
+        }
+
+        /// <summary>
+        /// Convenience alias for `Host.FirstPeer`.
+        /// </summary>
+        public NetPeer FirstPeer { get { return Host.FirstPeer; } }
+
+        // ===== Dispose pattern =======================================================================================
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (Host.IsRunning && disposing)
+            {
+                Host.Stop();
+            }
+        }
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        // ===== LiteNetLib event handlers =============================================================================
+
+        private void ConnectionRequestHandler(ConnectionRequest request)
+        {
+            Console.WriteLine($"Bus: connecting {request.RemoteEndPoint}");
+            request.AcceptIfKey(Secret);
+        }
+
+        private void PeerConnectedHandler(NetPeer peer)
+        {
+            Console.WriteLine($"Bus: {peer.EndPoint} connected");
+        }
+
+        private void PeerDisconnectedHandler(NetPeer peer, DisconnectInfo disconnectInfo)
+        {
+            Console.WriteLine($"Bus: {peer.EndPoint} disconnected ({disconnectInfo})");
+        }
+
+        private void NetworkReceivedHandler(NetPeer peer, NetPacketReader reader, DeliveryMethod deliveryMethod)
+        {
+            PacketProcessor.ReadAllPackets(peer, reader);
+            reader.Recycle();
+        }
+    }
+
+    /// <summary>
+    /// Waits for a message of type T from a NetNode.
+    /// </summary>
+    public class MessageWaiter<T> where T : class, IMessage, new()
+    {
+        TaskCompletionSource<T> _completionSrc;
+
+        /// <summary>
+        /// Starts waiting for a `T` message coming from `node`.
+        /// If `peer` is not null, ensures that the sender is `peer`.
+        /// If `filter` is not null, ensures that the message passes the given filter.
+        /// </summary>
+        public MessageWaiter(NetNode node, NetPeer peer = null, Predicate<T> filter = null)
+        {
+            Node = node;
+            Peer = peer;
+            _completionSrc = new TaskCompletionSource<T>();
+            Node.PacketProcessor.Events<T>().OnMessageReceived += OnMessageReceived;
+        }
+
+        internal void OnMessageReceived(NetPeer sender, T message)
+        {
+            if (Peer == null || sender == Peer)
+            {
+                if (Filter == null || Filter(message))
+                {
+                    Node.PacketProcessor.Events<T>().OnMessageReceived -= OnMessageReceived;
+                    _completionSrc.SetResult(message);
+                }
+            }
+        }
+        ~MessageWaiter()
+        {
+            Node.PacketProcessor.Events<T>().OnMessageReceived -= OnMessageReceived;
+        }
+
+        public NetNode Node { get; private set; }
+
+        public NetPeer Peer { get; private set; }
+
+        public Predicate<T> Filter { get; private set; }
+
+        public Task<T> Wait
+        {
+            get { return _completionSrc.Task; }
+        }
+    }
+}

@@ -1,11 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Timers;
 using System.IO;
 using System.Net;
 using CommandLine;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Threading.Tasks;
+using SShared;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
 namespace SGame
@@ -26,13 +27,36 @@ namespace SGame
         /// </summary>
         [Option('P', "port", Default = 8000u, Required = false, HelpText = "The port to bind the compute node to.")]
         public uint Port { get; set; }
+
+        /// <summary>
+        /// The hostname of the SArbiter.
+        /// </summary>
+        [Option("arbiter", Default = "localhost", Required = false, HelpText = "Hostname of the SArbiter managing this compute node.")]
+        public string Arbiter { get; set; }
+
+        /// <summary>
+        /// The UDP port of the master event bus.
+        /// </summary>
+        [Option("bus-port", Default = 4242u, Required = false, HelpText = "UDP port of the SArbiter master event bus.")]
+        public uint BusPort { get; set; }
+
+        /// <summary>
+        /// SGame's tickrate, i.e. the updates-per-second of the main loop.
+        /// </summary>
+        [Option('T', "tickrate", Default = 30u, Required = false, HelpText = "SGame tickrate (updates per second).")]
+        public uint Tickrate { get; set; }
     }
 
     /// <summary>
     /// An instance of the server.
     /// </summary>
-    class Program
+    class Program : IDisposable
     {
+        /// <summary>
+        /// SGame instance options.
+        /// </summary>
+        CmdLineOptions options;
+
         /// <summary>
         /// The external REST API and its state.
         /// </summary>
@@ -44,14 +68,35 @@ namespace SGame
         Router<Api> router;
 
         /// <summary>
+        /// The timer that periodically updates the gamestate and event bus.
+        /// </summary>
+        private static Timer GameLoopTimer;
+
+        /// <summary>
+        /// Connected to the SArbiter master event bus.
+        /// </summary>
+        NetNode bus;
+
+        /// <summary>
         /// Initializes an instance of the program.
         /// </summary>
-        Program()
+        Program(CmdLineOptions options)
         {
-            api = new Api();
-            router = new Router<Api>(api);
+            this.options = options;
+
+            this.bus = new NetNode(options.Arbiter, (int)options.BusPort);
+
+            // FIXME: Assuming the local SGame node manages the whole universe for now
+            //        (this will change when multiple nodes are connected to a SArbiter)
+            var quadtree = new LocalQuadTreeNode(new SShared.Quad(0.0, 0.0, 1 << 31), 0);
+            this.api = new Api(quadtree, bus);
+            this.router = new Router<Api>(api);
         }
 
+        public void Dispose()
+        {
+            bus.Dispose();
+        }
 
         public async Task<bool> ProcessRequest(HttpListenerContext context)
         {
@@ -86,11 +131,26 @@ namespace SGame
             return true;
         }
 
+        private void SetupTimer(int frequency)
+        {
+            GameLoopTimer = new Timer(frequency);
+
+            GameLoopTimer.Elapsed += GameLoopTick;
+            GameLoopTimer.AutoReset = true;
+            GameLoopTimer.Enabled = true;
+        }
+
+        private void GameLoopTick(Object source, ElapsedEventArgs e)
+        {
+            bus.Update();
+            api.UpdateGameState();
+            //Console.WriteLine("Updated game state at {0:HH:mm:ss.fff}", e.SignalTime);
+        }
+
         /// <summary>
         /// Runs the main loop run for the HTTP/REST server.
         /// </summary>
-        /// <param name="prefixes">A list of endpoint URLs to bind the HTTP server to.</param>
-        public async Task ServerLoop(string[] prefixes)
+        public async Task ServerLoop()
         {
             if (!HttpListener.IsSupported)
             {
@@ -98,27 +158,26 @@ namespace SGame
                 Environment.Exit(1);
             }
 
-            // Create a listener.
-            HttpListener listener = new HttpListener();
-            foreach (string s in prefixes)
+            using (HttpListener listener = new HttpListener())
             {
-                listener.Prefixes.Add(s);
+                listener.Prefixes.Add($"http://{options.Host}:{options.Port}/");
+
+                // Main server loop
+                listener.Start();
+                SetupTimer((int)options.Tickrate);
+                Console.Error.WriteLine("Listening...");
+
+                while (true)
+                {
+                    var task = await listener.GetContextAsync();
+                    bool keepGoing = await ProcessRequest(task);
+                    if (!keepGoing) break;
+                }
+
+                listener.Stop();
+                GameLoopTimer.Stop();
+                Console.Error.WriteLine("Stopped");
             }
-
-            // Main server loop
-            listener.Start();
-            Console.Error.WriteLine("Listening...");
-
-            while (true)
-            {
-                var task = await listener.GetContextAsync();
-                bool keepGoing = await ProcessRequest(task);
-                if (!keepGoing) break;
-            }
-
-
-            listener.Stop();
-            Console.Error.WriteLine("Stopped");
         }
 
         /// <summary>
@@ -135,11 +194,10 @@ namespace SGame
                 return;
             }
 
-            string[] endpoints = new string[] { "http://" + options.Host + ":" + options.Port + "/" };
-            Console.WriteLine("Endpoint: {0}", endpoints[0]);
-
-            Program P = new Program();
-            await P.ServerLoop(endpoints);
+            using (Program P = new Program(options))
+            {
+                await P.ServerLoop();
+            }
         }
     }
 }

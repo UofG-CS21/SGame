@@ -130,7 +130,7 @@ namespace SGame.Tests
         internal void ShieldingAmountTest(Spaceship ship, Vector2 shotOrigin, double shotDir, double shotWidth, double shotRadius, double expectedValue)
         {
 
-            double actual = Api.ShieldingAmount(ship, shotOrigin, shotDir, shotWidth, shotRadius);
+            double actual = MathUtils.ShieldingAmount(ship, shotOrigin, MathUtils.Deg2Rad(shotDir), MathUtils.Deg2Rad(shotWidth), shotRadius);
             // Assert.Equal(expectedValue, actual);
             Assert.True(MathUtils.ToleranceEquals(expectedValue, actual, 0.02));
 
@@ -154,7 +154,7 @@ namespace SGame.Tests
             //Test case 1: Attacker is within defending ship. No damage should be shielded.
 
             gameTime.Reset();
-            ship = new Spaceship(1, gameTime);
+            ship = new LocalSpaceship($"{1:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 10;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -164,7 +164,7 @@ namespace SGame.Tests
             //Test case 2: Attacker is on edge of defenders radius
 
             gameTime.Reset();
-            ship = new Spaceship(2, gameTime);
+            ship = new LocalSpaceship($"{2:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -174,7 +174,7 @@ namespace SGame.Tests
             //Test case 3: Ray is entirely blocked by shield (Centre of shot passes through centre of ship)
 
             gameTime.Reset();
-            ship = new Spaceship(3, gameTime);
+            ship = new LocalSpaceship($"{3:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -185,7 +185,7 @@ namespace SGame.Tests
             //Test case 4: Same as Test case 3 but shot comes from opposite side
 
             gameTime.Reset();
-            ship = new Spaceship(4, gameTime);
+            ship = new LocalSpaceship($"{4:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -196,7 +196,7 @@ namespace SGame.Tests
             //Test case 5: Ray is unimpeded by shield. (Centre of shot passes through centre of ship)
 
             gameTime.Reset();
-            ship = new Spaceship(5, gameTime);
+            ship = new LocalSpaceship($"{5:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -207,7 +207,7 @@ namespace SGame.Tests
             //Test case 6: Ray is unimpeded on entry but impeded on exit. (Centre of shot passes through centre of ship)
 
             gameTime.Reset();
-            ship = new Spaceship(6, gameTime);
+            ship = new LocalSpaceship($"{6:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -220,7 +220,7 @@ namespace SGame.Tests
             //Test case 7: Ray is entirely blocked by shield (Centre of shot does not pass through centre of ship)
 
             gameTime.Reset();
-            ship = new Spaceship(7, gameTime);
+            ship = new LocalSpaceship($"{7:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -231,7 +231,7 @@ namespace SGame.Tests
             //Test case 8: Same as Test case 7 but shot comes from opposite side
 
             gameTime.Reset();
-            ship = new Spaceship(8, gameTime);
+            ship = new LocalSpaceship($"{8:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -242,7 +242,7 @@ namespace SGame.Tests
             //Test case 9: Ray is unimpeded by shield. (Centre of shot does not pass through centre of ship)
 
             gameTime.Reset();
-            ship = new Spaceship(9, gameTime);
+            ship = new LocalSpaceship($"{9:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -253,7 +253,7 @@ namespace SGame.Tests
             //Test case 10: Ray is unimpeded on entry but impeded on exit. (Centre of shot does not pass through centre of ship)
 
             gameTime.Reset();
-            ship = new Spaceship(10, gameTime);
+            ship = new LocalSpaceship($"{10:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -263,7 +263,7 @@ namespace SGame.Tests
 
             //Test case 11: Ray is partially blocked by shield. 
             gameTime.Reset();
-            ship = new Spaceship(11, gameTime);
+            ship = new LocalSpaceship($"{11:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -273,7 +273,7 @@ namespace SGame.Tests
 
             //Test case 12: Ray is almost completely blocked by shield. 
             gameTime.Reset();
-            ship = new Spaceship(12, gameTime);
+            ship = new LocalSpaceship($"{12:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -283,7 +283,7 @@ namespace SGame.Tests
 
             //Test case 13: Ray is just barely completely blocked by shield. (at this point, 1.0 should be returned)
             gameTime.Reset();
-            ship = new Spaceship(13, gameTime);
+            ship = new LocalSpaceship($"{13:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -295,7 +295,7 @@ namespace SGame.Tests
             //The following test cases test the edge case that the two intersection points are covered but some section of the centre isnt.
             //Test case 14: 
             gameTime.Reset();
-            ship = new Spaceship(14, gameTime);
+            ship = new LocalSpaceship($"{14:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -317,18 +317,13 @@ namespace SGame.Tests
 
             //Test case 16: 
             gameTime.Reset();
-            ship = new Spaceship(16, gameTime);
+            ship = new LocalSpaceship($"{16:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
             ship.ShieldDir = MathUtils.Deg2Rad(133.573);
             ship.ShieldWidth = MathUtils.Deg2Rad(179);
             yield return new object[] { ship, shotOrigin = new Vector2(5, -1.5), shotDir = 360 - 206.565051177078, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
-
-
-
-
-
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

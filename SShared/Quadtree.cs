@@ -4,18 +4,124 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using LiteNetLib.Utils;
 
 namespace SShared
 {
     /// <summary>
-    /// A quadrant in a quadtree node.
+    /// PathString holds a list of quandrants representing choices when traversing a quadtree.
+    /// It can convert this list to a bit string representation where every 2 bits represent a Quadrant.
+    /// This bitstring representation can then be converted to a byte array representation to allow effiecient transfer of the data through serialization.
+    /// PathString can be initilaized as empty or it can be given a List<Quadrant>.
     /// </summary>
-    public enum Quadrant : int
+    public class PathString : INetSerializable
     {
-        NW = 0,
-        NE = 1,
-        SW = 2,
-        SE = 3,
+
+        public List<Quadrant> QuadrantList = new List<Quadrant>();
+
+        private byte[] ByteForm;
+
+
+        public int NumberOfChoices;
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(this.NumberOfChoices);
+            writer.PutBytesWithLength(this.ByteForm, 0, this.ByteForm.Length);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            this.NumberOfChoices = reader.GetInt();
+            this.ByteForm = reader.GetBytesWithLength();
+            this.QuadrantList = PathString.ByteArrayToQuadrantList(this.ByteForm, this.NumberOfChoices);
+
+        }
+
+        public PathString()
+        {
+            this.NumberOfChoices = 0;
+            this.QuadrantList = new List<Quadrant>();
+        }
+
+        public PathString(List<Quadrant> choiceList)
+        {
+            this.QuadrantList = choiceList;
+            this.NumberOfChoices = QuadrantList.Count();
+            this.ByteForm = this.ToByteArray();
+        }
+
+        public void AddChoice(Quadrant quadrant)
+        {
+            this.NumberOfChoices += 1;
+            this.QuadrantList.Add(quadrant);
+        }
+
+        public byte[] ToByteArray()
+        {
+            List<Byte> ByteArray = new List<Byte>();
+            string bitstring = this.ToString();
+
+            for (int i = 0; i < NumberOfChoices; i += 4)
+            {
+                string bits = bitstring.Substring(i * 2, 8).PadRight(8, '0');
+                ByteArray.Add(Convert.ToByte(bits, 2));
+            }
+
+            return ByteArray.ToArray();
+        }
+
+        public static List<Quadrant> ByteArrayToQuadrantList(byte[] byteArray, int numChoices)
+        {
+            List<Quadrant> quadrantList = new List<Quadrant>();
+            for (int i = 0; (i * 4) < numChoices; i++)
+            {
+                string bitstring = Convert.ToString(byteArray[i], 2);
+                for (int j = 0; j < 4; j++)
+                {
+                    string bits = bitstring.Substring(j * 2, 2);
+                    switch (bits)
+                    {
+                        case "00":
+                            quadrantList.Add(Quadrant.NW);
+                            break;
+                        case "01":
+                            quadrantList.Add(Quadrant.NE);
+                            break;
+                        case "10":
+                            quadrantList.Add(Quadrant.SW);
+                            break;
+                        case "11":
+                            quadrantList.Add(Quadrant.SE);
+                            break;
+                        default:
+                            Console.WriteLine("Error: Invalid Input in PathString.ByteArrayToQuadrantList");
+                            break;
+                    }
+                }
+            }
+            return quadrantList;
+
+
+        }
+
+        public override string ToString()
+        {
+            string bitstring = "";
+            foreach (Quadrant choice in this.QuadrantList)
+            {
+                if ((int)choice < 2)
+                {
+                    bitstring += Convert.ToString(0, 2);
+                }
+                bitstring += Convert.ToString((int)choice, 2);
+            }
+
+
+            return bitstring;
+        }
+
+
     }
 
     /// <summary>
@@ -38,12 +144,22 @@ namespace SShared
         /// <summary>
         /// The 4 children of this node (each might be null).
         /// </summary>
-        private QuadTreeNode<T>[] children;
+        private QuadTreeNode<T>[] _children;
 
         /// <summary>
         /// The maximum number of quadtree subdivisions (= the maximum depth of a leaf node).
         /// </summary>
         public const uint MaxDepth = 15;
+
+        /// <summary>
+        /// The parent node of this quadtree node (root has parent=null)
+        /// </summary>
+        public QuadTreeNode<T> Parent { get; private set; }
+
+        /// <summary>
+        /// Enum representing which of the possible four child quadrants this node manages
+        /// </summary>
+        public Quadrant Quadrant { get; private set; }
 
         /// <summary>
         /// The depth of this quadtree node (root has Depth=0).
@@ -57,11 +173,21 @@ namespace SShared
         /// </summary>
         public Quad Bounds { get { return _bounds; } }
 
+        public QuadTreeNode(QuadTreeNode<T> parent, Quadrant quadrant, uint depth)
+        {
+            this.Parent = parent;
+            this._bounds = parent.Bounds.QuadrantBounds(quadrant);
+            this.Quadrant = quadrant;
+            this.Depth = depth;
+            this._children = new QuadTreeNode<T>[4] { null, null, null, null };
+        }
+
         public QuadTreeNode(Quad bounds, uint depth)
         {
+            this.Parent = null;
             this._bounds = bounds;
             this.Depth = depth;
-            this.children = new QuadTreeNode<T>[4] { null, null, null, null };
+            this._children = new QuadTreeNode<T>[4] { null, null, null, null };
         }
 
         /// <summary>
@@ -69,12 +195,12 @@ namespace SShared
         /// </summary>
         public QuadTreeNode<T> Child(Quadrant pos)
         {
-            return children[(int)pos];
+            return _children[(int)pos];
         }
 
         /// <summary>
         /// Sets the child of this node at the given position (replacing any previously-present one).
-        /// (Automatically modifies the child's bounds and depth as needed).
+        /// (Automatically modifies the child's bounds, depth and parent as needed).
         /// Throws if the maximum subdivision depth was reached
         /// </summary>
         public void SetChild(Quadrant pos, QuadTreeNode<T> child)
@@ -86,25 +212,11 @@ namespace SShared
 
             if (child != null)
             {
-                double halfRadius = Bounds.Radius * 0.5;
-                switch (pos)
-                {
-                    case Quadrant.NW:
-                        child._bounds = new Quad(Bounds.CentreX - halfRadius, Bounds.CentreY + halfRadius, halfRadius);
-                        break;
-                    case Quadrant.NE:
-                        child._bounds = new Quad(Bounds.CentreX + halfRadius, Bounds.CentreY + halfRadius, halfRadius);
-                        break;
-                    case Quadrant.SW:
-                        child._bounds = new Quad(Bounds.CentreX - halfRadius, Bounds.CentreY - halfRadius, halfRadius);
-                        break;
-                    case Quadrant.SE:
-                        child._bounds = new Quad(Bounds.CentreX + halfRadius, Bounds.CentreY - halfRadius, halfRadius);
-                        break;
-                }
+                child._bounds = Bounds.QuadrantBounds(pos);
+                child.Parent = this;
                 child.Depth = Depth + 1;
             }
-            children[(int)pos] = child;
+            _children[(int)pos] = child;
         }
 
         /// <summary>
@@ -115,9 +227,9 @@ namespace SShared
             uint count = 0;
             for (int i = 0; i < 4; i++)
             {
-                if (children[i] != null)
+                if (_children[i] != null)
                 {
-                    count += children[i].ChildCountRecur();
+                    count += _children[i].ChildCountRecur();
                 }
             }
             return count;
@@ -126,7 +238,7 @@ namespace SShared
         /// <summary>
         /// Checks a range in this quad (and NOT its children) for items intersecting it.
         /// </summary>
-        public abstract Task<List<T>> CheckRange(Quad range);
+        public abstract Task<List<T>> CheckRangeLocal(Quad range);
 
         /// <summary>
         /// Checks a range in this quad (and all of its children) for items intersecting it.
@@ -139,10 +251,10 @@ namespace SShared
             if (_bounds.Intersects(range))
             {
                 // checking at the current quad level
-                found.AddRange(await CheckRange(range).ConfigureAwait(false));
+                found.AddRange(await CheckRangeLocal(range).ConfigureAwait(false));
 
                 // checking recursively all children
-                foreach (var child in children)
+                foreach (var child in _children)
                 {
                     if (child != null)
                     {
@@ -153,23 +265,73 @@ namespace SShared
 
             return found;
         }
-    }
 
-    /// <summary>
-    /// A quadtree node that stores its items locally, in a list.
-    /// </summary>
-    public class ListQuadTreeNode<T> : QuadTreeNode<T> where T : IQuadBounded
-    {
-        List<T> _items;
-
-        public ListQuadTreeNode(Quad bounds, uint depth) : base(bounds, depth)
+        /// <summary>
+        /// Get a randomly-chosen leaf of this node.
+        /// </summary>
+        public QuadTreeNode<T> RandomLeafNode()
         {
-            _items = new List<T>();
+            Random rand = new Random();
+
+            QuadTreeNode<T> node = this;
+            QuadTreeNode<T> child = null;
+            do
+            {
+                int randQuadrant = rand.Next(0, 4);
+                for (int j = 0; j < 4; j++)
+                {
+                    if ((child = node._children[(randQuadrant + j) % 4]) != null)
+                    {
+                        break;
+                    }
+                }
+                node = child ?? node;
+            } while (child != null);
+
+            return node;
         }
 
-        public override Task<List<T>> CheckRange(Quad range)
+        public QuadTreeNode<T> SmallestNodeWhichContainsShip(Spaceship ship)
         {
-            return new Task<List<T>>(() => _items.Where(ship => ship.Bounds.Intersects(range)).ToList());
+            QuadTreeNode<T> node = this;
+            QuadTreeNode<T> child = null;
+            QuadTreeNode<T> validChild = node;
+            if (!node.Bounds.ContainsQuad(ship.Bounds))
+            {
+                return null;
+            }
+
+            do
+            {
+                node = validChild;
+                validChild = null;
+                for (int j = 0; j < 4; j++)
+                {
+                    if ((child = node._children[j]) != null && child.Bounds.ContainsQuad(ship.Bounds))
+                    {
+                        validChild = child;
+                    }
+                }
+            } while (validChild != null);
+
+            return node;
+
+        }
+
+
+
+        /// <summary>
+        /// Apply a function to all nodes recursively (preorder traversal).
+        /// </summary>
+        public void ApplyRecur(Action<QuadTreeNode<T>> action)
+        {
+            action(this);
+            foreach (var child in _children)
+            {
+                if (child != null) child.ApplyRecur(action);
+            }
         }
     }
 }
+
+
