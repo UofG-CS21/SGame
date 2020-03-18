@@ -265,13 +265,27 @@ namespace SGame
         }
 
         /// <summary>
-        /// Handle scanning/shooting on this node, broadcasting the Struck response and moving ships to the graveyard as needed.
+        /// Handle scanning/shooting on this node:
+        /// - Broadcasts the Struck response for the local node
+        /// - Accumulates kill rewards on the originator (if it's a local ship)
+        /// - Moves ships to the graveyard as needed
         /// </summary>
         private ScanShootResults HandleLocalScanShoot(Messages.ScanShoot msg)
         {
             ScanShootResults results = QuadTreeNode.ScanShootLocal(msg);
             var response = new Messages.Struck() { ShipsInfo = results.Struck, Originator = msg.Originator };
             Bus.BroadcastMessage(response);
+
+            var ourOriginator = QuadTreeNode.ShipsByToken.GetValueOrDefault(msg.Originator, null);
+            if (ourOriginator != null)
+            {
+                // Ship performed combat action, update
+                if (ourOriginator.LastUpdate - ourOriginator.LastCombat > LocalSpaceship.COMBAT_COOLDOWN)
+                {
+                    ourOriginator.KillReward = ourOriginator.Area;
+                }
+                ourOriginator.LastCombat = ourOriginator.LastUpdate;
+            }
 
             foreach (var ourStruck in results.Struck)
             {
@@ -561,13 +575,6 @@ namespace SGame
                 respDict.Add(struckShipInfo);
 
             }
-
-            //Ship performed combat action, lock kill reward if not in combat from before
-            if (ship.LastUpdate - ship.LastCombat > LocalSpaceship.COMBAT_COOLDOWN)
-            {
-                ship.KillReward = ship.Area;
-            }
-            ship.LastCombat = ship.LastUpdate;
 
             response.Data["struck"] = respDict;
             await response.Send();
