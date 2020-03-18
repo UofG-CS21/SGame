@@ -193,11 +193,11 @@ MIGHT REMOVE THIS?
 
 ## Authors
 
-- **Paolo Jovon** -
-- **Samuel Gursky** - [samkogursky@gmail.com](samkogursky@gmail.com)
-- **Matthew Walker** - [mjwalker2299@gmail.com](mjwalker2299@gmail.com)
-- **Martin Nolan** - [martinnolan_1@live.co.uk](martinnolan_1@live.co.uk)
-- **Mustafaa Ahmad** - [MustafaaAhmad](mustafaa.ahmad@hotmail.co.uk)
+- **Paolo Jovon** - [paolo.jovon@gmail.com](mailto:paolo.jovon@gmail.com)
+- **Samuel Gursky** - [samkogursky@gmail.com](mailto:samkogursky@gmail.com)
+- **Matthew Walker** - [mjwalker2299@gmail.com](mailto:mjwalker2299@gmail.com)
+- **Martin Nolan** - [martinnolan_1@live.co.uk](mailto:martinnolan_1@live.co.uk)
+- **Mustafaa Ahmad** - [MustafaaAhmad](mailto:mustafaa.ahmad@hotmail.co.uk)
 
 ## License
 
