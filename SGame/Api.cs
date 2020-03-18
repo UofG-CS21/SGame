@@ -265,13 +265,33 @@ namespace SGame
         }
 
         /// <summary>
-        /// Called when a node sends a ScanShoot request; broadcasts the response from this node.
+        /// Handle scanning/shooting on this node, broadcasting the Struck response and moving ships to the graveyard as needed.
         /// </summary>
-        private void OnScanShootReceived(NetPeer arbiterPeer, Messages.ScanShoot msg)
+        private ScanShootResults HandleLocalScanShoot(Messages.ScanShoot msg)
         {
             ScanShootResults results = QuadTreeNode.ScanShootLocal(msg);
             var response = new Messages.Struck() { ShipsInfo = results.Struck, Originator = msg.Originator };
             Bus.BroadcastMessage(response);
+
+            foreach (var ourStruck in results.Struck)
+            {
+                if (ourStruck.AreaGain < 0.0) // ship ded
+                {
+                    var ourDeadShip = ourStruck.Ship;
+                    QuadTreeNode.ShipsByToken.Remove(ourDeadShip.Token);
+                    DeadShips.Add(ourDeadShip.Token, ourDeadShip);
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Called when a node sends a ScanShoot request; broadcasts the response from this node.
+        /// </summary>
+        private void OnScanShootReceived(NetPeer arbiterPeer, Messages.ScanShoot msg)
+        {
+            HandleLocalScanShoot(msg);
         }
 
         /// <summary>
@@ -424,12 +444,7 @@ namespace SGame
             Bus.BroadcastMessage(scanMsg, excludedPeer: ArbiterPeer);
 
             // 2) Scan locally and broadcast the results of the local scan
-            ScanShootResults results = QuadTreeNode.ScanShootLocal(scanMsg);
-            Bus.BroadcastMessage(new Messages.Struck()
-            {
-                Originator = scanMsg.Originator,
-                ShipsInfo = results.Struck,
-            });
+            ScanShootResults results = HandleLocalScanShoot(scanMsg);
 
             // 3) Wait for the scanning results of all other nodes
             Task.WaitAll(resultWaiters, ScanShootTimeout);
@@ -512,12 +527,7 @@ namespace SGame
             Bus.BroadcastMessage(shootMsg, excludedPeer: ArbiterPeer);
 
             // 2) Shoot locally and broadcast the results of the local shoot
-            ScanShootResults results = QuadTreeNode.ScanShootLocal(shootMsg);
-            Bus.BroadcastMessage(new Messages.Struck()
-            {
-                Originator = shootMsg.Originator,
-                ShipsInfo = results.Struck,
-            });
+            ScanShootResults results = HandleLocalScanShoot(shootMsg);
 
             // 3) Wait for the scanning results of all other nodes
             Task.WaitAll(resultWaiters, ScanShootTimeout);
@@ -550,15 +560,6 @@ namespace SGame
                 struckShipInfo["posY"] = struckShip.Ship.Pos.Y;
                 respDict.Add(struckShipInfo);
 
-                if (struckShip.AreaGain < 0.0) // ship ded
-                {
-                    var ourDeadShip = QuadTreeNode.ShipsByToken.GetValueOrDefault(struckShip.Ship.Token, null);
-                    if (ourDeadShip != null)
-                    {
-                        QuadTreeNode.ShipsByToken.Remove(ourDeadShip.Token);
-                        DeadShips.Add(ourDeadShip.Token, ourDeadShip);
-                    }
-                }
             }
 
             //Ship performed combat action, lock kill reward if not in combat from before
