@@ -76,6 +76,7 @@ namespace SGame
             this.Bus.PacketProcessor.Events<Messages.ShipConnected>().OnMessageReceived += OnShipConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipDisconnected>().OnMessageReceived += OnShipDisconnected;
             this.Bus.PacketProcessor.Events<Messages.NodeConfig>().OnMessageReceived += OnNodeConfigReceived;
+            this.Bus.PacketProcessor.Events<Messages.ScanShoot>().OnMessageReceived += OnScanShootReceived;
 #if DEBUG
             this.Bus.PacketProcessor.Events<Messages.Sudo>().OnMessageReceived += OnSudo;
 #endif
@@ -261,6 +262,16 @@ namespace SGame
                 // TODO: Serialize ship state here?
                 Bus.SendMessage(new Messages.ShipDisconnected() { Token = msg.Token }, ArbiterPeer);
             }
+        }
+
+        /// <summary>
+        /// Called when a node sends a ScanShoot request; broadcasts the response from this node.
+        /// </summary>
+        private void OnScanShootReceived(NetPeer arbiterPeer, Messages.ScanShoot msg)
+        {
+            ScanShootResults results = QuadTreeNode.ScanShootLocal(msg);
+            var response = new Messages.Struck() { ShipsInfo = results.Struck, Originator = msg.Originator };
+            Bus.BroadcastMessage(response);
         }
 
         /// <summary>
