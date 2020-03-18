@@ -269,15 +269,14 @@ namespace SGame
         /// - Broadcasts the Struck response for the local node
         /// - Moves ships to the graveyard as needed
         /// </summary>
-        private ScanShootResults HandleLocalScanShoot(Messages.ScanShoot msg)
+        private Messages.Struck HandleLocalScanShoot(Messages.ScanShoot msg)
         {
-            ScanShootResults results = QuadTreeNode.ScanShootLocal(msg);
-            var response = new Messages.Struck() { ShipsInfo = results.Struck, Originator = msg.Originator };
-            Bus.BroadcastMessage(response);
+            Messages.Struck results = QuadTreeNode.ScanShootLocal(msg);
+            Bus.BroadcastMessage(results);
 
-            foreach (var ourStruck in results.Struck)
+            foreach (var ourStruck in results.ShipsInfo)
             {
-                if (ourStruck.AreaGain < 0.0) // ship ded
+                if (ourStruck.Damage < 0.0) // ship ded
                 {
                     var ourDeadShip = ourStruck.Ship;
                     QuadTreeNode.ShipsByToken.Remove(ourDeadShip.Token);
@@ -446,7 +445,7 @@ namespace SGame
             Bus.BroadcastMessage(scanMsg, excludedPeer: ArbiterPeer);
 
             // 2) Scan locally and broadcast the results of the local scan
-            ScanShootResults results = HandleLocalScanShoot(scanMsg);
+            Messages.Struck results = HandleLocalScanShoot(scanMsg);
 
             // 3) Wait for the scanning results of all other nodes
             Task.WaitAll(resultWaiters, ScanShootTimeout);
@@ -455,11 +454,11 @@ namespace SGame
             foreach (var waiter in resultWaiters)
             {
                 if (waiter.Status != TaskStatus.RanToCompletion) continue;
-                results.Struck.AddRange(waiter.Result.ShipsInfo);
+                results.ShipsInfo.AddRange(waiter.Result.ShipsInfo);
             }
 
             JArray respDict = new JArray();
-            foreach (var scanned in results.Struck)
+            foreach (var scanned in results.ShipsInfo)
             {
                 if (scanned.Ship.Token == ship.Token)
                     continue;
@@ -529,7 +528,7 @@ namespace SGame
             Bus.BroadcastMessage(shootMsg, excludedPeer: ArbiterPeer);
 
             // 2) Shoot locally and broadcast the results of the local shoot
-            ScanShootResults results = HandleLocalScanShoot(shootMsg);
+            Messages.Struck results = HandleLocalScanShoot(shootMsg);
 
             // 3) Wait for the scanning results of all other nodes
             Task.WaitAll(resultWaiters, ScanShootTimeout);
@@ -540,22 +539,22 @@ namespace SGame
                 if (waiter.Status != TaskStatus.RanToCompletion) continue;
                 lock (results)
                 {
-                    results.Struck.AddRange(waiter.Result.ShipsInfo);
-                    results.AreaGain += waiter.Result.ShipsInfo.Select(res => (res.AreaGain < 0.0) ? Math.Abs(res.AreaGain) : 0.0).Sum();
+                    results.ShipsInfo.AddRange(waiter.Result.ShipsInfo);
+                    results.OriginatorAreaGain += waiter.Result.OriginatorAreaGain;
                 }
             }
 
             // 5) Apply area gain to the local shooter ship (if any)
-            ship.Area += results.AreaGain;
+            ship.Area += results.OriginatorAreaGain;
 
             JArray respDict = new JArray();
-            foreach (var struckShip in results.Struck)
+            foreach (var struckShip in results.ShipsInfo)
             {
                 // ignore our ship
                 if (struckShip.Ship.Token == ship.Token)
                     continue;
 
-                double preShotArea = struckShip.Ship.Area + Math.Abs(struckShip.AreaGain);
+                double preShotArea = struckShip.Ship.Area + Math.Abs(struckShip.Damage);
 
                 //The api doesnt have a return value for shooting, but ive left this in for now for testing purposes.
                 JToken struckShipInfo = new JObject();
