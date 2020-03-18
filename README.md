@@ -193,16 +193,15 @@ MIGHT REMOVE THIS?
 
 ## Authors
 
-- **Paolo Jovon** - [UberLambda](https://github.com/UberLambda)
-- **Samuel Gursky** - TODO - ADD GITHUB
-- **Matthew Walker** - TODO - ADD GITHUB
-- **Martin Nolan** - TODO - ADD GITHUB
-- **Mustafaa Ahmad** - - [MustafaaAhmad](https://github.com/MustafaaAhmad)
+- **Paolo Jovon** -
+- **Samuel Gursky** - [samkogursky@gmail.com](samkogursky@gmail.com)
+- **Matthew Walker** - [mjwalker2299@gmail.com](mjwalker2299@gmail.com)
+- **Martin Nolan** - [martinnolan_1@live.co.uk](martinnolan_1@live.co.uk)
+- **Mustafaa Ahmad** - [MustafaaAhmad](mustafaa.ahmad@hotmail.co.uk)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-NEED TO ADD LICENSE
+This project is licensed under the BSD License (4 Clause) - see the [LICENSE](LICENSE) file for details
 
 ## Acknowledgments
 
