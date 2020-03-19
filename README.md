@@ -213,6 +213,7 @@ Add additional notes about how to deploy this on a live system
 - [dotnet](https://dotnet.microsoft.com/download) - The framework used
 - [Gitlab](https://about.gitlab.com/) - DevOps lifecycle tool
 - [Elastic Search](https://www.elastic.co/elasticsearch/) - Used for data persistency
+- [LiteNetLib](https://revenantx.github.io/LiteNetLib/index.html) - Lite reliable UDP library
 
 ## Authors
 
@@ -230,3 +231,4 @@ This project is licensed under the BSD License (4 Clause) - see the [LICENSE](LI
 
 - Qaudtree basic structure based on [fant12 implementation](https://github.com/fant12/quadTree)
 - Circle-Triangle Intersection Method based on [Gabriel Ivăncescu's implementation](http://www.phatcode.net/articles.php?id=459)
+- Lite reliable UDP library for .NET Framework [LiteNetLib link](https://revenantx.github.io/LiteNetLib/index.html)
