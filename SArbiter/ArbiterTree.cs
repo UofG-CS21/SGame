@@ -47,5 +47,11 @@ namespace SArbiter
         }
 
         public override Task<List<ArbiterTreeItem>> CheckRangeLocal(Quad range) => throw new NotImplementedException();
+
+        public void MakeRoot(Quad bounds)
+        {
+            this.Parent = null;
+            this.Bounds = bounds;
+        }
     }
 }

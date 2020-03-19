@@ -70,11 +70,6 @@ namespace SShared
             }
             _writer = new NetDataWriter();
 
-#if DEBUG
-            // FIXME - juist for testing!
-            Host.DisconnectTimeout = 1_000_000;
-#endif
-
             PacketProcessor = new NetNodePacketProcessor();
             Messages.Serialization.RegisterAllSerializers(PacketProcessor);
         }

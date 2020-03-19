@@ -56,7 +56,8 @@ namespace SArbiter
         {
             _busMaster = new NetNode(listenPort: (int)options.BusPort);
             _busPort = options.BusPort;
-            _routingTable = new RoutingTable(_busMaster, null);
+            // TODO: Command-line flag to change universe size
+            _routingTable = new RoutingTable(_busMaster, null, 1 << 31);
             _apiRouter = new Router<ArbiterApi>(new ArbiterApi(_routingTable));
 
             _busMaster.PeerConnectedEvent += OnSGameConnected;
@@ -113,7 +114,7 @@ namespace SArbiter
         private void OnSGameDisconnected(NetPeer peer, DisconnectInfo info)
         {
             Console.Error.WriteLine(">>> SGame node {0} disconnected ({1}) <<<", peer.EndPoint, info.Reason);
-            _routingTable.RemoveSGameNode(peer);
+            _routingTable.RemoveSGameNode(peer).Wait();
         }
 
         private async Task<bool> ProcessRequest(HttpListenerContext context)
