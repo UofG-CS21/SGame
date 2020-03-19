@@ -111,8 +111,8 @@ namespace SArbiter
         {
             string token = AddShipToken();
 
-#if DEBUG
-            // FIXME This is just for testing - in debug mode, assume there are just two SGame nodes and round-robin ships to them
+#if false
+            // This is just for testing - in debug mode, assume there are just two SGame nodes and round-robin ships to them
             if ((_shipCount++) % 2 == 0)
             {
                 parentNode = (ArbiterTreeNode)RootNode;
