@@ -130,9 +130,24 @@ namespace SArbiter
                 }
                 else
                 {
-                    RootNode = substituteNode;
                     substituteNode.MakeRoot(new Quad(0.0, 0.0, UniverseSize));
+                    RootNode = substituteNode;
                 }
+
+                BusMaster.BroadcastMessage(new Messages.NodeOffline()
+                {
+                    Path = disconnectedNode.Path(),
+                    ApiUrl = disconnectedNode.ApiUrl,
+                }, DeliveryMethod.ReliableOrdered);
+
+                BusMaster.BroadcastMessage(new Messages.NodeConfig()
+                {
+                    BusAddress = substituteNode.BusAddress,
+                    BusPort = substituteNode.BusPort,
+                    Bounds = substituteNode.Bounds,
+                    Path = substituteNode.Path(),
+                    ApiUrl = substituteNode.ApiUrl,
+                }, DeliveryMethod.ReliableOrdered);
             }
 
             return true;

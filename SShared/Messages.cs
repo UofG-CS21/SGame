@@ -67,6 +67,37 @@ namespace SShared.Messages
     }
 
     /// <summary>
+    /// A message sent from a arbiter to nodes when a node goes offline.
+    /// </summary>
+    public class NodeOffline : IMessage
+    {
+        /// <summary>
+        /// The path to the node in question from the root node of the tree.
+        /// </summary>
+        public PathString Path { get; set; }
+
+        /// <summary>
+        /// Externally-visible HTTP address the SGame REST API that was served by the node in question.
+        /// </summary>
+        public string ApiUrl { get; set; }
+
+        // -- INetSerializable -------------------------------------------------
+
+        public void Serialize(NetDataWriter writer)
+        {
+            Path.Serialize(writer);
+            writer.Put(ApiUrl);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            Path = new PathString();
+            Path.Deserialize(reader);
+            ApiUrl = reader.GetString();
+        }
+    }
+
+    /// <summary>
     /// A message sent to the arbiter when a ship needs to be transferred to its parent node.
     /// </summary>
     public class TransferShip : IMessage

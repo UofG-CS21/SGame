@@ -76,6 +76,7 @@ namespace SGame
             this.Bus.PacketProcessor.Events<Messages.ShipConnected>().OnMessageReceived += OnShipConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipDisconnected>().OnMessageReceived += OnShipDisconnected;
             this.Bus.PacketProcessor.Events<Messages.NodeConfig>().OnMessageReceived += OnNodeConfigReceived;
+            this.Bus.PacketProcessor.Events<Messages.NodeOffline>().OnMessageReceived += OnNodeOffline;
             this.Bus.PacketProcessor.Events<Messages.ScanShoot>().OnMessageReceived += OnScanShootReceived;
 #if DEBUG
             this.Bus.PacketProcessor.Events<Messages.Sudo>().OnMessageReceived += OnSudo;
@@ -225,6 +226,24 @@ namespace SGame
                     RootNode.SetChild((Quadrant)i, rootChildren[i]);
                 }
             }
+        }
+
+        /// <summary>
+        /// Called when the arbiter tells us a node went offline.
+        /// </summary>
+        private void OnNodeOffline(NetPeer arbiterPeer, Messages.NodeOffline msg)
+        {
+            var offlineNode = RootNode.Traverse()
+                .Where(node => (node is RemoteQuadTreeNode) && ((RemoteQuadTreeNode)node).ApiUrl == msg.ApiUrl)
+                .FirstOrDefault();
+
+            if (offlineNode == null)
+            {
+                return;
+            }
+
+            Console.Error.WriteLine(">>> Node at {0} offline <<<", offlineNode.Path());
+            offlineNode.Parent.SetChild(offlineNode.Quadrant, null);
         }
 
         private void OnShipTransferred(Messages.ShipTransferred msg, NetPeer peer)
