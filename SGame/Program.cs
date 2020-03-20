@@ -188,19 +188,19 @@ namespace SGame
                 Console.Error.WriteLine("Listening...");
                 Console.Error.WriteLine("(API on {0})", options.ApiUrl);
 
-                while (true)
+                bool keepGoing;
+                do
                 {
                     var task = await listener.GetContextAsync();
-                    bool keepGoing = await ProcessRequest(task);
-                    if (!keepGoing) break;
-                }
+                    keepGoing = await ProcessRequest(task);
+                } while (keepGoing);
+
+                await api.PersistAllShips();
 
                 listener.Stop();
                 GameLoopTimer.Stop();
-                Console.Error.WriteLine("Stopped");
+                Console.Error.WriteLine(">>> Stopped <<<");
             }
-
-            // TODO: Persist all ships on node shutdown (and shutdown SGame node if it )
         }
 
         /// <summary>
