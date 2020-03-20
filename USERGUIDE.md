@@ -81,7 +81,7 @@ Then SGame nodes can be started and connected to SArbiter using:
 dotnet run --project SGame -- --arbiter <Hostname or address of the SArbiter managing this compute node> --api-url <The HTTP address to serve the SGame REST API on> --arbiter-bus-port <Externally-visible UDP port of the arbiter's event bus> --local-bus-port <Externally-visible UDP port of this node's event bus> --tickrate <Frequency of updates in milliseconds>
 ```
 
-SArbiter and SGame instances by sending a post request as shown:
+SArbiter and SGame instances can be killed by sending a post request as shown:
 ```sh
 curl -X POST -d "exit" "<api-url>/exit"
 ```
