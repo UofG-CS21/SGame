@@ -54,3 +54,86 @@
     <td class="tg-0lax">Sets the shield direction and radius around the ship</td>
   </tr>
 </table>
+
+## Deployment
+
+Add additional notes about how to deploy this on a live system
+
+### Data persistency
+
+- If you have elastic search installed, you can addtionally add data persistency:
+
+## Running the tests
+
+Automated tests can be executed as such:
+
+restore C# dependencies and build SGame (integrated FxCop analysis)
+
+```C#
+dotnet restore SGame
+```
+
+```C#
+dotnet build SGame
+```
+
+Running the command below runs the automated Xunit tests
+
+```C#
+dotnet test
+```
+
+The second set of automated testing which can be executed are the pytests (Black box tests)
+
+```bash
+bash ci/runtests.sh ${SGAME_HOST} ${SGAME_PORT}
+```
+
+where SGAME_HOST is the host for the test SGame instance and SGAME_PORT is the port for the test SGame instance
+
+### Xunit tests
+
+The Xunit tests include testing on geometry (scanning, shielding and shooting) and more. The tests were created to test the internal structure of the application.
+
+Below is an example Xunit test:
+
+```csharp
+//Test case 1: Attacker is within defending ship. No damage should be shielded.
+
+            gameTime.Reset();
+            ship = new Spaceship(1, gameTime);
+            ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
+            shipRadius = 10;
+            ship.Area = shipRadius * shipRadius * Math.PI;
+
+            yield return new object[] { ship, shotOrigin = new Vector2(5, 5), shotDir = -126.869897645844, shotWidth = 1, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
+
+```
+
+### pytest tests
+
+The pytest were created to simulate testing in live manner i.e black box test. Where we would be focus solely on the inputs and outputs with respect to our game specifcation.
+
+For example the test belows ensures that getShipInfo retrieves the correct inital state of the spaceship (without caring about the internals)
+
+```python
+def test_getShipInfo_intial_state(clients):
+    """
+    Tests if getShipInfo matches the intial state of the ship
+    """
+    with clients(1) as client:
+        resp = requests.post(client.url + 'getShipInfo', json={
+            'token': client.token,
+        })
+        assert resp
+        resp_data = resp.json()
+    # Ensures that the intial values match the information from getShipInfo
+        assert resp_data["area"] == 1
+        assert resp_data['energy'] == 10
+        assert resp_data['posX'] == 0
+        assert resp_data['posY'] == 0
+        assert resp_data['velX'] == 0
+        assert resp_data['velY'] == 0
+        assert resp_data['shieldWidth'] == 0
+        assert resp_data['shieldDir'] == 0
+```
