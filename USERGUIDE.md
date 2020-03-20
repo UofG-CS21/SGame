@@ -57,15 +57,40 @@
 
 ## Deployment
 
-Add additional notes about how to deploy this on a live system
+Starting in the the top directory of the cloned repository.
+
+restore C# dependencies and build SGame (integrated FxCop analysis)
+
+```C#
+dotnet restore SGame
+```
+
+```C#
+dotnet build SGame
+```
+
+First, start a SArbiter instance using:
+
+```C#
+dotnet run --project SArbiter  -- --api-url <The HTTP address to serve the REST API on> --bus-port <The UDP port to use for the master event bus>
+```
+
+Then SGame nodes can be started and connected to SArbiter using:
+
+```c#
+dotnet run --project SGame -- --arbiter <Hostname or address of the SArbiter managing this compute node> --api-url <The HTTP address to serve the SGame REST API on> --arbiter-bus-port <Externally-visible UDP port of the arbiter's event bus> --local-bus-port <Externally-visible UDP port of this node's event bus> --tickrate <Frequency of updates in milliseconds>
+```
+
+SArbiter and SGame instances by sending a post request as shown:
+```sh
+curl -X POST -d "exit" "<api-url>/exit"
+```
+
+Where the api-url is the address used to start the server.
 
 ### Data persistency
 
 - If you have elastic search installed, you can addtionally add data persistency:
-
-## Sample Clients
-
-We have created some example python clients - [Sample clients](Sample-clients/)
 
 ## Running the tests
 
