@@ -106,7 +106,7 @@ namespace SShared.Messages
         /// <summary>
         /// The ship being transferred
         /// </summary>
-        public Spaceship Ship;
+        public Spaceship Ship { get; set; }
 
         // -- INetSerializable -------------------------------------------------
 
@@ -117,6 +117,7 @@ namespace SShared.Messages
 
         public void Deserialize(NetDataReader reader)
         {
+            Ship = new Spaceship();
             Ship.Deserialize(reader);
         }
     }

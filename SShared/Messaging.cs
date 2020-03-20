@@ -36,11 +36,6 @@ namespace SShared
         /// </summary>
         public NetManager Host { get; private set; }
 
-        /// <summary>
-        /// True if this node is listening to a local port; false othwerise.
-        /// </summary>
-        public bool IsListening { get; private set; }
-
         NetDataWriter _writer;
 
         /// <summary>
