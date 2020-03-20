@@ -230,6 +230,5 @@ This project is licensed under the BSD License (4 Clause) - see the [LICENSE](LI
 
 ## Acknowledgments
 
-- Qaudtree basic structure based on [fant12 implementation](https://github.com/fant12/quadTree)
 - Circle-Triangle Intersection Method based on [Gabriel Ivăncescu's implementation](http://www.phatcode.net/articles.php?id=459)
 - Lite reliable UDP library for .NET Framework [LiteNetLib link](https://revenantx.github.io/LiteNetLib/index.html)
