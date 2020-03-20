@@ -2,15 +2,16 @@
 using System.Net;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
-namespace SGame
+namespace SShared
 {
     /// <summary>
     /// An attribute used to mark SGame API route methods.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method)]
-    class ApiRoute : Attribute
+    public class ApiRoute : Attribute
     {
         /// <summary>
         /// Initializes the attribute. 
@@ -32,7 +33,7 @@ namespace SGame
     /// telling what parameters are expected from the user data.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-    class ApiParam : Attribute
+    public class ApiParam : Attribute
     {
         /// <summary>
         /// Marks that the decorated method expects a certain API parameter when called.
@@ -65,13 +66,13 @@ namespace SGame
     /// <summary>
     /// Wraps the payload passed to a SGame API request.
     /// </summary>
-    class ApiData
+    public class ApiData
     {
         /// <summary>
         /// Inits a request's data given its parameters.
         /// </summary>
         /// <param name="data">The stored parameters.</param>
-        internal ApiData(JObject data)
+        public ApiData(JObject data)
         {
             this.Json = data;
         }
@@ -85,7 +86,7 @@ namespace SGame
     /// <summary>
     /// Wraps the response for a SGame API request.
     /// </summary>
-    class ApiResponse
+    public class ApiResponse
     {
         /// <summary>
         /// The underlying HTTP response.
@@ -96,13 +97,12 @@ namespace SGame
         /// Inits an API response.
         /// </summary>
         /// <param name="response">The underlying HTTP response.</param>
-        internal ApiResponse(HttpListenerResponse response)
+        public ApiResponse(HttpListenerResponse response)
         {
             this.response = response;
             this.Data = new JObject();
             this.Sent = false;
         }
-
 
         /// <summary>
         /// The flag to check if the response has already been sent 
@@ -118,7 +118,7 @@ namespace SGame
         /// Sends `Data` as a response to the API request, closing it off.
         /// </summary>
         /// <param name="status">The HTTP status code of the response.</param>
-        public void Send(int status=200)
+        public async Task Send(int status = 200)
         {
             if (this.Sent)
             {
@@ -131,8 +131,22 @@ namespace SGame
             byte[] buffer = Encoding.UTF8.GetBytes(jsonStr);
             response.ContentLength64 = buffer.Length;
             System.IO.Stream output = response.OutputStream;
-            output.Write(buffer, 0, buffer.Length);
+            await output.WriteAsync(buffer, 0, buffer.Length);
             output.Close();
+
+            response.Close();
+            this.Sent = true;
+        }
+
+        /// <summary>
+        /// Redirect the request to another address.
+        /// </summary>
+        public async Task Redirect(string url)
+        {
+            response.RedirectLocation = url;
+            response.StatusCode = 307;
+            response.StatusDescription = "Temporary Redirect";
+            response.Close();
             this.Sent = true;
         }
     }

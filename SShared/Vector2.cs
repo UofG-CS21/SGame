@@ -1,11 +1,12 @@
 using System;
+using LiteNetLib.Utils;
 
 namespace SShared
 {
     /// <summary>
     /// A 2D vector of double-precision doubles.
     /// </summary>
-    public struct Vector2
+    public struct Vector2 : INetSerializable
     {
         /// <summary>
         /// The coordinates of the vector.
@@ -82,5 +83,19 @@ namespace SShared
         /// Returns a string representation of a vector. 
         /// </summary>
         public override String ToString() => $"({X:F4}, {Y:F4})";
+
+        // ----- INetSerializable ----------------------------------------------
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(X);
+            writer.Put(Y);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            X = reader.GetDouble();
+            Y = reader.GetDouble();
+        }
     }
 }

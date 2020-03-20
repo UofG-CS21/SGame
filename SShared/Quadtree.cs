@@ -1,144 +1,383 @@
 
 using System;
 using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Collections.Generic;
+using LiteNetLib.Utils;
 
 namespace SShared
 {
     /// <summary>
-    /// Interface used in quadtree
+    /// PathString holds a list of quandrants representing choices when traversing a quadtree.
+    /// It can convert this list to a bit string representation where every 2 bits represent a Quadrant.
+    /// This bitstring representation can then be converted to a byte array representation to allow effiecient transfer of the data through serialization.
+    /// PathString can be initilaized as empty or it can be given a List<Quadrant>.
     /// </summary>
-    public interface INeedsRectangle
+    public class PathString : INetSerializable
     {
-        Rectangle Rectangle { get; }
+        public List<Quadrant> QuadrantList = new List<Quadrant>();
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(QuadrantList.Count);
+            writer.Put(this.ToByteArray());
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            int numQuadrants = reader.GetInt();
+            byte[] bytes = new byte[ByteLength(numQuadrants)];
+            reader.GetBytes(bytes, bytes.Length);
+            this.QuadrantList = ByteArrayToQuadrantList(bytes, numQuadrants);
+        }
+
+        public PathString()
+        {
+            this.QuadrantList = new List<Quadrant>();
+        }
+
+        public PathString(List<Quadrant> choiceList)
+        {
+            this.QuadrantList = choiceList;
+        }
+
+        public static int ByteLength(int numQuadrants)
+        {
+            return (numQuadrants + 3) / 4;
+        }
+
+        public byte[] ToByteArray()
+        {
+            byte[] byteArray = new byte[ByteLength(QuadrantList.Count)];
+
+            int iBit = 0;
+            for (int i = 0; i < QuadrantList.Count; i++)
+            {
+                int mask = ((int)QuadrantList[i]) << iBit;
+                byteArray[i / 4] |= (byte)mask;
+                iBit += 2;
+                if (iBit == 8) iBit = 0;
+            }
+            return byteArray;
+        }
+
+        public static List<Quadrant> ByteArrayToQuadrantList(byte[] byteArray, int numChoices)
+        {
+            List<Quadrant> list = new List<Quadrant>();
+            int iBit = 0;
+            for (int i = 0; i < numChoices; i++)
+            {
+                int quadrant = (byteArray[i / 4] >> iBit) & 0b11;
+                list.Add((Quadrant)quadrant);
+                iBit += 2;
+                if (iBit == 8) iBit = 0;
+            }
+            return list;
+        }
+
+        public override string ToString()
+        {
+            if (this.QuadrantList.Any())
+            {
+                return string.Join(", ", this.QuadrantList);
+            }
+            else
+            {
+                return "root";
+            }
+        }
     }
 
     /// <summary>
-    /// Quad tree
-    /// param T must be rectangle
+    /// Something bounded by a worldspace quad.
     /// </summary>
-    public class QuadTree<T> where T : INeedsRectangle
+    public interface IQuadBounded
     {
+        /// <summary>
+        /// The world-space bounding box of this item.
+        /// </summary>
+        public Quad Bounds { get; }
+    }
+
+    /// <summary>
+    /// The base class of all quadtree nodes.
+    /// The values stored in the nodes will be of type `T`.
+    /// </summary>
+    public abstract class QuadTreeNode<T> : IQuadBounded where T : IQuadBounded
+    {
+        /// <summary>
+        /// The 4 children of this node (each might be null).
+        /// </summary>
+        private QuadTreeNode<T>[] _children;
+
         /// <summary>
         /// The maximum number of quadtree subdivisions (= the maximum depth of a leaf node).
         /// </summary>
-        public readonly uint MaxDepth = 16;
-
-        // attributes
-
-        /// <summary>The child nodes of this quadtree</summary>
-        private QuadTree<T>[] _children;
-
-        /// <summary>A list of ships stored in this quadtree</summary>
-        private List<T> _ships;
-
-        /// <summary>The bounding box of this qaudtree</summary>
-        private readonly Rectangle _rect;
-
-        // Constructor
-        public QuadTree(Rectangle rectangle, int capacity, uint depth)
-        {
-            _rect = rectangle;
-            Depth = depth;
-            _ships = new List<T>(capacity);
-            _children = null;
-        }
-
-        // properties
+        public const uint MaxDepth = 15;
 
         /// <summary>
-        /// gets the bounding area 
+        /// The parent node of this quadtree node (root has parent=null)
         /// </summary>
-        public Rectangle Rectangle { get { return _rect; } }
+        public QuadTreeNode<T> Parent { get; protected set; }
 
-        /// <summary>The depth of this quadtree node (root has Depth=0).</summary>
+        /// <summary>
+        /// Enum representing which of the possible four child quadrants this node manages
+        /// </summary>
+        public Quadrant Quadrant { get; protected set; }
+
+        /// <summary>
+        /// The depth of this quadtree node (root has Depth=0).
+        /// </summary>
         public uint Depth { get; private set; }
 
-        // methods
-
         /// <summary>
-        /// counts all nodes in this node
+        /// The bounds of this quadtree node.
         /// </summary>
-        public int Count()
+        public Quad Bounds { get; protected set; }
+
+        public QuadTreeNode(QuadTreeNode<T> parent, Quadrant quadrant, uint depth)
         {
+            this.Parent = parent;
+            this.Bounds = parent.Bounds.QuadrantBounds(quadrant);
+            this.Quadrant = quadrant;
+            this.Depth = depth;
+            this._children = new QuadTreeNode<T>[4] { null, null, null, null };
+        }
 
-            int count = 0;
-            if (null != _children)
-                foreach (QuadTree<T> child in _children)
-                    count += child.Count();
-            return (count += _ships.Count);
-
+        public QuadTreeNode(Quad bounds, uint depth)
+        {
+            this.Parent = null;
+            this.Bounds = bounds;
+            this.Depth = depth;
+            this._children = new QuadTreeNode<T>[4] { null, null, null, null };
         }
 
         /// <summary>
-        /// Inserts a ship
-        /// returns true if successfully inserted otherwise false
+        /// Returns the child of this node at the given position (or null if not present).
         /// </summary>
-        public bool Insert(T ship)
+        public QuadTreeNode<T> Child(Quadrant pos)
         {
-            // ignore objects that do not belong in this quad tree
-            if (!_rect.Contains(ship.Rectangle))
-                return false;
-
-            // use subdivise method to add to any accepting node
-            if (null == _children)
-                Subdivide();
-
-            foreach (QuadTree<T> child in _children)
-                if (child.Rectangle.Contains(ship.Rectangle))
-                {
-                    child.Insert(ship);
-                    return true;
-                }
-            // if no subnodes contain the ship or we are at the smallest subnode size then add the ship as node data
-            _ships.Add(ship);
-            return true;
+            return _children[(int)pos];
         }
 
-
         /// <summary>
-        /// Creates 4 children, dividing this quad into 4 quads of equal area.
-        /// Returns `false` on failure (maximum depth reached -> can't subdivide any further).
+        /// Return the first (non-null) child if any.
         /// </summary>
-        public bool Subdivide()
+        public QuadTreeNode<T> FirstChild()
         {
-            if (Depth >= MaxDepth)
+            foreach (var child in _children)
             {
-                return false;
+                if (child != null) return child;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Sets the child of this node at the given position (replacing any previously-present one).
+        /// (Automatically modifies the child's bounds, depth and parent as needed).
+        /// Throws if the maximum subdivision depth was reached
+        /// </summary>
+        public void SetChild(Quadrant pos, QuadTreeNode<T> child)
+        {
+            if (Depth == MaxDepth)
+            {
+                throw new InvalidOperationException("Maximum quadtree depth reached");
             }
 
-            _children = new QuadTree<T>[4];
-
-            double halfRadius = 0.5 * _rect.Radius;
-            _children[0] = new QuadTree<T>(new Rectangle(_rect.CentreX - halfRadius, _rect.CentreY - halfRadius, halfRadius), _ships.Capacity, Depth + 1);
-            _children[1] = new QuadTree<T>(new Rectangle(_rect.CentreX + halfRadius, _rect.CentreY - halfRadius, halfRadius), _ships.Capacity, Depth + 1);
-            _children[2] = new QuadTree<T>(new Rectangle(_rect.CentreX - halfRadius, _rect.CentreY + halfRadius, halfRadius), _ships.Capacity, Depth + 1);
-            _children[3] = new QuadTree<T>(new Rectangle(_rect.CentreX + halfRadius, _rect.CentreY + halfRadius, halfRadius), _ships.Capacity, Depth + 1);
-
-            return true;
+            if (child != null)
+            {
+                child.Bounds = Bounds.QuadrantBounds(pos);
+                child.Parent = this;
+                child.Quadrant = pos;
+                child.Depth = Depth + 1;
+            }
+            _children[(int)pos] = child;
         }
 
         /// <summary>
-        /// checks range to find any ships that appear in it 
+        /// Recursively count all nodes that are children of this node.
         /// </summary>
-        public List<T> CheckRange(Rectangle range)
+        public uint ChildCountRecur()
+        {
+            uint count = 0;
+            for (int i = 0; i < 4; i++)
+            {
+                if (_children[i] != null)
+                {
+                    count += _children[i].ChildCountRecur();
+                }
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// Checks a range in this quad (and NOT its children) for items intersecting it.
+        /// </summary>
+        public abstract Task<List<T>> CheckRangeLocal(Quad range);
+
+        /// <summary>
+        /// Checks a range in this quad (and all of its children) for items intersecting it.
+        /// </summary>
+        public async Task<List<T>> CheckRangeRecur(Quad range)
         {
             List<T> found = new List<T>();
 
             // abort if the range does not intersect this quad
-            if (_rect.Intersects(range))
+            if (Bounds.Intersects(range))
             {
                 // checking at the current quad level
-                foreach (T ship in _ships)
-                    if (range.Contains(ship.Rectangle))
-                        found.Add(ship);
+                found.AddRange(await CheckRangeLocal(range).ConfigureAwait(false));
 
-                if (null != _children)
-                    foreach (QuadTree<T> child in _children)
-                        // add ship from child
-                        found.AddRange(child.CheckRange(range));
+                // checking recursively all children
+                foreach (var child in _children)
+                {
+                    if (child != null)
+                    {
+                        found.AddRange(await child.CheckRangeRecur(range).ConfigureAwait(false));
+                    }
+                }
             }
+
             return found;
+        }
+
+        /// <summary>
+        /// Get a randomly-chosen leaf of this node.
+        /// </summary>
+        public QuadTreeNode<T> RandomLeafNode()
+        {
+            Random rand = new Random();
+
+            QuadTreeNode<T> node = this;
+            QuadTreeNode<T> child = null;
+            do
+            {
+                int randQuadrant = rand.Next(0, 4);
+                for (int j = 0; j < 4; j++)
+                {
+                    if ((child = node._children[(randQuadrant + j) % 4]) != null)
+                    {
+                        break;
+                    }
+                }
+                node = child ?? node;
+            } while (child != null);
+
+            return node;
+        }
+
+        /// <summary>
+        /// Returns the smallest child capable of containing `bounds`.  
+        /// </summary>
+        public QuadTreeNode<T> SmallestNodeWhichContains(Quad bounds)
+        {
+            QuadTreeNode<T> node = this;
+            QuadTreeNode<T> child = null;
+            QuadTreeNode<T> validChild = node;
+            if (!node.Bounds.ContainsQuad(bounds))
+            {
+                return null;
+            }
+
+            do
+            {
+                node = validChild;
+                validChild = null;
+                for (int j = 0; j < 4; j++)
+                {
+                    if ((child = node._children[j]) != null && child.Bounds.ContainsQuad(bounds))
+                    {
+                        validChild = child;
+                    }
+                }
+            } while (validChild != null);
+
+            return node;
+        }
+
+        /// <summary>
+        /// Returns the PathString from the root to this node.
+        /// </summary>
+        public PathString Path()
+        {
+            QuadTreeNode<T> node = this;
+            List<Quadrant> path = new List<Quadrant>();
+            while (node.Parent != null)
+            {
+                path.Add(node.Quadrant);
+                node = node.Parent;
+            }
+            path.Reverse();
+            return new PathString(path);
+        }
+
+        /// <summary>
+        /// Returns a reference to the node at the given path from this node.
+        /// If `nodeFactory` is not null, any missing nodes (from this to the path's destination) will be created by
+        /// `nodeFactory()`; otherwise, the function returns null if it cannot find the node.
+        /// </summary>
+        public QuadTreeNode<T> NodeAtPath(PathString path, Func<QuadTreeNode<T>> nodeFactory = null)
+        {
+            QuadTreeNode<T> node = this;
+            foreach (Quadrant quadrant in path.QuadrantList)
+            {
+                var child = node.Child(quadrant);
+                if (child == null)
+                {
+                    if (nodeFactory == null)
+                    {
+                        return null;
+                    }
+                    else
+                    {
+                        node.SetChild(quadrant, nodeFactory());
+                        node = node.Child(quadrant);
+                    }
+                }
+                else
+                {
+                    node = child;
+                }
+            }
+            return node;
+        }
+
+        /// <summary>
+        /// Visit all nodes recursively.
+        /// </summary>
+        public IEnumerable<QuadTreeNode<T>> Traverse()
+        {
+            Stack<QuadTreeNode<T>> stack = new Stack<QuadTreeNode<T>>();
+            stack.Push(this);
+            while (stack.Any())
+            {
+                var node = stack.Pop();
+                yield return node;
+
+                foreach (var child in node._children)
+                {
+                    if (child != null) stack.Push(child);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Set the given child to null if it is present.
+        /// </summary>
+        public bool EraseChild(QuadTreeNode<T> child)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                if (_children[i] == child)
+                {
+                    _children[i] = null;
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }
+
+

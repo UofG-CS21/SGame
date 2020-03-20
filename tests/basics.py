@@ -51,8 +51,6 @@ def test_getShipInfo_intial_state(clients):
     # Ensures that the intial values match the information from getShipInfo
         assert resp_data["area"] == 1
         assert resp_data['energy'] == 10
-        assert resp_data['posX'] == 0
-        assert resp_data['posY'] == 0
         assert resp_data['velX'] == 0
         assert resp_data['velY'] == 0
         assert resp_data['shieldWidth'] == 0
@@ -71,6 +69,20 @@ def test_scan(server, clients):
         # Getting the id for client 1
         resp_data = resp.json()
         client1_id = resp_data['id']
+
+        # Reset clients to center
+        resp = requests.post(client1.url + 'sudo', json={
+            'token': client1.token,
+            'posX': 0.0,
+            'posY': 0.0,
+        })
+        assert resp
+        resp = requests.post(client2.url + 'sudo', json={
+            'token': client2.token,
+            'posX': 0.0,
+            'posY': 0.0,
+        })
+        assert resp
 
         # Client 1 moves to the right
         resp = requests.post(client1.url + 'accelerate', json={
@@ -138,8 +150,6 @@ def test_movement(server, clients):
         resp_data = resp.json()
         assert resp_data['velX'] == 0
         assert resp_data['velY'] == 0
-        assert resp_data['posX'] == 0
-        assert resp_data['posY'] == 0
         assert resp_data['energy'] == 10
 
         # Test values
@@ -641,8 +651,10 @@ def test_scan(server, clients, scandir, scan_width, posX_s2, posY_s2, area_s2, a
         # Set first ship to a centre position of 0,0
         resp = requests.post(client1.url + 'sudo', json={
             'token': client1.token,
+            'posX': 0.0,
+            'posY': 0.0,
             'area': area_s1,
-            'energy': energy
+            'energy': energy,
         })
         assert resp
 
@@ -726,6 +738,7 @@ def test_combat_battle(server, clients):
             'damage': 100,
         })
         assert resp
+
 
         # Checking the client one gains both ship 2 and 3 area
         resp = requests.post(client1.url + 'getShipInfo', json={

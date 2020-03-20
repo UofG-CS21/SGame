@@ -3,8 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections;
 using SGame;
-using Xunit;
 using SShared;
+using Xunit;
+
 
 namespace SGame.Tests
 {
@@ -16,7 +17,7 @@ namespace SGame.Tests
         {
 
             double onArcAngle = double.MaxValue;
-            bool actual = Api.IsPointOnArc(point, arcCenter, Api.Deg2Rad(arcDir), Api.Deg2Rad(arcWidth), arcRadius, out onArcAngle);
+            bool actual = MathUtils.IsPointOnArc(point, arcCenter, MathUtils.Deg2Rad(arcDir), MathUtils.Deg2Rad(arcWidth), arcRadius, out onArcAngle);
             Assert.Equal(expected, actual);
         }
 
@@ -26,9 +27,9 @@ namespace SGame.Tests
         {
             Vector2 tg1, tg2;
             double bisectAngle;
-            expectedAngle = Math.Round(Api.Deg2Rad(expectedAngle), 14);
+            expectedAngle = Math.Round(MathUtils.Deg2Rad(expectedAngle), 14);
 
-            Api.CircleTangents(circleCenter, circleRadius, point, out tg1, out tg2, out bisectAngle);
+            MathUtils.CircleTangents(circleCenter, circleRadius, point, out tg1, out tg2, out bisectAngle);
             //Round to account for geogebra rounding.
             double[] actualVectorValues = new double[] { Math.Round(tg1.X, 6), Math.Round(tg1.Y, 6), Math.Round(tg2.X, 6), Math.Round(tg2.Y, 6) };
             double[] expectedVectorValues = new double[] { Math.Round((expectedTangent1).X, 6), Math.Round((expectedTangent1).Y, 6), Math.Round((expectedTangent2).X, 6), Math.Round((expectedTangent2).Y, 6) };
@@ -43,8 +44,8 @@ namespace SGame.Tests
         {
 
             Vector2? inters1, inters2;
-            rayDir = Api.Deg2Rad(rayDir);
-            bool result = Api.RaycastCircle(rayOrigin, rayDir, circleCenter, circleRadius,
+            rayDir = MathUtils.Deg2Rad(rayDir);
+            bool result = MathUtils.RaycastCircle(rayOrigin, rayDir, circleCenter, circleRadius,
             out inters1, out inters2);
 
 
@@ -93,7 +94,7 @@ namespace SGame.Tests
         {
 
             Vector2? inters1, inters2;
-            bool result = Api.CircleCircleIntersection(center1, radius1, center2, radius2, out inters1, out inters2);
+            bool result = MathUtils.CircleCircleIntersection(center1, radius1, center2, radius2, out inters1, out inters2);
 
 
             //Gotta make sure vector is null or not to perform correct comparison.
@@ -129,7 +130,7 @@ namespace SGame.Tests
         internal void ShieldingAmountTest(Spaceship ship, Vector2 shotOrigin, double shotDir, double shotWidth, double shotRadius, double expectedValue)
         {
 
-            double actual = Api.ShieldingAmount(ship, shotOrigin, shotDir, shotWidth, shotRadius);
+            double actual = MathUtils.ShieldingAmount(ship, shotOrigin, MathUtils.Deg2Rad(shotDir), MathUtils.Deg2Rad(shotWidth), shotRadius);
             // Assert.Equal(expectedValue, actual);
             Assert.True(MathUtils.ToleranceEquals(expectedValue, actual, 0.02));
 
@@ -153,7 +154,7 @@ namespace SGame.Tests
             //Test case 1: Attacker is within defending ship. No damage should be shielded.
 
             gameTime.Reset();
-            ship = new Spaceship(1, gameTime);
+            ship = new LocalSpaceship($"{1:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 10;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -163,7 +164,7 @@ namespace SGame.Tests
             //Test case 2: Attacker is on edge of defenders radius
 
             gameTime.Reset();
-            ship = new Spaceship(2, gameTime);
+            ship = new LocalSpaceship($"{2:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
@@ -173,45 +174,45 @@ namespace SGame.Tests
             //Test case 3: Ray is entirely blocked by shield (Centre of shot passes through centre of ship)
 
             gameTime.Reset();
-            ship = new Spaceship(3, gameTime);
+            ship = new LocalSpaceship($"{3:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(135);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(135);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
             //Test case 4: Same as Test case 3 but shot comes from opposite side
 
             gameTime.Reset();
-            ship = new Spaceship(4, gameTime);
+            ship = new LocalSpaceship($"{4:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(315);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(315);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(5, -2), shotDir = 135, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
             //Test case 5: Ray is unimpeded by shield. (Centre of shot passes through centre of ship)
 
             gameTime.Reset();
-            ship = new Spaceship(5, gameTime);
+            ship = new LocalSpaceship($"{5:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(45);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(45);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
 
             //Test case 6: Ray is unimpeded on entry but impeded on exit. (Centre of shot passes through centre of ship)
 
             gameTime.Reset();
-            ship = new Spaceship(6, gameTime);
+            ship = new LocalSpaceship($"{6:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(315);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(315);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
 
 
@@ -219,87 +220,87 @@ namespace SGame.Tests
             //Test case 7: Ray is entirely blocked by shield (Centre of shot does not pass through centre of ship)
 
             gameTime.Reset();
-            ship = new Spaceship(7, gameTime);
+            ship = new LocalSpaceship($"{7:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(130);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(130);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -30, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
             //Test case 8: Same as Test case 7 but shot comes from opposite side
 
             gameTime.Reset();
-            ship = new Spaceship(8, gameTime);
+            ship = new LocalSpaceship($"{8:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(315);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(315);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(5, -2), shotDir = 135, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
             //Test case 9: Ray is unimpeded by shield. (Centre of shot does not pass through centre of ship)
 
             gameTime.Reset();
-            ship = new Spaceship(9, gameTime);
+            ship = new LocalSpaceship($"{9:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(45);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(45);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -53, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
 
             //Test case 10: Ray is unimpeded on entry but impeded on exit. (Centre of shot does not pass through centre of ship)
 
             gameTime.Reset();
-            ship = new Spaceship(10, gameTime);
+            ship = new LocalSpaceship($"{10:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(290);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(290);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -53, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
 
             //Test case 11: Ray is partially blocked by shield. 
             gameTime.Reset();
-            ship = new Spaceship(11, gameTime);
+            ship = new LocalSpaceship($"{11:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(105);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(105);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 0.5 };
 
             //Test case 12: Ray is almost completely blocked by shield. 
             gameTime.Reset();
-            ship = new Spaceship(12, gameTime);
+            ship = new LocalSpaceship($"{12:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(45);
-            ship.ShieldWidth = Api.Deg2Rad(30);
-            yield return new object[] { ship, shotOrigin = new Vector2(2, 5), shotDir = -90, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = (Api.Deg2Rad(75) - Api.Deg2Rad(73.82604780385)) / Api.Deg2Rad(30) };
+            ship.ShieldDir = MathUtils.Deg2Rad(45);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
+            yield return new object[] { ship, shotOrigin = new Vector2(2, 5), shotDir = -90, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = (MathUtils.Deg2Rad(75) - MathUtils.Deg2Rad(73.82604780385)) / MathUtils.Deg2Rad(30) };
 
             //Test case 13: Ray is just barely completely blocked by shield. (at this point, 1.0 should be returned)
             gameTime.Reset();
-            ship = new Spaceship(13, gameTime);
+            ship = new LocalSpaceship($"{13:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(123.3330639104773);
-            ship.ShieldWidth = Api.Deg2Rad(30);
+            ship.ShieldDir = MathUtils.Deg2Rad(123.3330639104773);
+            ship.ShieldWidth = MathUtils.Deg2Rad(30);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 15, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
 
 
             //The following test cases test the edge case that the two intersection points are covered but some section of the centre isnt.
             //Test case 14: 
             gameTime.Reset();
-            ship = new Spaceship(14, gameTime);
+            ship = new LocalSpaceship($"{14:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(-90);
-            ship.ShieldWidth = Api.Deg2Rad(179);
+            ship.ShieldDir = MathUtils.Deg2Rad(-90);
+            ship.ShieldWidth = MathUtils.Deg2Rad(179);
             yield return new object[] { ship, shotOrigin = new Vector2(-1, 4), shotDir = -45, shotWidth = 30, (ship.Pos - shotOrigin).Length(), expectedValue = (58.0 / 60.0) };
 
 
@@ -309,25 +310,20 @@ namespace SGame.Tests
             // ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             // shipRadius = 2;
             // ship.Area = shipRadius * shipRadius * Math.PI;
-            // ship.ShieldDir = Api.Deg2Rad(176.076);
-            // ship.ShieldWidth = Api.Deg2Rad(179);
+            // ship.ShieldDir = MathUtils.Deg2Rad(176.076);
+            // ship.ShieldWidth = MathUtils.Deg2Rad(179);
             // yield return new object[] { ship, shotOrigin = new Vector2(5.5, 1), shotDir = 180, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 0.0 };
 
 
             //Test case 16: 
             gameTime.Reset();
-            ship = new Spaceship(16, gameTime);
+            ship = new LocalSpaceship($"{16:D8}", gameTime);
             ship.Pos = new Vector2(2, 1); //Start ship at (2,1) to avoid missing bugs due to simplicity of (0,0)
             shipRadius = 2;
             ship.Area = shipRadius * shipRadius * Math.PI;
-            ship.ShieldDir = Api.Deg2Rad(133.573);
-            ship.ShieldWidth = Api.Deg2Rad(179);
+            ship.ShieldDir = MathUtils.Deg2Rad(133.573);
+            ship.ShieldWidth = MathUtils.Deg2Rad(179);
             yield return new object[] { ship, shotOrigin = new Vector2(5, -1.5), shotDir = 360 - 206.565051177078, shotWidth = 5, (ship.Pos - shotOrigin).Length(), expectedValue = 1.0 };
-
-
-
-
-
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

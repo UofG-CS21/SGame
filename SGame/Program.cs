@@ -1,10 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Timers;
 using System.IO;
 using System.Net;
 using CommandLine;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Threading.Tasks;
+using SShared;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SGame.Tests")]
 namespace SGame
@@ -15,23 +17,53 @@ namespace SGame
     class CmdLineOptions
     {
         /// <summary>
-        /// The HTTP hostname to bind to.
+        /// The hostname of the SArbiter.
         /// </summary>
-        [Option('H', "host", Default = "localhost", Required = false, HelpText = "The hostname to bind the compute node to.")]
-        public string Host { get; set; }
+        [Option("arbiter", Default = "localhost", Required = false, HelpText = "Hostname or address of the SArbiter managing this compute node.")]
+        public string Arbiter { get; set; }
 
         /// <summary>
-        /// The HTTP TCP port to bind to.
+        /// The HTTP address to serve the SGame REST API on.
         /// </summary>
-        [Option('P', "port", Default = 8000u, Required = false, HelpText = "The port to bind the compute node to.")]
-        public uint Port { get; set; }
+        [Option("api-url", Default = "http://127.0.0.1:9000/", Required = false,
+         HelpText = "The HTTP address to serve the SGame REST API on. Must be externally accessible for multinode setups!")]
+        public string ApiUrl { get; set; }
+
+
+        /// <summary>
+        /// The UDP port of the arbiter's master event bus.
+        /// </summary>
+        [Option("arbiter-bus-port", Default = 4242u, Required = false, HelpText = "Externally-visible UDP port of the arbiter's event bus.")]
+        public uint ArbiterBusPort { get; set; }
+
+        /// <summary>
+        /// The UDP port of this node's master event bus.
+        /// </summary>
+        [Option("local-bus-port", Default = 4242u, Required = false, HelpText = "Externally-visible UDP port of this node's event bus.")]
+        public uint LocalBusPort { get; set; }
+
+        /// <summary>
+        /// SGame's tickrate, i.e. the updates-per-second of the main loop.
+        /// </summary>
+        [Option('T', "tickrate", Default = 30u, Required = false, HelpText = "SGame tickrate (updates per second).")]
+        public uint Tickrate { get; set; }
     }
 
     /// <summary>
     /// An instance of the server.
     /// </summary>
-    class Program
+    class Program : IDisposable
     {
+        /// <summary>
+        /// Size of the game universe.
+        /// </summary>
+        public const double UniverseSize = 1 << 31;
+
+        /// <summary>
+        /// SGame instance options.
+        /// </summary>
+        CmdLineOptions options;
+
         /// <summary>
         /// The external REST API and its state.
         /// </summary>
@@ -43,19 +75,90 @@ namespace SGame
         Router<Api> router;
 
         /// <summary>
+        /// The timer that periodically updates the gamestate and event bus.
+        /// </summary>
+        private static Timer GameLoopTimer;
+
+        /// <summary>
+        /// Connected to the SArbiter master event bus.
+        /// </summary>
+        NetNode bus;
+
+        /// <summary>
         /// Initializes an instance of the program.
         /// </summary>
-        Program()
+        Program(CmdLineOptions options)
         {
-            api = new Api();
-            router = new Router<Api>(api);
+            this.options = options;
+            this.bus = new NetNode(listenPort: (int)options.LocalBusPort);
+            LiteNetLib.NetPeer arbiterPeer = this.bus.Connect(options.Arbiter, (int)options.ArbiterBusPort);
+
+            // On startup, the local SGame node assumes it manages the whole universe.
+            var localTree = new LocalQuadTreeNode(new SShared.Quad(0.0, 0.0, UniverseSize), 0);
+            var rootNode = localTree;
+
+            this.api = new Api(options.ApiUrl, rootNode, localTree, bus, arbiterPeer, options.LocalBusPort);
+            this.router = new Router<Api>(api);
+        }
+
+        public void Dispose()
+        {
+            bus.Dispose();
+        }
+
+        public async Task<bool> ProcessRequest(HttpListenerContext context)
+        {
+            string requestUrl = context.Request.RawUrl.Substring(1);
+            Console.Error.WriteLine("Got a request: {0}", requestUrl);
+
+            var body = new StreamReader(context.Request.InputStream).ReadToEnd();
+            JObject json = new JObject();
+            if (body.Length > 0)
+            {
+                try
+                {
+                    json = JObject.Parse(body);
+                }
+                catch (JsonReaderException exc)
+                {
+                    // TODO: Log this and (likely) send a HTTP 500
+                }
+            }
+
+#if DEBUG
+            // Handle "exit" in debug mode
+            if (requestUrl == "exit")
+            {
+                return false;
+            }
+#endif
+
+            var response = new ApiResponse(context.Response);
+            var data = new ApiData(json);
+            await router.Dispatch(requestUrl, response, data);
+            return true;
+        }
+
+        private void SetupTimer(int frequency)
+        {
+            GameLoopTimer = new Timer(frequency);
+
+            GameLoopTimer.Elapsed += GameLoopTick;
+            GameLoopTimer.AutoReset = true;
+            GameLoopTimer.Enabled = true;
+        }
+
+        private void GameLoopTick(Object source, ElapsedEventArgs e)
+        {
+            bus.Update();
+            api.UpdateGameState();
+            //Console.WriteLine("Updated game state at {0:HH:mm:ss.fff}", e.SignalTime);
         }
 
         /// <summary>
         /// Runs the main loop run for the HTTP/REST server.
         /// </summary>
-        /// <param name="prefixes">A list of endpoint URLs to bind the HTTP server to.</param>
-        public void ServerLoop(string[] prefixes)
+        public async Task ServerLoop()
         {
             if (!HttpListener.IsSupported)
             {
@@ -63,69 +166,49 @@ namespace SGame
                 Environment.Exit(1);
             }
 
-            // Create a listener.
-            HttpListener listener = new HttpListener();
-            foreach (string s in prefixes)
+            using (HttpListener listener = new HttpListener())
             {
-                listener.Prefixes.Add(s);
-            }
+                listener.Prefixes.Add(options.ApiUrl);
 
-            // Main server loop
-            listener.Start();
-            Console.Error.WriteLine("Listening...");
-            while (true)
-            {
-                // Note: The GetContext method blocks while waiting for a request. 
-                HttpListenerContext context = listener.GetContext();
+                // Main server loop
+                listener.Start();
+                SetupTimer((int)options.Tickrate);
+                Console.Error.WriteLine("Listening...");
+                Console.Error.WriteLine("(API on {0})", options.ApiUrl);
 
-                string requestUrl = context.Request.RawUrl.Substring(1);
-                Console.Error.WriteLine("Got a request: {0}", requestUrl);
-
-                var body = new StreamReader(context.Request.InputStream).ReadToEnd();
-                JObject json = new JObject();
-                if (body.Length > 0)
+                while (true)
                 {
-                    try
-                    {
-                        json = JObject.Parse(body);
-                    }
-                    catch (JsonReaderException exc)
-                    {
-                        // TODO: Log this and (likely) send a HTTP 500
-                    }
+                    var task = await listener.GetContextAsync();
+                    bool keepGoing = await ProcessRequest(task);
+                    if (!keepGoing) break;
                 }
 
-#if DEBUG
-                // Handle "exit" in debug mode
-                if (requestUrl == "exit")
-                {
-                    break;
-                }
-#endif
-
-                var response = new ApiResponse(context.Response);
-                var data = new ApiData(json);
-                router.Dispatch(requestUrl, response, data);
+                listener.Stop();
+                GameLoopTimer.Stop();
+                Console.Error.WriteLine("Stopped");
             }
 
-            listener.Stop();
-            Console.Error.WriteLine("Stopped");
+            // TODO: Persist all ships on node shutdown (and shutdown SGame node if it )
         }
 
         /// <summary>
         /// The entry point of the program.
         /// </summary>
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
+            CmdLineOptions options = null;
             Parser.Default.ParseArguments<CmdLineOptions>(args)
-                .WithParsed<CmdLineOptions>(opts =>
-                {
-                    string[] endpoints = new string[] { "http://" + opts.Host + ":" + opts.Port + "/" };
-                    Console.WriteLine("Endpoint: {0}", endpoints[0]);
+                .WithParsed<CmdLineOptions>((opts) => options = opts);
+            if (options == null)
+            {
+                Environment.ExitCode = -1;
+                return;
+            }
 
-                    Program P = new Program();
-                    P.ServerLoop(endpoints);
-                });
+            using (Program P = new Program(options))
+            {
+                await P.ServerLoop();
+            }
         }
     }
 }

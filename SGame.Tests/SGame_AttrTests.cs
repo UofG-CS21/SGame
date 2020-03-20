@@ -4,7 +4,7 @@ using SGame;
 using Xunit;
 using System.Reflection;
 using System.Diagnostics;
-
+using SShared;
 
 namespace SGame.Tests
 {
