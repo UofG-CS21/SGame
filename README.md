@@ -16,8 +16,9 @@ The prerequisites are as follows:
 - LiteNetLib (Lite reliable UDP library for .NET.)
 - Newtonsoft.JSon (High-performance JSON framework for .NET.) - 12.0.2
 - FxCopAnalyzers (Static analyser) - 2.9.8
+- CommandLineParser - 2.6.0
 
-#### Python 2.7 or above
+#### Python 3.7 or above
 
 - pytests (Testing framework used for our black box tests)
 - requests (HTTP library - Used again for testing purposes)
