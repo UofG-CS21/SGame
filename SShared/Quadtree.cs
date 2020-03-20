@@ -119,29 +119,27 @@ namespace SShared
         /// <summary>
         /// The parent node of this quadtree node (root has parent=null)
         /// </summary>
-        public QuadTreeNode<T> Parent { get; private set; }
+        public QuadTreeNode<T> Parent { get; protected set; }
 
         /// <summary>
         /// Enum representing which of the possible four child quadrants this node manages
         /// </summary>
-        public Quadrant Quadrant { get; private set; }
+        public Quadrant Quadrant { get; protected set; }
 
         /// <summary>
         /// The depth of this quadtree node (root has Depth=0).
         /// </summary>
         public uint Depth { get; private set; }
 
-        private Quad _bounds;
-
         /// <summary>
         /// The bounds of this quadtree node.
         /// </summary>
-        public Quad Bounds { get { return _bounds; } }
+        public Quad Bounds { get; protected set; }
 
         public QuadTreeNode(QuadTreeNode<T> parent, Quadrant quadrant, uint depth)
         {
             this.Parent = parent;
-            this._bounds = parent.Bounds.QuadrantBounds(quadrant);
+            this.Bounds = parent.Bounds.QuadrantBounds(quadrant);
             this.Quadrant = quadrant;
             this.Depth = depth;
             this._children = new QuadTreeNode<T>[4] { null, null, null, null };
@@ -150,7 +148,7 @@ namespace SShared
         public QuadTreeNode(Quad bounds, uint depth)
         {
             this.Parent = null;
-            this._bounds = bounds;
+            this.Bounds = bounds;
             this.Depth = depth;
             this._children = new QuadTreeNode<T>[4] { null, null, null, null };
         }
@@ -161,6 +159,18 @@ namespace SShared
         public QuadTreeNode<T> Child(Quadrant pos)
         {
             return _children[(int)pos];
+        }
+
+        /// <summary>
+        /// Return the first (non-null) child if any.
+        /// </summary>
+        public QuadTreeNode<T> FirstChild()
+        {
+            foreach (var child in _children)
+            {
+                if (child != null) return child;
+            }
+            return null;
         }
 
         /// <summary>
@@ -177,7 +187,7 @@ namespace SShared
 
             if (child != null)
             {
-                child._bounds = Bounds.QuadrantBounds(pos);
+                child.Bounds = Bounds.QuadrantBounds(pos);
                 child.Parent = this;
                 child.Quadrant = pos;
                 child.Depth = Depth + 1;
@@ -214,7 +224,7 @@ namespace SShared
             List<T> found = new List<T>();
 
             // abort if the range does not intersect this quad
-            if (_bounds.Intersects(range))
+            if (Bounds.Intersects(range))
             {
                 // checking at the current quad level
                 found.AddRange(await CheckRangeLocal(range).ConfigureAwait(false));

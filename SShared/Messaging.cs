@@ -36,11 +36,6 @@ namespace SShared
         /// </summary>
         public NetManager Host { get; private set; }
 
-        /// <summary>
-        /// True if this node is listening to a local port; false othwerise.
-        /// </summary>
-        public bool IsListening { get; private set; }
-
         NetDataWriter _writer;
 
         /// <summary>
@@ -69,11 +64,6 @@ namespace SShared
                 Host.Start();
             }
             _writer = new NetDataWriter();
-
-#if DEBUG
-            // FIXME - juist for testing!
-            Host.DisconnectTimeout = 1_000_000;
-#endif
 
             PacketProcessor = new NetNodePacketProcessor();
             Messages.Serialization.RegisterAllSerializers(PacketProcessor);

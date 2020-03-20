@@ -1,10 +1,13 @@
 using System;
+using System.Text;
 using System.Net;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using SShared;
 using LiteNetLib;
 using Messages = SShared.Messages;
+using System.Net.Http;
 
 namespace SArbiter
 {
@@ -20,10 +23,13 @@ namespace SArbiter
 
         public NetNode BusMaster { get; set; }
 
-        public RoutingTable(NetNode busMaster, ArbiterTreeNode rootNode)
+        public double UniverseSize { get; set; }
+
+        public RoutingTable(NetNode busMaster, ArbiterTreeNode rootNode, double universeSize)
         {
             this.BusMaster = busMaster;
             this.RootNode = rootNode;
+            this.UniverseSize = universeSize;
         }
 
         public ArbiterTreeNode AddSGameNode(NetPeer peer, IPAddress busAddress, uint busPort, string apiUrl)
@@ -56,29 +62,100 @@ namespace SArbiter
             }
         }
 
-        public bool RemoveSGameNode(NetPeer peer)
+        public async Task<bool> RemoveSGameNode(NetPeer peer)
         {
             if (RootNode == null) return false;
 
-            var node = RootNode.Traverse().Cast<ArbiterTreeNode>().Where((node) => node.Peer == peer).FirstOrDefault();
-            if (node == null) return false;
+            var disconnectedNode = RootNode.Traverse().Cast<ArbiterTreeNode>().Where((node) => node.Peer == peer).FirstOrDefault();
+            if (disconnectedNode == null) return false;
 
-            if (node.Parent == null)
+            ArbiterTreeNode substituteNode;
+            if (disconnectedNode.Parent == null)
             {
-                RootNode = null;
+                ArbiterTreeNode childToPromote = (ArbiterTreeNode)disconnectedNode.FirstChild();
+                if (childToPromote == null)
+                {
+                    substituteNode = null;
+                    RootNode = null;
+                }
+                else
+                {
+                    substituteNode = childToPromote;
+                }
             }
             else
             {
-                node.Parent.EraseChild(node);
-            }
-
-            foreach (var token in _nodeByShipToken.Keys.ToList())
-            {
-                if (_nodeByShipToken[token] == node)
+                ArbiterTreeNode leafToPromote = (ArbiterTreeNode)disconnectedNode.RandomLeafNode();
+                if (leafToPromote == null)
                 {
-                    _nodeByShipToken[token] = node.Parent as ArbiterTreeNode;
+                    // No leaf means `disconnectedNode` had no childtren, so we just send the ships to the parent
+                    substituteNode = (ArbiterTreeNode)disconnectedNode.Parent;
+                }
+                else
+                {
+                    substituteNode = leafToPromote;
                 }
             }
+
+            if (substituteNode != null)
+            {
+                Console.Error.WriteLine("Moving ships that were in {0} to {1}", disconnectedNode.Path(), substituteNode.Path());
+            }
+            else
+            {
+                Console.Error.WriteLine("There is no node to promote to root!");
+            }
+
+            // New substitute node retains his children but also gets the new ones
+            // We assume the disconnected node persisted its ships to Elastic before dying;
+            // if it has, the connect REST calls below will transfer the ships to the substitute!
+            foreach (var token in _nodeByShipToken.Keys.ToList())
+            {
+                if (_nodeByShipToken[token] == disconnectedNode)
+                {
+                    if (substituteNode != null)
+                    {
+                        var connectWaiter = new MessageWaiter<Messages.ShipConnected>(BusMaster, substituteNode.Peer).Wait;
+                        BusMaster.SendMessage(new Messages.ShipConnected() { Token = token }, substituteNode.Peer);
+                        await connectWaiter;
+                    }
+                    _nodeByShipToken[token] = substituteNode;
+                }
+            }
+
+            if (substituteNode != null)
+            {
+                if (substituteNode.Parent != null)
+                {
+                    substituteNode.Parent.SetChild(substituteNode.Quadrant, null);
+                }
+
+                if (disconnectedNode.Parent != null)
+                {
+                    disconnectedNode.Parent.SetChild(disconnectedNode.Quadrant, substituteNode);
+                }
+                else
+                {
+                    substituteNode.MakeRoot(new Quad(0.0, 0.0, UniverseSize));
+                    RootNode = substituteNode;
+                }
+
+                BusMaster.BroadcastMessage(new Messages.NodeOffline()
+                {
+                    Path = disconnectedNode.Path(),
+                    ApiUrl = disconnectedNode.ApiUrl,
+                }, DeliveryMethod.ReliableOrdered);
+
+                BusMaster.BroadcastMessage(new Messages.NodeConfig()
+                {
+                    BusAddress = substituteNode.BusAddress,
+                    BusPort = substituteNode.BusPort,
+                    Bounds = substituteNode.Bounds,
+                    Path = substituteNode.Path(),
+                    ApiUrl = substituteNode.ApiUrl,
+                }, DeliveryMethod.ReliableOrdered);
+            }
+
             return true;
         }
 
@@ -111,8 +188,8 @@ namespace SArbiter
         {
             string token = AddShipToken();
 
-#if DEBUG
-            // FIXME This is just for testing - in debug mode, assume there are just two SGame nodes and round-robin ships to them
+#if false
+            // This is just for testing - in debug mode, assume there are just two SGame nodes and round-robin ships to them
             if ((_shipCount++) % 2 == 0)
             {
                 parentNode = (ArbiterTreeNode)RootNode;

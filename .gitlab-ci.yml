@@ -1,6 +1,7 @@
 variables:
     # The host for the test SGame instance
-    SGAME_HOST: "localhost"
+    # NOTE: This should be a IPv4 to comply with `System.Net.HttpListener` not properly supporting IPv6!
+    SGAME_HOST: "127.0.0.1"
     # The port for the test SGame instance
     SGAME_PORT: "5000"
 
@@ -62,3 +63,9 @@ pytest:
         #  stall until timeout because the SGame process in the background won't terminate!)
         - cd ${CI_PROJECT_DIR}
         - bash ci/runtests.sh ${SGAME_HOST} ${SGAME_PORT}
+
+    artifacts:
+        # Keep the logs
+        paths:
+            - SGame.out
+            - SArbiter.out
