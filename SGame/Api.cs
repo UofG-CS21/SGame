@@ -146,7 +146,7 @@ namespace SGame
                 }
 
 
-                Console.Error.WriteLine(">>> Transferring request for ship with token {0} and pos ({1},{2}) sent from node at {3} to node at path <<<", ship.Token, ship.Pos.X, ship.Pos.Y, this.ApiUrl, msg.Path.ToString());
+                Console.Error.WriteLine("Transferring request for ship {0} (pos=({1}) was sent from node at {2} to node at {3}", ship.Token, ship.Pos, this.ApiUrl, msg.Path);
                 Bus.SendMessage(msg, ArbiterPeer);
                 QuadTreeNode.ShipsByToken.Remove(ship.Token);
             }

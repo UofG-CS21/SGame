@@ -81,11 +81,11 @@ namespace SArbiter
             bool result = _routingTable.MoveShip(msg.Ship, transferNode);
             if (result)
             {
-                Console.Error.WriteLine(">>> Ship transferred from node {0} to node {1} <<<", sender.EndPoint, transferNode.Peer.EndPoint);
+                Console.Error.WriteLine("Ship transferred from node at {0} to node at {1}", sender.EndPoint, transferNode.Peer.EndPoint);
             }
             else
             {
-                Console.Error.WriteLine(">>> Failed to transfer ship from node at {0} to node at {1} <<<", sender.EndPoint, transferNode.Peer.EndPoint);
+                Console.Error.WriteLine("Failed to transfer ship from node at {0} to node at {1}", sender.EndPoint, transferNode.Peer.EndPoint);
             }
 
         }
