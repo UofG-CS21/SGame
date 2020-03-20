@@ -75,6 +75,7 @@ namespace SGame
             this.Bus.PeerConnectedEvent += OnPeerConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipConnected>().OnMessageReceived += OnShipConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipDisconnected>().OnMessageReceived += OnShipDisconnected;
+            this.Bus.PacketProcessor.Events<Messages.ShipTransferred>().OnMessageReceived += OnShipTransferred;
             this.Bus.PacketProcessor.Events<Messages.NodeConfig>().OnMessageReceived += OnNodeConfigReceived;
             this.Bus.PacketProcessor.Events<Messages.NodeOffline>().OnMessageReceived += OnNodeOffline;
             this.Bus.PacketProcessor.Events<Messages.ScanShoot>().OnMessageReceived += OnScanShootReceived;
@@ -128,18 +129,26 @@ namespace SGame
             }
         }
 
-        //TODO: Finish garbage collector. Left for now to create PathString for shipTransfer message.
-        private void GarbageCollect()
+        public void GarbageCollect()
         {
             foreach (var ship in QuadTreeNode.ShipsByToken.Values)
             {
                 LocalQuadTreeNode currentNode = QuadTreeNode;
                 QuadTreeNode<Spaceship> bestFitNode = currentNode.SmallestNodeWhichContains(ship.Bounds);
+                Messages.TransferShip msg;
                 if (bestFitNode == null)
                 {
-                    // Messages.MoveS
-                    // Bus.SendMessage()
+                    msg = new Messages.TransferShip() { Ship = ship, Path = currentNode.Parent.Path() };
                 }
+                else
+                {
+                    msg = new Messages.TransferShip() { Ship = ship, Path = bestFitNode.Path() };
+                }
+
+
+                Console.Error.WriteLine("Transferring request for ship {0} (pos=({1}) was sent from node at {2} to node at {3}", ship.Token, ship.Pos, this.ApiUrl, msg.Path);
+                Bus.SendMessage(msg, ArbiterPeer);
+                QuadTreeNode.ShipsByToken.Remove(ship.Token);
             }
         }
 
@@ -246,7 +255,7 @@ namespace SGame
             offlineNode.Parent.SetChild(offlineNode.Quadrant, null);
         }
 
-        private void OnShipTransferred(Messages.ShipTransferred msg, NetPeer peer)
+        private void OnShipTransferred(NetPeer peer, Messages.ShipTransferred msg)
         {
             LocalSpaceship localShip = new LocalSpaceship(msg.Ship, _gameTime);
             QuadTreeNode.ShipsByToken.Add(msg.Ship.Token, localShip);
