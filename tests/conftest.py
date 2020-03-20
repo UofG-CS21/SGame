@@ -21,8 +21,8 @@ def pytest_addoption(parser):
                      type=str, help="Host to bind the SGame server instance to")
     parser.addoption("--port", action="store", default=5000,
                      type=int, help="Port to bind the SGame server instance to")
-    parser.addoption("--persistency", action="store", default=None,
-                     type=str, help="If defined this is the address of elastic search instance used for persistency")
+    parser.addoption("--persistence", action="store", default=None,
+                     type=str, help="If defined this is the address of elastic search instance used for persistence")
 
 
 # Test fixtures
@@ -55,25 +55,25 @@ def server(request) -> ServerFixture:
     yield ServerFixture(host, port)
 
 
-class PersistencyFixture:
-    """Parameters about the persistency server."""
+class PersistenceFixture:
+    """Parameters about the persistence server."""
 
     def __init__(self, url: str):
         self.url = str(url)
-        """The URL to the ElasticSearch persistency."""
+        """The URL to the ElasticSearch persistence."""
 
 
 @pytest.fixture(scope='session')
-def persistency(request) -> PersistencyFixture:
+def persistence(request) -> PersistenceFixture:
     """
-    A session-wide fixture that stores information about the persistency test server;
+    A session-wide fixture that stores information about the persistence test server;
     None if invalid
     """
-    url = request.config.getoption('--persistency')
+    url = request.config.getoption('--persistence')
     if url is None:
         yield None
     else:
-        yield PersistencyFixture(url)
+        yield PersistenceFixture(url)
 
 
 class Client:
