@@ -63,6 +63,10 @@ Add additional notes about how to deploy this on a live system
 
 - If you have elastic search installed, you can addtionally add data persistency:
 
+## Sample Clients
+
+We have created some example python clients - [Sample clients](Sample-clients/)
+
 ## Running the tests
 
 Automated tests can be executed as such:
