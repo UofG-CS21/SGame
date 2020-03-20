@@ -108,15 +108,20 @@ namespace SShared.Messages
         /// </summary>
         public Spaceship Ship { get; set; }
 
+        public PathString Path;
+
         // -- INetSerializable -------------------------------------------------
 
         public void Serialize(NetDataWriter writer)
         {
+            Path.Serialize(writer);
             Ship.Serialize(writer);
         }
 
         public void Deserialize(NetDataReader reader)
         {
+            Path = new PathString();
+            Path.Deserialize(reader);
             Ship = new Spaceship();
             Ship.Deserialize(reader);
         }
@@ -136,12 +141,12 @@ namespace SShared.Messages
 
         public void Serialize(NetDataWriter writer)
         {
-
             Ship.Serialize(writer);
         }
 
         public void Deserialize(NetDataReader reader)
         {
+            Ship = new Spaceship();
             Ship.Deserialize(reader);
         }
     }

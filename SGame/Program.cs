@@ -164,6 +164,7 @@ namespace SGame
         {
             bus.Update();
             api.UpdateGameState();
+            api.GarbageCollect();
             //Console.WriteLine("Updated game state at {0:HH:mm:ss.fff}", e.SignalTime);
         }
 
