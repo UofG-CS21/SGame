@@ -187,6 +187,8 @@ namespace SGame
                 GameLoopTimer.Stop();
                 Console.Error.WriteLine("Stopped");
             }
+
+            // TODO: Persist all ships on node shutdown (and shutdown SGame node if it )
         }
 
         /// <summary>

@@ -75,7 +75,6 @@ namespace SArbiter
                 ArbiterTreeNode childToPromote = (ArbiterTreeNode)disconnectedNode.FirstChild();
                 if (childToPromote == null)
                 {
-                    Console.Error.WriteLine("There is no node to promote to root!");
                     substituteNode = null;
                     RootNode = null;
                 }
@@ -98,7 +97,14 @@ namespace SArbiter
                 }
             }
 
-            Console.Error.WriteLine("Moving ships that were in {0} to {1}", disconnectedNode.Path(), substituteNode.Path());
+            if (substituteNode != null)
+            {
+                Console.Error.WriteLine("Moving ships that were in {0} to {1}", disconnectedNode.Path(), substituteNode.Path());
+            }
+            else
+            {
+                Console.Error.WriteLine("There is no node to promote to root!");
+            }
 
             // New substitute node retains his children but also gets the new ones
             // We assume the disconnected node persisted its ships to Elastic before dying;
