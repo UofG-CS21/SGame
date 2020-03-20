@@ -124,6 +124,7 @@ namespace SShared
             var routeData = apiRoutes.GetValueOrDefault(route, null);
             if (routeData == null)
             {
+                response.Data["error"] = $"Route {route} not found";
                 await response.Send(404);
                 return false;
             }
@@ -148,14 +149,15 @@ namespace SShared
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine(ex.Message);
+                Console.Error.WriteLine($"Exception at {ex.Source}: {ex.Message}");
                 Console.Error.WriteLine(ex.StackTrace);
             }
             finally
             {
                 if (!response.Sent)
                 {
-                    Console.WriteLine("Error: response was not sent");
+                    Console.Error.WriteLine("Error: response was not sent");
+                    response.Data["error"] = "Internal server error";
                     await response.Send(500);
                 }
             }

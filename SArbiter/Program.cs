@@ -1,14 +1,16 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using CommandLine;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using SShared;
 using System.Threading.Tasks;
 using System.Text;
 using System.Timers;
+using CommandLine;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using LiteNetLib;
+using SShared;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SArbiter.Tests")]
 namespace SArbiter
@@ -20,16 +22,10 @@ namespace SArbiter
     class CmdLineOptions
     {
         /// <summary>
-        /// The HTTP hostname to bind to for clients.
+        /// The HTTP port to serve the REST API on.
         /// </summary>
-        [Option('H', "client-host", Default = "localhost", Required = false, HelpText = "The hostname to serve the REST API on.")]
-        public string ClientHost { get; set; }
-
-        /// <summary>
-        /// The HTTP TCP port to bind to for clients.
-        /// </summary>
-        [Option('P', "client-port", Default = 8000u, Required = false, HelpText = "The port to bind to to serve the REST API.")]
-        public uint ClientPort { get; set; }
+        [Option("api-url", Default = "http://127.0.0.1:8000/", Required = false, HelpText = "The HTTP address to serve the REST API on.")]
+        public string ApiUrl { get; set; }
 
         /// <summary>
         /// The UDP port to use for the master event bus.
@@ -48,6 +44,8 @@ namespace SArbiter
     {
         private NetNode _busMaster = null;
 
+        private uint _busPort;
+
         private RoutingTable _routingTable = null;
 
         private Router<ArbiterApi> _apiRouter = null;
@@ -56,13 +54,14 @@ namespace SArbiter
 
         internal Program(CmdLineOptions options)
         {
-            _busMaster = new NetNode(null, (int)options.BusPort);
-            _routingTable = new RoutingTable(_busMaster, null);
+            _busMaster = new NetNode(listenPort: (int)options.BusPort);
+            _busPort = options.BusPort;
+            // TODO: Command-line flag to change universe size
+            _routingTable = new RoutingTable(_busMaster, null, 1 << 31);
             _apiRouter = new Router<ArbiterApi>(new ArbiterApi(_routingTable));
 
-            // FIXME - test!
-            _routingTable.RootNode = new ArbiterTreeNode("http://localhost:9001/", null);
-            _busMaster.PeerConnectedEvent += (LiteNetLib.NetPeer peer) => _routingTable.RootNode.Peer = peer;
+            _busMaster.PeerConnectedEvent += OnSGameConnected;
+            _busMaster.PeerDisconnectedEvent += OnSGameDisconnected;
 
             _updateTimer = new Timer(1000.0 / options.Tickrate);
             _updateTimer.AutoReset = true;
@@ -71,16 +70,60 @@ namespace SArbiter
 
         public void Dispose()
         {
+            _updateTimer.Dispose();
             _busMaster.Dispose();
+        }
+
+        private void OnSGameConnected(NetPeer peer)
+        {
+            var newNodeInfoWaiter = new MessageWaiter<SShared.Messages.NodeConfig>(_busMaster, peer).Wait;
+            newNodeInfoWaiter.Wait();
+            var newNodeInfo = newNodeInfoWaiter.Result;
+
+            var newNode = _routingTable.AddSGameNode(peer, newNodeInfo.BusAddress, newNodeInfo.BusPort, newNodeInfo.ApiUrl);
+            Console.Error.WriteLine(">>> SGame node {0} (API: {1}) connected at {2} <<<", peer.EndPoint, newNode.ApiUrl, newNode.Path());
+
+            // IMPORTANT: Send the whole network topology (as of now) to the new node (so that it can build a routing table for itself)
+            foreach (var treeNode in _routingTable.RootNode.Traverse().Cast<ArbiterTreeNode>())
+            {
+                if (treeNode.Peer == peer) continue;
+
+                var otherNodeConfig = new SShared.Messages.NodeConfig()
+                {
+                    BusAddress = treeNode.BusAddress,
+                    BusPort = treeNode.BusPort,
+                    Bounds = treeNode.Bounds,
+                    Path = treeNode.Path(),
+                    ApiUrl = treeNode.ApiUrl,
+                };
+                _busMaster.SendMessage(otherNodeConfig, peer, DeliveryMethod.ReliableOrdered);
+            }
+
+            // IMPORTANT: Broadcast that the new node is online and where it is (incl. the new node itself to tell it its path)
+            var newNodeConfig = new SShared.Messages.NodeConfig()
+            {
+                BusAddress = newNode.BusAddress,
+                BusPort = newNode.BusPort,
+                Bounds = newNode.Bounds,
+                Path = newNode.Path(),
+                ApiUrl = newNode.ApiUrl,
+            };
+            _busMaster.BroadcastMessage(newNodeConfig, DeliveryMethod.ReliableOrdered);
+        }
+
+        private void OnSGameDisconnected(NetPeer peer, DisconnectInfo info)
+        {
+            Console.Error.WriteLine(">>> SGame node {0} disconnected ({1}) <<<", peer.EndPoint, info.Reason);
+            _routingTable.RemoveSGameNode(peer).Wait();
         }
 
         private async Task<bool> ProcessRequest(HttpListenerContext context)
         {
             string route = context.Request.RawUrl.Substring(1);
-            Console.Error.WriteLine("Got a request: {0}", route);
 #if DEBUG
             if (route == "exit")
             {
+                Console.Error.WriteLine(">>> Exit <<<");
                 return false;
             }
 #endif
@@ -121,9 +164,9 @@ namespace SArbiter
             }
 
             using (HttpListener listener = new HttpListener())
-            using (NetNode busMaster = new NetNode(null, (int)options.BusPort))
+            using (NetNode busMaster = new NetNode(listenPort: (int)options.BusPort))
             {
-                listener.Prefixes.Add($"http://{options.ClientHost}:{options.ClientPort}/");
+                listener.Prefixes.Add(options.ApiUrl);
 
                 // Main server loop
                 listener.Start();

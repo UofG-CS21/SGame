@@ -1,6 +1,9 @@
 using System;
+using System.Linq;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 using LiteNetLib;
 using LiteNetLib.Utils;
@@ -33,11 +36,6 @@ namespace SShared
         /// </summary>
         public NetManager Host { get; private set; }
 
-        /// <summary>
-        /// True if this node is a server node, false if it's a client.
-        /// </summary>
-        public bool IsServer { get; private set; }
-
         NetDataWriter _writer;
 
         /// <summary>
@@ -48,9 +46,8 @@ namespace SShared
         /// <summary>
         /// Initializes a bus node.
         /// </summary>
-        /// <param name="hostname">If not null, connect to the given hostname/address; if null, start a server node.</param>
-        /// <param name="port">The port to connect to (or bind to for server nodes).</param>
-        public NetNode(string hostname, int port)
+        /// <param name="listenPort">If a valid UDP port number, start listening on this port.<param>
+        public NetNode(int listenPort = -1)
         {
             this.ConnectionRequestEvent += ConnectionRequestHandler;
             this.PeerConnectedEvent += PeerConnectedHandler;
@@ -58,23 +55,26 @@ namespace SShared
             this.NetworkReceiveEvent += NetworkReceivedHandler;
 
             Host = new NetManager(this);
-            if (hostname != null)
+            if (listenPort > 0)
             {
-                IsServer = false;
-                Host.Start();
-                Host.Connect(hostname, port, Secret);
+                Host.Start(listenPort);
             }
             else
             {
-                IsServer = true;
-                Host.Start(port);
-                //_netHost.BroadcastReceiveEnable = true;
+                Host.Start();
             }
-
             _writer = new NetDataWriter();
 
             PacketProcessor = new NetNodePacketProcessor();
             Messages.Serialization.RegisterAllSerializers(PacketProcessor);
+        }
+
+        /// <summary>
+        /// Connects to the given host:port.
+        /// </summary>
+        public NetPeer Connect(string host, int port, string key = Secret)
+        {
+            return Host.Connect(host, port, Secret);
         }
 
         /// <summary>
@@ -88,12 +88,22 @@ namespace SShared
         /// <summary>
         /// Sends a bus message to every peer connected to this node.
         /// </summary>
-        public void BroadcastMessage<T>(T message, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered)
+        public void BroadcastMessage<T>(T message, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered, NetPeer excludedPeer = null)
             where T : class, IMessage, new()
         {
-            _writer.Reset();
-            PacketProcessor.Write<T>(_writer, message);
-            Host.SendToAll(_writer, delivery);
+            lock (_writer)
+            {
+                _writer.Reset();
+                PacketProcessor.Write<T>(_writer, message);
+                if (excludedPeer == null)
+                {
+                    Host.SendToAll(_writer, delivery);
+                }
+                else
+                {
+                    Host.SendToAll(_writer, delivery, excludedPeer);
+                }
+            }
         }
 
         /// <summary>
@@ -102,15 +112,27 @@ namespace SShared
         public void SendMessage<T>(T message, NetPeer peer, DeliveryMethod delivery = DeliveryMethod.ReliableUnordered)
             where T : class, IMessage, new()
         {
-            _writer.Reset();
-            PacketProcessor.Write<T>(_writer, message);
-            peer.Send(_writer, delivery);
+            lock (_writer)
+            {
+                _writer.Reset();
+                PacketProcessor.Write<T>(_writer, message);
+                peer.Send(_writer, delivery);
+            }
         }
 
         /// <summary>
-        /// Convenience alias for `Host.FirstPeer`.
+        /// Queries the local host's IP addresses.
         /// </summary>
-        public NetPeer FirstPeer { get { return Host.FirstPeer; } }
+        public static List<IPAddress> LocalIPs
+        {
+            get
+            {
+                return NetworkInterface.GetAllNetworkInterfaces()
+                    .Where(iface => iface.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                    .SelectMany(iface => iface.GetIPProperties().UnicastAddresses, (iface, ip) => ip.Address)
+                    .ToList();
+            }
+        }
 
         // ===== Dispose pattern =======================================================================================
 
@@ -142,7 +164,7 @@ namespace SShared
 
         private void PeerDisconnectedHandler(NetPeer peer, DisconnectInfo disconnectInfo)
         {
-            Console.WriteLine($"Bus: {peer.EndPoint} disconnected ({disconnectInfo})");
+            Console.WriteLine($"Bus: {peer.EndPoint} disconnected ({disconnectInfo.Reason})");
         }
 
         private void NetworkReceivedHandler(NetPeer peer, NetPacketReader reader, DeliveryMethod deliveryMethod)

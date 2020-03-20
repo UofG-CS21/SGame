@@ -7,32 +7,16 @@ using Messages = SShared.Messages;
 
 namespace SGame
 {
-    class ScanShootResults
-    {
-        public List<Messages.Struck.ShipInfo> Struck = new List<Messages.Struck.ShipInfo>();
-        public double AreaGain = 0.0;
-
-        public ScanShootResults Merge(ScanShootResults other)
-        {
-            if (other != null)
-            {
-                Struck.AddRange(other.Struck);
-                AreaGain += other.AreaGain;
-            }
-            return this;
-        }
-    };
-
     abstract class SGameQuadTreeNode : QuadTreeNode<Spaceship>
     {
         public SGameQuadTreeNode(QuadTreeNode<Spaceship> parent, Quadrant quadrant, uint depth) : base(parent, quadrant, depth) { }
 
-        public SGameQuadTreeNode(Quad bounds, uint depth) : base(bounds, depth) { }
+        public SGameQuadTreeNode(Quad bounds, uint depth = 0) : base(bounds, depth) { }
 
         /// <summary>
         /// Returns a (area gain for shooter, list of struck ships) pair.
         /// </summary>
-        public abstract Task<ScanShootResults> ScanShootRecur(Messages.ScanShoot msg);
+        public abstract Messages.Struck ScanShootLocal(Messages.ScanShoot msg);
     }
 
     class LocalQuadTreeNode : SGameQuadTreeNode
@@ -64,12 +48,13 @@ namespace SGame
         /// </summary>
         private const double MINIMUM_AREA = 0.75;
 
-        public override async Task<ScanShootResults> ScanShootRecur(Messages.ScanShoot msg)
+        public override Messages.Struck ScanShootLocal(Messages.ScanShoot msg)
         {
-            ScanShootResults results = new ScanShootResults();
+            Messages.Struck results = new Messages.Struck();
 
             // 1) Search ships locally (but only if affected by the scan)
-            bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds, msg);
+            //bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds, msg);
+            bool affected = true; // FIXME - This is here to make sure scans always go through; ideally, though, ships would always be in the SGame node that manages them...
             if (affected)
             {
                 Vector2 leftPoint = MathUtils.DirVec(msg.Direction + msg.Width) * msg.Radius;
@@ -85,11 +70,11 @@ namespace SGame
                     )
                     .Select((ship) => new Messages.Struck.ShipInfo() { Ship = ship });
 
-                results.Struck.AddRange(iscanned);
+                results.ShipsInfo.AddRange(iscanned);
 
                 if (msg.ScaledShotEnergy > 0.0)
                 {
-                    foreach (var struck in results.Struck)
+                    foreach (var struck in results.ShipsInfo)
                     {
                         var ourShip = (LocalSpaceship)struck.Ship;
 
@@ -105,8 +90,8 @@ namespace SGame
                         // We have killed a ship, gain it's kill reward, and move struck ship to the graveyard
                         if (ourShip.Area - damage < MINIMUM_AREA)
                         {
-                            results.AreaGain += ourShip.KillReward;
-                            struck.AreaGain = -damage;
+                            results.OriginatorAreaGain += ourShip.KillReward;
+                            struck.Damage = -damage;
                         }
                         else // Struck ship survived - note that it's in combat
                         {
@@ -117,38 +102,11 @@ namespace SGame
                             }
                             ourShip.LastCombat = ourShip.LastUpdate;
                             ourShip.Area -= damage;
-                            struck.AreaGain = damage;
+                            struck.Damage = damage;
                         }
                     }
                 }
             }
-
-            // 2) Search all siblings (always)
-            if (Parent != null)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    var sibling = (SGameQuadTreeNode)Parent.Child((Quadrant)i);
-                    if (sibling == null || sibling == this) continue;
-
-                    var resultsHere = await sibling.ScanShootRecur(msg);
-                    results.Merge(resultsHere);
-                }
-            }
-
-            // 3) Search all children (but only if the local node was affected by the scan its children could be)
-            if (affected)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    var child = (SGameQuadTreeNode)Child((Quadrant)i);
-                    if (child == null) continue;
-
-                    var resultsHere = await child.ScanShootRecur(msg);
-                    results.Merge(resultsHere);
-                }
-            }
-
             return results;
         }
     }
@@ -156,13 +114,6 @@ namespace SGame
     class RemoteQuadTreeNode : SGameQuadTreeNode
     {
         public static readonly TimeSpan REPLYTIMEOUT = new TimeSpan(1500);
-
-        public RemoteQuadTreeNode(SGameQuadTreeNode parent, Quadrant quadrant, uint depth, NetNode bus, LiteNetLib.NetPeer nodePeer)
-            : base(parent, quadrant, depth)
-        {
-            this.Bus = bus;
-            this.NodePeer = nodePeer;
-        }
 
         /// <summary>
         /// The message bus to the other nodes.
@@ -174,6 +125,28 @@ namespace SGame
         /// </summary>
         public LiteNetLib.NetPeer NodePeer { get; set; }
 
+        /// <summary>
+        /// The REST API URL of the remote SGame node.
+        /// </summary>
+        /// <value></value>
+        public string ApiUrl { get; set; }
+
+        public RemoteQuadTreeNode(Quad bounds, NetNode bus, LiteNetLib.NetPeer nodePeer, string apiUrl)
+            : base(bounds)
+        {
+            this.Bus = bus;
+            this.NodePeer = nodePeer;
+            this.ApiUrl = ApiUrl;
+        }
+
+        public RemoteQuadTreeNode(SGameQuadTreeNode parent, Quadrant quadrant, uint depth, NetNode bus, LiteNetLib.NetPeer nodePeer, string apiUrl)
+            : base(parent, quadrant, depth)
+        {
+            this.Bus = bus;
+            this.NodePeer = nodePeer;
+            this.ApiUrl = ApiUrl;
+        }
+
         public override Task<List<Spaceship>> CheckRangeLocal(Quad range)
         {
             // TODO Peer.SendBusMessage(new BusMsgs.CheckRangeLocal(thing))
@@ -181,7 +154,7 @@ namespace SGame
             throw new NotImplementedException();
         }
 
-        public override async Task<ScanShootResults> ScanShootRecur(Messages.ScanShoot msg)
+        public override Messages.Struck ScanShootLocal(Messages.ScanShoot msg)
         {
             bool affected = MathUtils.DoesQuadIntersectCircleSector(this.Bounds, msg);
             if (affected)
@@ -189,14 +162,11 @@ namespace SGame
                 Bus.SendMessage(msg, NodePeer);
 
                 var struckTask = new MessageWaiter<Messages.Struck>(Bus, NodePeer, (struck) => struck.Originator == msg.Originator).Wait;
-                ScanShootResults results = new ScanShootResults();
+                Messages.Struck results = new Messages.Struck();
                 if (Task.WaitAll(new Task[] { struckTask }, REPLYTIMEOUT))
                 {
-                    foreach (var struckInfo in struckTask.Result.ShipsInfo)
-                    {
-                        results.AreaGain += struckInfo.AreaGain;
-                        results.Struck.Add(struckInfo);
-                    }
+                    results.OriginatorAreaGain += struckTask.Result.OriginatorAreaGain;
+                    results.ShipsInfo.AddRange(struckTask.Result.ShipsInfo);
                 }
                 return results;
             }
@@ -204,6 +174,29 @@ namespace SGame
             {
                 return null;
             }
+        }
+    }
+
+    class DummyQuadTreeNode : SGameQuadTreeNode
+    {
+        public DummyQuadTreeNode()
+            : base(new Quad(0, 0, 0))
+        {
+        }
+
+        public DummyQuadTreeNode(SGameQuadTreeNode parent, Quadrant quadrant, uint depth)
+            : base(parent, quadrant, depth)
+        {
+        }
+
+        public override Task<List<Spaceship>> CheckRangeLocal(Quad range)
+        {
+            return new Task<List<Spaceship>>(() => new List<Spaceship>());
+        }
+
+        public override Messages.Struck ScanShootLocal(Messages.ScanShoot msg)
+        {
+            return new Messages.Struck();
         }
     }
 }
