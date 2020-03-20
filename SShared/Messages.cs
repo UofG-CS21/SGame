@@ -67,6 +67,37 @@ namespace SShared.Messages
     }
 
     /// <summary>
+    /// A message sent from a arbiter to nodes when a node goes offline.
+    /// </summary>
+    public class NodeOffline : IMessage
+    {
+        /// <summary>
+        /// The path to the node in question from the root node of the tree.
+        /// </summary>
+        public PathString Path { get; set; }
+
+        /// <summary>
+        /// Externally-visible HTTP address the SGame REST API that was served by the node in question.
+        /// </summary>
+        public string ApiUrl { get; set; }
+
+        // -- INetSerializable -------------------------------------------------
+
+        public void Serialize(NetDataWriter writer)
+        {
+            Path.Serialize(writer);
+            writer.Put(ApiUrl);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            Path = new PathString();
+            Path.Deserialize(reader);
+            ApiUrl = reader.GetString();
+        }
+    }
+
+    /// <summary>
     /// A message sent to the arbiter when a ship needs to be transferred to its parent node.
     /// </summary>
     public class TransferShip : IMessage
@@ -75,7 +106,7 @@ namespace SShared.Messages
         /// <summary>
         /// The ship being transferred
         /// </summary>
-        public Spaceship Ship;
+        public Spaceship Ship { get; set; }
 
         // -- INetSerializable -------------------------------------------------
 
@@ -86,6 +117,7 @@ namespace SShared.Messages
 
         public void Deserialize(NetDataReader reader)
         {
+            Ship = new Spaceship();
             Ship.Deserialize(reader);
         }
     }
@@ -124,6 +156,11 @@ namespace SShared.Messages
         /// </summary>
         public string Originator { get; set; }
 
+        /// <summary>
+        /// Total area gain for the originator of the shot; always zero if scanning.
+        /// </summary>
+        public double OriginatorAreaGain { get; set; }
+
         public class ShipInfo
         {
             /// <summary>
@@ -132,9 +169,9 @@ namespace SShared.Messages
             public Spaceship Ship { get; set; }
 
             /// <summary>
-            /// Area gain for the originator of the shot, if any. If negative, it means the shot was fatal.
+            /// Area damage from the originator of the shot, if any. If negative, it means the shot was fatal.
             /// </summary>
-            public double AreaGain { get; set; }
+            public double Damage { get; set; }
         }
 
         /// <summary>
@@ -147,18 +184,20 @@ namespace SShared.Messages
         public void Serialize(NetDataWriter writer)
         {
             writer.Put(Originator);
+            writer.Put(OriginatorAreaGain);
 
             writer.Put(ShipsInfo.Count);
             foreach (var info in ShipsInfo)
             {
                 info.Ship.Serialize(writer);
-                writer.Put(info.AreaGain);
+                writer.Put(info.Damage);
             }
         }
 
         public void Deserialize(NetDataReader reader)
         {
             Originator = reader.GetString(64);
+            OriginatorAreaGain = reader.GetDouble();
 
             int infoCount = reader.GetInt();
             ShipsInfo = Enumerable.Range(0, infoCount).Select((i) =>
@@ -168,7 +207,7 @@ namespace SShared.Messages
                 return new ShipInfo()
                 {
                     Ship = ship,
-                    AreaGain = reader.GetDouble(),
+                    Damage = reader.GetDouble(),
                 };
             }).ToList();
         }
