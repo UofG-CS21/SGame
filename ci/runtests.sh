@@ -57,12 +57,6 @@ popd
 backgroundkill SArbiter ${SARBITER_PORT}
 backgroundkill SGame ${SGAME_PORT}
 
-echo "===== SArbiter output ===================================================="
-cat SArbiter.out
-echo "===== SGame output ======================================================="
-cat SGame.out
-echo "=========================================================================="
-
 wait %1
 if [ $? -ne 0 ]
 then
