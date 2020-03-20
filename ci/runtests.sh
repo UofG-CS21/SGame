@@ -76,6 +76,7 @@ then
     exit $?
 fi
 
-rm -f {SGame,SArbiter}.{out,pid}
+#rm -f {SGame,SArbiter}.{out,pid}
+rm -f {SGame,SArbiter}.pid
 
 exit $TESTS_EXIT_CODE
