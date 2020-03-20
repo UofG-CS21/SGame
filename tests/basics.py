@@ -4,8 +4,7 @@ import pytest
 
 allowed_fpe = 1e-6
 
-
-def isClose(a, b, err=allowed_fpe):
+def is_close(a, b, err=allowed_fpe):
     return abs(a-b) <= err
 
 
@@ -184,8 +183,8 @@ def test_movement(server, clients):
 
         # Checking the values are correct
         resp_data = resp.json()
-        assert isClose(resp_data['velX'], sumX)
-        assert isClose(resp_data['velY'], sumY)
+        assert is_close(resp_data['velX'], sumX)
+        assert is_close(resp_data['velY'], sumY)
 
         # Wait for energy to recharge
         set_time(server, 10000)
@@ -193,7 +192,7 @@ def test_movement(server, clients):
         resp = requests.post(server.url + 'getShipInfo', json={
             'token': client.token,
         })
-        assert isClose(resp.json()['energy'], 10)
+        assert is_close(resp.json()['energy'], 10)
 
         # Accelerate in the opposite direction
         resp = requests.post(server.url + 'accelerate', json={
@@ -217,8 +216,8 @@ def test_movement(server, clients):
         assert resp
 
         resp_data = resp.json()
-        assert isClose(resp_data['velX'], 0)
-        assert isClose(resp_data['velY'], 0)
+        assert is_close(resp_data['velX'], 0)
+        assert is_close(resp_data['velY'], 0)
 
         # Wait for energy to recover
         set_time(server, 20000)
@@ -226,7 +225,7 @@ def test_movement(server, clients):
         resp = requests.post(server.url + 'getShipInfo', json={
             'token': client.token,
         })
-        assert isClose(resp.json()['energy'], 10)
+        assert is_close(resp.json()['energy'], 10)
 
         # Accelerate requiring too much energy
         X = 90.0
@@ -246,9 +245,9 @@ def test_movement(server, clients):
         assert resp
 
         resp_data = resp.json()
-        assert isClose(resp_data['energy'], 0, 0.01)
-        assert isClose(resp_data['velX'], 9.0)
-        assert isClose(resp_data['velY'], -1.0)
+        assert is_close(resp_data['energy'], 0, 0.01)
+        assert is_close(resp_data['velX'], 9.0)
+        assert is_close(resp_data['velY'], -1.0)
 
         old_x = resp_data['posX']
         old_y = resp_data['posY']
@@ -263,8 +262,8 @@ def test_movement(server, clients):
         assert resp
 
         resp_data = resp.json()
-        assert isClose(resp_data['posX'], old_x + 9.0 * 4.5, 0.5)
-        assert isClose(resp_data['posY'], old_y + (-1.0) * 4.5, 0.5)
+        assert is_close(resp_data['posX'], old_x + 9.0 * 4.5, 0.5)
+        assert is_close(resp_data['posY'], old_y + (-1.0) * 4.5, 0.5)
 
         # Disconnect
         resp = requests.post(server.url + 'disconnect',
@@ -293,7 +292,7 @@ def test_sudo(server, clients):
         init_state = resp.json()
         for k, v in kvs.items():
             assert k in init_state
-            assert not isClose(v, init_state[k], 0.001)
+            assert not is_close(v, init_state[k], 0.001)
 
         # Change all values to the expected ones
         json = {'token': client.token}
@@ -309,7 +308,7 @@ def test_sudo(server, clients):
         for k, v in resp.json().items():
             if k not in kvs:
                 continue
-            assert isClose(v, kvs[k], 0.001)
+            assert is_close(v, kvs[k], 0.001)
 
 
 def test_sudo_bad_or_missing_token(server):
@@ -392,7 +391,7 @@ def test_basic_combat(server, clients):
         # shot damage(10, 45, 1.5, (Magnitude of distance) 3.53...)
         # width = pi/4
         # damage = (10*1.5)/ (2.97.. * sqrt(3.53)) = 2.68...
-        assert isClose(client2_area, client2_area_before - 2.685387372970581)
+        assert is_close(client2_area, client2_area_before - 2.685387372970581)
 
 
 # Dataset for death test
@@ -813,7 +812,7 @@ def test_combat_scenario1(server, clients):
         assert resp
         resp_data = resp.json()
         # Factoring in the previous loss of damage
-        assert isClose(resp_data['area'], ((12 - 3.140369176864624) + 4))
+        assert is_close(resp_data['area'], ((12 - 3.140369176864624) + 4))
 
         set_time(server, 10000)
 
@@ -834,7 +833,7 @@ def test_combat_scenario1(server, clients):
         assert resp
         resp_data = resp.json()
         # From the calculations it should be > 32
-        assert isClose(resp_data['area'], 32.859630823135376)
+        assert is_close(resp_data['area'], 32.859630823135376)
 
 # Scenario 2 test
 def test_combat_scenario2(server, clients):
@@ -912,7 +911,7 @@ def test_combat_scenario2(server, clients):
 
         resp_data = resp.json()
         # Factoring in the previous loss of damage
-        assert isClose(resp.json()['area'], ((10 - 5.115637302398682) + 3) )
+        assert is_close(resp.json()['area'], ((10 - 5.115637302398682) + 3) )
 
         # Moving client 1 closer for the kill shot
         resp = requests.post(client1.url + 'sudo', json={
@@ -1056,7 +1055,7 @@ def test_cool_down(server, clients):
         })
         assert resp
         resp_data = resp.json()
-        assert isClose(resp_data['area'], client1_area_after_kill + client2_new_area)
+        assert is_close(resp_data['area'], client1_area_after_kill + client2_new_area)
 
 def test_shield_uses_energy(server, clients):
     reset_time(server)
@@ -1140,8 +1139,8 @@ def test_shield_shipInfo(server, clients, width, direction):
             'token' : client1.token,
             }).json()
 
-        assert isClose(data['shieldWidth'], width)
-        assert isClose( (direction-data['shieldDir']) % 360, 0)
+        assert is_close(data['shieldWidth'], width)
+        assert is_close( (direction-data['shieldDir']) % 360, 0)
         assert 0 <= data['shieldDir'] and data['shieldDir'] < 360
 
 
@@ -1193,8 +1192,8 @@ def test_shield_energy_usage(server, clients, area, energy, width, time, expecte
 
         data = resp.json()
 
-        assert isClose(data['energy'],expected,0.02)
-        assert isClose(data['shieldWidth'], width)
+        assert is_close(data['energy'],expected,0.02)
+        assert is_close(data['shieldWidth'], width)
 
 shield_overuse_data = [
     # use a huge shield and wait a long time - should be back at full energy
@@ -1237,8 +1236,8 @@ def test_shield_overuse(server, clients, area, energy, width, time, expected):
 
         data = resp.json()
 
-        assert isClose(data['energy'],expected,0.02)
-        assert isClose(data['shieldWidth'], 0)
+        assert is_close(data['energy'],expected,0.02)
+        assert is_close(data['shieldWidth'], 0)
 
 # data for test_shield_miss
 # shooter shielder shield shot expected
@@ -1334,7 +1333,7 @@ def test_shield_miss(server, clients, shooter, shielder, shield, shoot):
         damage_shield = shielder['area'] - resp.json()['area']
 
         # damage should be the same
-        assert isClose(damage_shield, damage_no_shield)
+        assert is_close(damage_shield, damage_no_shield)
 
 # data for test_shield_full
 # shooter shielder shield shot expected
@@ -1502,4 +1501,4 @@ def test_shield_partial(server, clients, shooter, shielder, shield, shoot, block
         damage_shield = shielder['area'] - resp.json()['area']
 
         # damage should be block times as before
-        assert isClose(damage_shield / damage_no_shield, block, 0.01)
+        assert is_close(damage_shield / damage_no_shield, block, 0.01)

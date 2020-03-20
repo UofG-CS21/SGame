@@ -43,6 +43,11 @@ namespace SGame
         public NetNode Bus { get; set; }
 
         /// <summary>
+        /// Link to the persistence to use to store/reload ships. Null to disable.
+        /// </summary>
+        public Persistence Persistence { get; set; }
+
+        /// <summary>
         /// The NetPeer corresponding to the arbiter.
         /// </summary>
         public NetPeer ArbiterPeer { get; set; }
@@ -58,21 +63,25 @@ namespace SGame
         internal Dictionary<string, Spaceship> DeadShips { get; set; }
 
         // start the gameTime stopwatch on API creation
-        public Api(string apiUrl, SGameQuadTreeNode rootNode, LocalQuadTreeNode quadTreeNode, NetNode bus, NetPeer arbiterPeer, uint localBusPort)
+        public Api(string apiUrl, SGameQuadTreeNode rootNode, LocalQuadTreeNode quadTreeNode, NetNode bus, NetPeer arbiterPeer, uint localBusPort, Persistence persistence)
         {
-            this.ApiUrl = apiUrl;
             this._gameTime = new GameTime();
             //#if DEBUG
             //   this.gameTime.SetElapsedMillisecondsManually(0);
             //#endif
-            this.RootNode = rootNode;
-            this.QuadTreeNode = quadTreeNode;
+
+            this.ApiUrl = apiUrl;
             this.Bus = bus;
-            this.ArbiterPeer = arbiterPeer;
             this.LocalBusPort = localBusPort;
+            this.ArbiterPeer = arbiterPeer;
+
+            this.QuadTreeNode = quadTreeNode;
+            this.RootNode = rootNode;
+            this.Persistence = persistence;
             this.DeadShips = new Dictionary<string, Spaceship>();
 
             this.Bus.PeerConnectedEvent += OnPeerConnected;
+            this.Bus.PeerDisconnectedEvent += OnPeerDisconnected;
             this.Bus.PacketProcessor.Events<Messages.ShipConnected>().OnMessageReceived += OnShipConnected;
             this.Bus.PacketProcessor.Events<Messages.ShipDisconnected>().OnMessageReceived += OnShipDisconnected;
             this.Bus.PacketProcessor.Events<Messages.ShipTransferred>().OnMessageReceived += OnShipTransferred;
@@ -129,6 +138,21 @@ namespace SGame
             }
         }
 
+        /// <summary>
+        /// If persistence is enabled, persist all currently-connected ships.
+        /// </summary>
+        public async Task PersistAllShips()
+        {
+            if (Persistence != null)
+            {
+                Console.Error.WriteLine($"Persist all ships to {Persistence.ElasticUrl}...");
+                var persistRequests = QuadTreeNode.ShipsByToken.Values
+                    .Select(ship => Persistence.PutShip(ship))
+                    .ToArray();
+                Task.WaitAll(persistRequests);
+            }
+        }
+
         public void GarbageCollect()
         {
             foreach (var ship in QuadTreeNode.ShipsByToken.Values)
@@ -159,8 +183,6 @@ namespace SGame
         {
             if (peer == ArbiterPeer)
             {
-                // Only send NodeOnline when connecting to the arbiter...
-
                 // TODO: Connect to http://icanhazip.org or similar to get the external IP instead?
                 var apiUri = new Uri(this.ApiUrl);
                 var externalAddress = IPAddress.Parse(apiUri.Host);
@@ -175,6 +197,17 @@ namespace SGame
                     Bounds = QuadTreeNode.Bounds,
                 };
                 this.Bus.SendMessage(currentConfig, peer);
+            }
+        }
+
+        /// <summary>
+        /// Called when a a peer gets disconnected from us.
+        /// </summary>
+        private void OnPeerDisconnected(LiteNetLib.NetPeer peer, LiteNetLib.DisconnectInfo info)
+        {
+            if (peer == ArbiterPeer)
+            {
+                Console.Error.WriteLine(">>> Lost connection to arbiter! <<<");
             }
         }
 
@@ -266,15 +299,25 @@ namespace SGame
         /// </summary>
         public void OnShipConnected(NetPeer sender, Messages.ShipConnected msg)
         {
-            Console.WriteLine($"Creating ship for player (token={msg.Token})");
+            LocalSpaceship ship = null;
+            if (Persistence != null)
+            {
+                Console.WriteLine($"Fetch persisted ship with token={msg.Token}");
+                var shipFetcher = Persistence.GetShip(msg.Token, _gameTime);
+                shipFetcher.Wait();
+                ship = shipFetcher.Result;
+            }
+            if (ship == null)
+            {
+                Console.WriteLine($"Create a new ship for token={msg.Token}");
+                ship = new LocalSpaceship(msg.Token, _gameTime);
+                Quad randomShipBounds = MathUtils.RandomQuadInQuad(QuadTreeNode.Bounds, ship.Radius());
+                ship.Pos = new Vector2(randomShipBounds.CentreX, randomShipBounds.CentreY);
+            }
 
-            LocalSpaceship ship = new LocalSpaceship(msg.Token, _gameTime);
-            var randomShipBounds = MathUtils.RandomQuadInQuad(QuadTreeNode.Bounds, ship.Radius());
-            ship.Pos = new Vector2(randomShipBounds.CentreX, randomShipBounds.CentreY);
             QuadTreeNode.ShipsByToken.Add(msg.Token, ship);
 
             Console.WriteLine($"Send message from {ApiUrl} to {ArbiterPeer.EndPoint}...");
-
             Bus.SendMessage(new Messages.ShipConnected() { Token = msg.Token }, ArbiterPeer);
         }
 
@@ -285,9 +328,16 @@ namespace SGame
         {
             Console.WriteLine($"Disconnecting player (token={msg.Token})");
 
-            if (QuadTreeNode.ShipsByToken.Remove(msg.Token))
+            LocalSpaceship ship = null;
+            if (QuadTreeNode.ShipsByToken.Remove(msg.Token, out ship))
             {
-                // TODO: Serialize ship state here?
+                if (Persistence != null)
+                {
+                    Console.WriteLine($"Persist disconnected ship with token={msg.Token}");
+                    var shipSaver = Persistence.PutShip(ship);
+                    shipSaver.Wait();
+                }
+
                 Bus.SendMessage(new Messages.ShipDisconnected() { Token = msg.Token }, ArbiterPeer);
             }
         }

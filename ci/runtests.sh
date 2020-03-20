@@ -5,6 +5,7 @@
 HOST=$1
 SARBITER_PORT=$2
 SGAME_PORT=9001
+ELASTIC_URL="http://localhost:9200/"
 
 function backgroundrun() {
     # backgroundrun <project> <args>
@@ -42,13 +43,13 @@ backgroundrun SArbiter "--api-url http://${HOST}:${SARBITER_PORT}/ --bus-port ${
 sleep 2
 
 # Do the same for the SGame root node that manages the outermost quad
-backgroundrun SGame "--api-url http://${HOST}:${SGAME_PORT}/ --local-bus-port ${SGAME_PORT} --arbiter-bus-port ${SARBITER_PORT}"
+backgroundrun SGame "--api-url http://${HOST}:${SGAME_PORT}/ --local-bus-port ${SGAME_PORT} --arbiter-bus-port ${SARBITER_PORT} --persistence ${ELASTIC_URL}"
 
 sleep 1
 
 # Run the tests
 pushd tests/
-pytest *.py --sgame ${CI_PROJECT_DIR}/SGame --host ${HOST} --port ${SARBITER_PORT}
+pytest *.py --sgame ${CI_PROJECT_DIR}/SGame --host ${HOST} --port ${SARBITER_PORT} --persistence ${ELASTIC_URL}
 TESTS_EXIT_CODE=$?
 popd
 

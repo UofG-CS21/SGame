@@ -98,6 +98,10 @@ namespace SShared
                 {
                     return $"Missing required parameter: {param.Name}";
                 }
+                else
+                {
+                    return null;
+                }
             }
 
             try

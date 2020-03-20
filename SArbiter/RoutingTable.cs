@@ -180,6 +180,20 @@ namespace SArbiter
             return token;
         }
 
+        public string AddNewShip(out ArbiterTreeNode parentNode, string token)
+        {
+            if (token == null)
+                token = AddShipToken();
+            else
+                _shipPublicIds.Add(PublicIdFromToken(token));
+            parentNode = (ArbiterTreeNode)RootNode.RandomLeafNode();
+            _nodeByShipToken[token] = parentNode;
+
+            BusMaster.SendMessage(new Messages.ShipConnected() { Token = token }, parentNode.Peer);
+
+            return token;
+        }
+
 #if DEBUG
         internal int _shipCount = 0;
 #endif
