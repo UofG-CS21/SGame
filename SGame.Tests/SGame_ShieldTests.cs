@@ -45,7 +45,8 @@ namespace SGame.Tests
 
             Vector2? inters1, inters2;
             rayDir = MathUtils.Deg2Rad(rayDir);
-            bool result = MathUtils.RaycastCircle(rayOrigin, rayDir, circleCenter, circleRadius,
+            Ray testRay = new Ray(rayOrigin, rayDir);
+            bool result = testRay.HitCircle(circleCenter, circleRadius,
             out inters1, out inters2);
 
 
