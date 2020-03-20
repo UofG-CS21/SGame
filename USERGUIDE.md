@@ -85,7 +85,6 @@ The system then needs at least on compute node attached to the arbiter (max. one
 dotnet run --project SGame -- --arbiter <Hostname or address of the SArbiter managing this compute node> --api-url "http://<restAddress>/" --arbiter-bus-port <Externally-visible UDP port of the arbiter's event bus> --local-bus-port <Externally-visible UDP port of this node's event bus> --tickrate <Frequency of updates in milliseconds>
 ```
 where `restAddress` is a externally-visible (at least to the other SGame nodes and the arbiter) IPv4 address or hostname (clients are redirected from this address to the arbiter).  
-Optionally, if persistence is to be enabled, one can pass a `--persistence http://<elastic>/` flag when launching SGame, to instruct it to use the ElasticSearch server at `<elastic>`.
 
 SArbiter and SGame instances can be killed by sending a post request as shown:
 ```sh
@@ -95,8 +94,7 @@ curl -X POST -d "exit" "http://<api-url>/exit"
 Where the api-url is the address used to start the node.
 
 ### Data persistency
-
-- If you have elastic search installed, you can addtionally add data persistency:
+Optionally, if persistence is to be enabled, one can pass a `--persistence http://<elastic>/` flag when launching SGame, to instruct it to use the ElasticSearch server at `<elastic>`.
 
 ## Running the tests
 
