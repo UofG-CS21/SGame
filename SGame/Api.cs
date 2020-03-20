@@ -278,11 +278,9 @@ namespace SGame
                 ship.Pos = new Vector2(randomShipBounds.CentreX, randomShipBounds.CentreY);
             }
 
-
             QuadTreeNode.ShipsByToken.Add(msg.Token, ship);
 
             Console.WriteLine($"Send message from {ApiUrl} to {ArbiterPeer.EndPoint}...");
-
             Bus.SendMessage(new Messages.ShipConnected() { Token = msg.Token }, ArbiterPeer);
         }
 
@@ -303,7 +301,6 @@ namespace SGame
                     shipSaver.Wait();
                 }
 
-                // TODO: Serialize ship state here?
                 Bus.SendMessage(new Messages.ShipDisconnected() { Token = msg.Token }, ArbiterPeer);
             }
         }
