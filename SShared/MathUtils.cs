@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using SShared;
 
-//For an explanation of the maths contained in this file, see this file: https://stgit.dcs.gla.ac.uk/tp3-2019-cs21/cs21-main/-/wikis/Important-Documents/Geometry-Code-Documentation
+//For an explanation of the maths contained in this file, see this file: https://github.com/UofG-CS21/SGame/wiki/Geometry-Code-Documentation
 
 namespace SShared
 {
@@ -67,6 +67,7 @@ namespace SShared
         /// <summary>
         /// Computes the intersections with the given circle (either none, only `hitNear`, or both `hitNear` and `hitFar`).
         /// Returns false on no hit.
+        /// For an explanation of the maths, see this file: https://github.com/UofG-CS21/SGame/wiki/Geometry-Code-Documentation
         /// </summary>
         /// <param name="center"></param>
         /// <param name="radius"></param>
@@ -169,6 +170,7 @@ namespace SShared
 
         /// <summary>
         /// This method determines whether on not a circle with the given center and radius will intersect a line representing one side of a triangle
+        /// For an explanation of the maths, see this file: https://github.com/UofG-CS21/SGame/wiki/Geometry-Code-Documentation
         /// </summary>
         /// <param name="circleCenter"></param>
         /// <param name="radius"></param>
@@ -202,6 +204,7 @@ namespace SShared
         // Based on http://www.phatcode.net/articles.php?id=459 
         /// <summary>
         /// Returns true iff the circle centered at circleCenter with radius 'radius' intersects the triangle with vertices A,B,C 
+        /// For an explanation of the maths, see this file: https://github.com/UofG-CS21/SGame/wiki/Geometry-Code-Documentation
         /// </summary>
         /// <param name="circleCenter"></param>
         /// <param name="radius"></param>
@@ -238,6 +241,7 @@ namespace SShared
         /// <summary>
         /// Return true iff the circle cenered at circleCenter with radius circleRadius intersects 
         /// the segment of a circle centered at segmentRadius, with its midpoint in the direction segmentAngle, and its angular width 2*segmentWidth
+        /// For an explanation of the maths, see this file: https://github.com/UofG-CS21/SGame/wiki/Geometry-Code-Documentation
         /// </summary>
         /// <param name="circleCenter"></param>
         /// <param name="circleRadius"></param>
@@ -279,6 +283,7 @@ namespace SShared
         /// Finds the two tangent points on a circle from an external point.
         /// `bisectAngle` will be set to the angle (0 to PI/2, in radians) between
         /// the line betwen `circleCenter` and `point` and one of the two tangents.
+        /// For an explanation of the maths, see this file: https://github.com/UofG-CS21/SGame/wiki/Geometry-Code-Documentation
         /// </summary>
         /// <param name="circleCenter"></param>
         /// <param name="circleRadius"></param>
@@ -301,6 +306,7 @@ namespace SShared
         /// <summary>
         /// Returns true if the given point sits on top of a circle arc centered at `arcCenter`, with half-width `arcWidth` radians
         /// around `arcDir` and radius `arcRadius`. Outputs the angle on the arc if this is the case.
+        /// For an explanation of the maths, see this file: https://github.com/UofG-CS21/SGame/wiki/Geometry-Code-Documentation
         /// </summary>
         /// <param name="point"></param>
         /// <param name="arcCenter"></param>
@@ -329,6 +335,7 @@ namespace SShared
         /// <summary>
         /// Calculates the intersection point[s] between two circles.
         /// Returns true if any intersection is found, setting `inters1` or both `inters1` and `inters2` appropriately.
+        /// For an explanation of the maths, see this file: https://github.com/UofG-CS21/SGame/wiki/Geometry-Code-Documentation
         /// </summary>
         /// <param name="center1"></param>
         /// <param name="radius1"></param>
@@ -419,6 +426,7 @@ namespace SShared
 
         /// <summary>
         /// Performs spherical linear interpolation (slerp) between two vectors.
+        /// For an explanation of the maths, see this file: https://github.com/UofG-CS21/SGame/wiki/Geometry-Code-Documentation
         /// </summary>
         /// <param name="a"></param>
         /// <param name="b"></param>
@@ -486,6 +494,7 @@ namespace SShared
         /// Returns the percentage (0.0 to 1.0) of damage covered by a ship's shield when it is being shot
         /// from `shotOrigin` with a cone of half-width `shotWidth` radians and length `shotRadius`.
         /// WARNING: `width` and `shotDir` are in RADIANS!
+        /// For an explanation of the maths, see this file: https://github.com/UofG-CS21/SGame/wiki/Geometry-Code-Documentation
         /// </summary>
         /// <param name="ship"></param>
         /// <param name="shotOrigin"></param>
@@ -587,6 +596,7 @@ namespace SShared
         /// <summary>
         /// Returns the fraction of the shot, specified by the bounding angles on the victim [shotStart, shotStop]
         /// that is shielded by the shielder's shield
+        /// For an explanation of the maths, see this file: https://github.com/UofG-CS21/SGame/wiki/Geometry-Code-Documentation
         /// </summary>
         /// <param name="shotStart"></param>
         /// <param name="shotStop"></param>
