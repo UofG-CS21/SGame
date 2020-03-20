@@ -69,24 +69,30 @@ dotnet restore SGame
 dotnet build SGame
 ```
 
-First, start a SArbiter instance using:
+### Running the server
+A SArbiter instance needs to be started:
 
-```C#
-dotnet run --project SArbiter  -- --api-url <The HTTP address to serve the REST API on> --bus-port <The UDP port to use for the master event bus>
+```sh
+dotnet run --project SArbiter -- --api-url "http://<restAddress>/" --bus-port <The UDP port to use for the master event bus>
 ```
+where `restAddress` is the externally-visible IPv4 address or hostname from where to serve the REST API to clients from.
 
-Then SGame nodes can be started and connected to SArbiter using:
+This is the node the clients connect to.
 
-```c#
-dotnet run --project SGame -- --arbiter <Hostname or address of the SArbiter managing this compute node> --api-url <The HTTP address to serve the SGame REST API on> --arbiter-bus-port <Externally-visible UDP port of the arbiter's event bus> --local-bus-port <Externally-visible UDP port of this node's event bus> --tickrate <Frequency of updates in milliseconds>
+The system then needs at least on compute node attached to the arbiter (max. one per physical address). One can be started by:
+
+```sh
+dotnet run --project SGame -- --arbiter <Hostname or address of the SArbiter managing this compute node> --api-url "http://<restAddress>/" --arbiter-bus-port <Externally-visible UDP port of the arbiter's event bus> --local-bus-port <Externally-visible UDP port of this node's event bus> --tickrate <Frequency of updates in milliseconds>
 ```
+where `restAddress` is a externally-visible (at least to the other SGame nodes and the arbiter) IPv4 address or hostname (clients are redirected from this address to the arbiter).  
+Optionally, if persistence is to be enabled, one can pass a `--persistence http://<elastic>/` flag when launching SGame, to instruct it to use the ElasticSearch server at `<elastic>`.
 
 SArbiter and SGame instances can be killed by sending a post request as shown:
 ```sh
-curl -X POST -d "exit" "<api-url>/exit"
+curl -X POST -d "exit" "http://<api-url>/exit"
 ```
 
-Where the api-url is the address used to start the server.
+Where the api-url is the address used to start the node.
 
 ### Data persistency
 
