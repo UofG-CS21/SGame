@@ -26,12 +26,11 @@ namespace SGame.Tests
     public class CmdLineOptions_ParseTester
     {
         private readonly string[] args;
-        private readonly string Hostname = "TestHost";
-        private readonly uint Port = 6000;
+        private readonly string apiUrl = "http://localhost:1500/";
 
         public CmdLineOptions_ParseTester()
         {
-            this.args = new string[] { "-H", Hostname, "-P", Port.ToString() };
+            this.args = new string[] { "--api-url", apiUrl };
         }
 
         [Fact]
@@ -40,8 +39,7 @@ namespace SGame.Tests
             Parser.Default.ParseArguments<CmdLineOptions>(this.args)
                 .WithParsed<CmdLineOptions>(opts =>
                 {
-                    Assert.Equal(opts.Host, this.Hostname);
-                    Assert.Equal(opts.Port, this.Port);
+                    Assert.Equal(opts.ApiUrl, this.apiUrl);
                 });
 
         }

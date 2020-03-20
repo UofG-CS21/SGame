@@ -2,54 +2,76 @@
 # Launch SGame, run pytest tests, then kill SGame.
 # Must be launched from ${CI_PROJECT_DIR}
 # Usage: runtests.sh <host> <port>
-SGAME_HOST=$1
-SGAME_PORT=$2
+HOST=$1
+SARBITER_PORT=$2
+SGAME_PORT=9001
+ELASTIC_URL="http://localhost:9200/"
 
-# Timeout before "Listnening..." is seen on the stdout of dotnet run
+function backgroundrun() {
+    # backgroundrun <project> <args>
+    rm -f $1.pid
+    dotnet run --project $1 -- $2 &>$1.out &
+    echo $! >$1.pid
+    echo "Waiting for $1 to fully startup..."
+    if ! timeout ${DOTNET_TIMEOUT} bash ${CI_PROJECT_DIR}/ci/waitForServer.sh $1.out; then
+        echo "Timeout waiting for $1 to start"
+        exit 1
+    fi
+    echo "$1 is listening"
+}
+
+function backgroundkill() {
+    # backgroundkill <project> <port>
+    # First try to exit gracefully...
+    echo "Send 'exit' command to $1..."
+    curl -X POST -d "exit" "http://${HOST}:$2/exit" || echo "curl failed to POST exit command"
+    sleep 2
+    # ...then use brute force if the server still hasn't terminated
+    BG_PID=$(cat $1.pid)
+    echo "pkill $1 (PID=${BG_PID})"
+    pkill -KILL ${BG_PID} || echo "  $1 was already stopped"
+}
+
+# Timeout before "Listening..." is seen on the stdout of dotnet run
 DOTNET_TIMEOUT=30
 
-# Start an instance of the SGame server in the background (redirect stdout->stderr; sleep a bit for it to init)
-# Store the PID of the background process in a file (SGame.pid) to know what process to kill after.
+# Start an instance of the SArbiter server in the background (redirect stdout->stderr; sleep a bit for it to init)
+# Store the PID of the background process in a file (SArbiter.pid) to know what process to kill after.
 # (See issue #33 on why this is needed)
-rm -f SGame.pid
-dotnet run --project SGame -- --host ${SGAME_HOST} --port ${SGAME_PORT} &>SGame.out &
-echo $! >SGame.pid
-echo "Waiting for SGame to fully startup..."
-if ! timeout ${DOTNET_TIMEOUT} bash ${CI_PROJECT_DIR}/ci/waitForServer.sh SGame.out; then
-    echo "Timeout waiting for SGame to start"
-    exit 1
-fi
-echo "SGame is listening"
+backgroundrun SArbiter "--api-url http://${HOST}:${SARBITER_PORT}/ --bus-port ${SARBITER_PORT}"
+
+sleep 2
+
+# Do the same for the SGame root node that manages the outermost quad
+backgroundrun SGame "--api-url http://${HOST}:${SGAME_PORT}/ --local-bus-port ${SGAME_PORT} --arbiter-bus-port ${SARBITER_PORT} --persistence ${ELASTIC_URL}"
+
+sleep 1
 
 # Run the tests
 pushd tests/
-pytest *.py --sgame ${CI_PROJECT_DIR}/SGame --host ${SGAME_HOST} --port ${SGAME_PORT}
+pytest *.py --sgame ${CI_PROJECT_DIR}/SGame --host ${HOST} --port ${SARBITER_PORT} --persistence ${ELASTIC_URL}
 TESTS_EXIT_CODE=$?
 popd
 
-# Kill the background process in any case (tests succeeded or failure)
+# Kill the background processes in any case (tests succeeded or failure)
 # (See issue #33; otherwise GitLab will stall until timeout because the SGame process in the background won't terminate!)
-# First try to exit gracefully...
-echo "Send 'exit' command to SGame..."
-curl -X POST -d "exit" "http://${SGAME_HOST}:${SGAME_PORT}/exit" || echo "curl failed to POST exit command"
-sleep 2
-# ...then use brute force if the server still hasn't terminated
-SGAME_PID=$(cat SGame.pid)
-echo "pkill SGame (PID=${SGAME_PID})"
-pkill -KILL ${SGAME_PID} || echo "  SGame was already stopped"
+backgroundkill SArbiter ${SARBITER_PORT}
+backgroundkill SGame ${SGAME_PORT}
 
-echo "===== Server output ======================================================"
-cat SGame.out
-echo "=========================================================================="
-
-# Adding in check to ensure that if the server crashes catch the error
 wait %1
-# Check if the error code is equal to 0 (Meaning that it has)
 if [ $? -ne 0 ]
- then
-    echo "SGame exited with error exit code"
-    # Exit with this code 
+then
+    echo "SArbiter exited with error exit code"
     exit $?
 fi
+wait %2
+if [ $? -ne 0 ]
+then
+    echo "SGame exited with error exit code"
+    exit $?
+fi
+
+#rm -f {SGame,SArbiter}.{out,pid}
+rm -f {SGame,SArbiter}.pid
 
 exit $TESTS_EXIT_CODE
