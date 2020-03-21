@@ -1,5 +1,6 @@
 using System;
 using SShared;
+using Newtonsoft.Json.Linq;
 
 namespace SGame
 {
@@ -50,6 +51,24 @@ namespace SGame
             this.GameTime = gameTime;
             this.LastUpdate = gameTime.ElapsedMilliseconds;
             this.LastCombat = this.LastUpdate;
+        }
+
+        public static LocalSpaceship FromJson(JObject json, GameTime gameTime)
+        {
+            LocalSpaceship ship = new LocalSpaceship(Spaceship.FromJson(json), gameTime);
+            long now = gameTime.ElapsedMilliseconds;
+            ship.LastUpdate = now - (long)json["lastUpdateDelta"];
+            ship.LastCombat = now - (long)json["lastCombatDelta"];
+            return ship;
+        }
+
+        public new JObject ToJson()
+        {
+            JObject json = base.ToJson();
+            long now = GameTime.ElapsedMilliseconds;
+            json["lastUpdateDelta"] = now - LastUpdate;
+            json["lastCombatDelta"] = now - LastCombat;
+            return json;
         }
 
         public void UpdateState()

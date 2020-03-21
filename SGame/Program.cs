@@ -43,6 +43,12 @@ namespace SGame
         public uint LocalBusPort { get; set; }
 
         /// <summary>
+        /// The URL of the ElasticSearch server used for persistence.
+        /// </summary>
+        [Option("persistence", Default = null, Required = false, HelpText = "URL of the ElasticSearch server used for persistence (optional)")]
+        public string PersistenceUrl { get; set; }
+
+        /// <summary>
         /// SGame's tickrate, i.e. the updates-per-second of the main loop.
         /// </summary>
         [Option('T', "tickrate", Default = 30u, Required = false, HelpText = "SGame tickrate (updates per second).")]
@@ -85,19 +91,25 @@ namespace SGame
         NetNode bus;
 
         /// <summary>
+        /// Connected to the ElasticSearch master used to persist ship.
+        /// </summary>
+        Persistence persistence;
+
+        /// <summary>
         /// Initializes an instance of the program.
         /// </summary>
         Program(CmdLineOptions options)
         {
             this.options = options;
             this.bus = new NetNode(listenPort: (int)options.LocalBusPort);
+            this.persistence = options.PersistenceUrl != null ? new Persistence(options.PersistenceUrl) : null;
             LiteNetLib.NetPeer arbiterPeer = this.bus.Connect(options.Arbiter, (int)options.ArbiterBusPort);
 
             // On startup, the local SGame node assumes it manages the whole universe.
             var localTree = new LocalQuadTreeNode(new SShared.Quad(0.0, 0.0, UniverseSize), 0);
             var rootNode = localTree;
 
-            this.api = new Api(options.ApiUrl, rootNode, localTree, bus, arbiterPeer, options.LocalBusPort);
+            this.api = new Api(options.ApiUrl, rootNode, localTree, bus, arbiterPeer, options.LocalBusPort, persistence);
             this.router = new Router<Api>(api);
         }
 
@@ -152,6 +164,7 @@ namespace SGame
         {
             bus.Update();
             api.UpdateGameState();
+            api.GarbageCollect();
             //Console.WriteLine("Updated game state at {0:HH:mm:ss.fff}", e.SignalTime);
         }
 
@@ -176,19 +189,19 @@ namespace SGame
                 Console.Error.WriteLine("Listening...");
                 Console.Error.WriteLine("(API on {0})", options.ApiUrl);
 
-                while (true)
+                bool keepGoing;
+                do
                 {
                     var task = await listener.GetContextAsync();
-                    bool keepGoing = await ProcessRequest(task);
-                    if (!keepGoing) break;
-                }
+                    keepGoing = await ProcessRequest(task);
+                } while (keepGoing);
+
+                await api.PersistAllShips();
 
                 listener.Stop();
                 GameLoopTimer.Stop();
-                Console.Error.WriteLine("Stopped");
+                Console.Error.WriteLine(">>> Stopped <<<");
             }
-
-            // TODO: Persist all ships on node shutdown (and shutdown SGame node if it )
         }
 
         /// <summary>

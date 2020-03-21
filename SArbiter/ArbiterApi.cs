@@ -17,10 +17,11 @@ namespace SArbiter
         }
 
         [ApiRoute("connect")]
+        [ApiParam("token", typeof(string), Optional = true)]
         public async Task ConnectPlayer(ApiResponse response, ApiData data)
         {
             ArbiterTreeNode shipNode = null;
-            var token = RoutingTable.AddNewShip(out shipNode);
+            var token = RoutingTable.AddNewShip(out shipNode, (string)data.Json["token"]);
             response.Data["token"] = token;
 
             Console.Error.WriteLine("connect {0} to {1}", token, shipNode.ApiUrl);
@@ -96,6 +97,7 @@ namespace SArbiter
                 {
                     response.Data["error"] = $"No ship with token: {shipToken}";
                     await response.Send(500);
+                    return;
                 }
                 RoutingTable.BusMaster.SendMessage(message, shipNode.Peer, LiteNetLib.DeliveryMethod.ReliableOrdered);
 
