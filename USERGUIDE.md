@@ -84,7 +84,7 @@ The system then needs at least on compute node attached to the arbiter (max. one
 ```sh
 dotnet run --project SGame -- --arbiter <Hostname or address of the SArbiter managing this compute node> --api-url "http://<restAddress>/" --arbiter-bus-port <Externally-visible UDP port of the arbiter's event bus> --local-bus-port <Externally-visible UDP port of this node's event bus> --tickrate <Frequency of updates in milliseconds>
 ```
-where `restAddress` is a externally-visible (at least to the other SGame nodes and the arbiter) IPv4 address or hostname (clients are redirected from this address to the arbiter).  
+where `restAddress` is a externally-visible (including to other SGame nodes and the arbiter) IPv4 address or hostname (clients are redirected to this HTTP server from the arbiter).  
 
 SArbiter and SGame instances can be killed by sending a post request as shown:
 ```sh
