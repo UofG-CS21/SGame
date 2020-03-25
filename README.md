@@ -17,7 +17,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 The prerequisites are as follows:
 
-#### donet core 3.0
+#### dotnet core 3.0
 
 - XUnit (Unit testing tool for the .NET Framework) - 2.4.0
 - LiteNetLib (Lite reliable UDP library for .NET.)
@@ -27,7 +27,7 @@ The prerequisites are as follows:
 
 #### Python 3.7 or above
 
-- pytests (Testing framework used for black box tests)
+- pytest (Testing framework used for black box tests)
 - requests (HTTP library - Used again for testing purposes)
 
 ## Installing
@@ -52,7 +52,7 @@ git clone https://stgit.dcs.gla.ac.uk/tp3-2019-cs21/cs21-main.git
 
 ### Python Dependencies
 
-pytests and requests can be installed using pip package manager as follows:
+pytest and requests can be installed using pip package manager as follows:
 
 ```
 pip install pytest
